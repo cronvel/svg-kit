@@ -1,0 +1,37 @@
+{
+  "name": "svg-kit",
+  "version": "0.0.0",
+  "description": "A small SVG toolkit.",
+  "main": "lib/svg.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "jshint": "^2.5.6",
+    "mocha": "^2.4.5"
+  },
+  "scripts": {
+    "test": "mocha -R dot"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cronvel/svg-kit.git"
+  },
+  "keywords": [
+    "svg"
+  ],
+  "author": "Cédric Ronvel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cronvel/svg-kit/issues"
+  },
+  "copyright": {
+    "title": "SVG Kit",
+    "years": [
+      2017
+    ],
+    "owner": "Cédric Ronvel"
+  }
+}
