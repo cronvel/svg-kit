@@ -1,6 +1,6 @@
 {
   "name": "svg-kit",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A small SVG toolkit.",
   "main": "lib/svg.js",
   "directories": {
@@ -10,10 +10,9 @@
     "svgkit": "./bin/svgkit"
   },
   "dependencies": {
-    "cheerio": "^1.0.0-rc.2",
+    "dom-kit": "^0.1.2",
     "minimist": "^1.2.0",
-    "terminal-kit": "^1.13.7",
-    "xmldom": "^0.1.27"
+    "terminal-kit": "^1.13.7"
   },
   "devDependencies": {
     "expect.js": "^0.3.1",
