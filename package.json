@@ -1,6 +1,6 @@
 {
   "name": "svg-kit",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A small SVG toolkit.",
   "main": "lib/svg.js",
   "directories": {
