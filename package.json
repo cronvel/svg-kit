@@ -1,6 +1,6 @@
 {
   "name": "svg-kit",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "A small SVG toolkit.",
   "main": "lib/svg.js",
   "directories": {
@@ -10,7 +10,7 @@
     "svgkit": "./bin/svgkit"
   },
   "dependencies": {
-    "dom-kit": "^0.3.5",
+    "dom-kit": "^0.3.6",
     "minimist": "^1.2.0",
     "string-kit": "^0.6.1",
     "terminal-kit": "^1.13.7"
