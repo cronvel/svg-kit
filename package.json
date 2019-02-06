@@ -1,6 +1,6 @@
 {
   "name": "svg-kit",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "A small SVG toolkit.",
   "main": "lib/svg.js",
   "directories": {
@@ -10,16 +10,13 @@
     "svgkit": "./bin/svgkit"
   },
   "dependencies": {
+    "@cronvel/xmldom": "^0.1.31",
     "dom-kit": "^0.3.6",
     "minimist": "^1.2.0",
-    "string-kit": "^0.6.1",
-    "terminal-kit": "^1.13.7"
+    "string-kit": "^0.9.1",
+    "terminal-kit": "^1.26.11"
   },
-  "devDependencies": {
-    "expect.js": "^0.3.1",
-    "jshint": "^2.5.6",
-    "mocha": "^2.4.5"
-  },
+  "devDependencies": {},
   "scripts": {
     "test": "mocha -R dot"
   },
@@ -38,7 +35,8 @@
   "copyright": {
     "title": "SVG Kit",
     "years": [
-      2017
+      2017,
+      2019
     ],
     "owner": "Cédric Ronvel"
   }
