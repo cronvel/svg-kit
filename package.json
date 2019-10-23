@@ -1,8 +1,8 @@
 {
   "name": "svg-kit",
-  "version": "0.1.21",
+  "version": "0.2.0",
   "description": "A small SVG toolkit.",
-  "main": "lib/svg.js",
+  "main": "lib/svgKit.js",
   "directories": {
     "test": "test"
   },
@@ -11,10 +11,11 @@
   },
   "dependencies": {
     "@cronvel/xmldom": "^0.1.31",
-    "dom-kit": "^0.3.6",
+    "dom-kit": "^0.3.14",
     "minimist": "^1.2.0",
-    "string-kit": "^0.9.1",
-    "terminal-kit": "^1.26.11"
+    "seventh": "^0.7.30",
+    "string-kit": "^0.10.1",
+    "terminal-kit": "^1.31.4"
   },
   "devDependencies": {},
   "scripts": {

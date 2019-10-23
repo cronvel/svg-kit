@@ -28,7 +28,7 @@
 
 
 
-var svg = require( '../lib/svg.js' ) ;
+const svgKit = require( '..' ) ;
 
 
 
