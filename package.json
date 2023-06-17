@@ -1,21 +1,16 @@
 {
   "name": "svg-kit",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "A small SVG toolkit.",
   "main": "lib/svg-kit.js",
   "directories": {
     "test": "test"
   },
-  "bin": {
-    "svgkit": "./bin/svgkit"
-  },
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "dom-kit": "^0.5.1",
-    "minimist": "^1.2.8",
-    "seventh": "^0.8.2",
-    "string-kit": "^0.17.10",
-    "terminal-kit": "^3.0.0"
+    "opentype.js": "^1.3.4",
+    "string-kit": "^0.17.10"
   },
   "scripts": {
     "test": "tea-time -R dot"
@@ -36,7 +31,7 @@
     "title": "SVG Kit",
     "years": [
       2017,
-      2019
+      2023
     ],
     "owner": "Cédric Ronvel"
   }

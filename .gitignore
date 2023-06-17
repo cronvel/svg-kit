@@ -9,6 +9,8 @@ package-lock.json
 *.css.gz
 *.js.gz
 *.png
+*.tmp.*
+*.tmp
 .spellcast
 build
 _build
