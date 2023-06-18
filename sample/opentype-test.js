@@ -5,8 +5,9 @@
 const fs = require( 'fs' ) ;
 const opentype = require( 'opentype.js' ) ;
 
-const TextMetrics = require( '../lib/TextMetrics.js' ) ;
 const VGRect = require( '../lib/VGRect.js' ) ;
+const TextMetrics = require( '../lib/TextMetrics.js' ) ;
+const StructuredTextPart = require( '../lib/StructuredTextPart.js' ) ;
 
 
 
@@ -20,6 +21,13 @@ var text = 'Hello world! |^°²,À' ,
 var path = font.getPath( text , x , y , fontSize ) ;
 var metrics = TextMetrics.measureFontText( font , fontSize , text ) ;
 console.log( "Metrics:" , metrics ) ;
+
+
+var part = new StructuredTextPart( { text , fontSize } ) ;
+console.log( "Part:" , part ) ;
+
+var metrics2 = TextMetrics.measureStructuredTextPart( part ) ;
+console.log( "Part Metrics:" , metrics2 ) ;
 
 var vgRectTextHeight = new VGRect( {
 	x: x ,
