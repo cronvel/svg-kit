@@ -9,34 +9,29 @@ const svgKit = require( '..' ) ;
 
 
 
-var textArea = new svgKit.StructuredTextArea( {
+var vgFlowingText = new svgKit.VGFlowingText( {
 	x: 20 ,
 	y: 50 ,
 	width: 400 ,
 	height: 200 ,
 	attr: { fontSize: 30 } ,
 	//structuredText: [ { text: 'Hello ' } , { text: 'world!' } ]
-	structuredText: [ { text: "Hello\nworld!\nWhat " } , { text: ' a wonderful ' } , { text: 'world!' } ]
+	structuredText: [ { text: "Hello\nworld!\nWhat " } , { text: "a wonderful " , attr: { color: '#933' } } , { text: "world!" , attr: { outlineWidth: 1 , outlineColor: '#b55' } } ]
 } ) ;
 
-textArea.computeLines() ;
-//console.log( "textArea:" , textArea ) ;
+vgFlowingText.computeLines() ;
+//console.log( "vgFlowingText:" , vgFlowingText ) ;
 
-for ( let line of textArea.structuredTextLines ) {
+for ( let line of vgFlowingText.structuredTextLines ) {
 	console.log( '-'.repeat( 10 ) ) ;
 	console.log( "Lines metrics:" , line.metrics ) ;
 	console.log( "Lines parts:" , line.parts ) ;
 }
 
-return ;
-
 var svg = '' ;
 
 svg += '<svg>\n' ;
-svg += vgRectLineHeight.renderText() + '\n' ;
-//svg += vgRectLineGap.renderText() + '\n' ;
-//svg += vgRectTextHeight.renderText() + '\n' ;
-svg += path.toSVG() + '\n' ;
+svg += vgFlowingText.renderText() + '\n' ;
 svg += '</svg>\n' ;
 
 fs.writeFileSync( __dirname + '/test.tmp.svg' , svg ) ;
