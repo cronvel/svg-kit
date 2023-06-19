@@ -5,9 +5,7 @@
 const fs = require( 'fs' ) ;
 const opentype = require( 'opentype.js' ) ;
 
-const VGRect = require( '../lib/VGRect.js' ) ;
-const TextMetrics = require( '../lib/TextMetrics.js' ) ;
-const StructuredTextPart = require( '../lib/StructuredTextPart.js' ) ;
+const svgKit = require( '..' ) ;
 
 
 
@@ -19,17 +17,17 @@ var text = 'Hello world! |^°²,À' ,
 	y = 50 ;
 
 var path = font.getPath( text , x , y , fontSize ) ;
-var metrics = TextMetrics.measureFontText( font , fontSize , text ) ;
+var metrics = svgKit.TextMetrics.measureFontText( font , fontSize , text ) ;
 console.log( "Metrics:" , metrics ) ;
 
 
-var part = new StructuredTextPart( { text , fontSize } ) ;
+var part = new svgKit.StructuredTextPart( { text , fontSize } ) ;
 console.log( "Part:" , part ) ;
 
-var metrics2 = TextMetrics.measureStructuredTextPart( part ) ;
+var metrics2 = svgKit.TextMetrics.measureStructuredTextPart( part ) ;
 console.log( "Part Metrics:" , metrics2 ) ;
 
-var vgRectTextHeight = new VGRect( {
+var vgRectTextHeight = new svgKit.VGRect( {
 	x: x ,
 	y: y - metrics.ascender ,
 	width: metrics.width ,
@@ -40,7 +38,7 @@ var vgRectTextHeight = new VGRect( {
 	}
 } ) ;
 
-var vgRectLineGap = new VGRect( {
+var vgRectLineGap = new svgKit.VGRect( {
 	x: x ,
 	y: y - metrics.descender ,
 	width: metrics.width ,
@@ -51,7 +49,7 @@ var vgRectLineGap = new VGRect( {
 	}
 } ) ;
 
-var vgRectLineHeight = new VGRect( {
+var vgRectLineHeight = new svgKit.VGRect( {
 	x: x ,
 	y: y - metrics.ascender ,
 	width: metrics.width ,

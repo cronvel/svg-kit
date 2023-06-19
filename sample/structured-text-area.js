@@ -5,13 +5,11 @@
 const fs = require( 'fs' ) ;
 const opentype = require( 'opentype.js' ) ;
 
-const VGRect = require( '../lib/VGRect.js' ) ;
-const TextMetrics = require( '../lib/TextMetrics.js' ) ;
-const StructuredTextArea = require( '../lib/StructuredTextArea.js' ) ;
+const svgKit = require( '..' ) ;
 
 
 
-var textArea = new StructuredTextArea( {
+var textArea = new svgKit.StructuredTextArea( {
 	x: 20 ,
 	y: 50 ,
 	width: 400 ,
@@ -24,10 +22,10 @@ var textArea = new StructuredTextArea( {
 textArea.computeLines() ;
 //console.log( "textArea:" , textArea ) ;
 
-for ( let line of textArea.lines ) {
+for ( let line of textArea.structuredTextLines ) {
 	console.log( '-'.repeat( 10 ) ) ;
-	console.log( "textArea lines parts:" , line.parts ) ;
-	console.log( "textArea lines metrics:" , line.metrics ) ;
+	console.log( "Lines metrics:" , line.metrics ) ;
+	console.log( "Lines parts:" , line.parts ) ;
 }
 
 return ;
