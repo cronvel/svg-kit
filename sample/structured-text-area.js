@@ -17,13 +17,18 @@ var textArea = new StructuredTextArea( {
 	width: 400 ,
 	height: 200 ,
 	attr: { fontSize: 30 } ,
-	structuredText: [ { text: 'Hello ' } , { text: 'world!' } ]
+	//structuredText: [ { text: 'Hello ' } , { text: 'world!' } ]
+	structuredText: [ { text: "Hello\nworld!\nWhat " } , { text: ' a wonderful ' } , { text: 'world!' } ]
 } ) ;
 
 textArea.computeLines() ;
 //console.log( "textArea:" , textArea ) ;
-console.log( "textArea lines parts:" , textArea.lines[ 0 ].parts ) ;
-console.log( "textArea lines metrics:" , textArea.lines[ 0 ].metrics ) ;
+
+for ( let line of textArea.lines ) {
+	console.log( '-'.repeat( 10 ) ) ;
+	console.log( "textArea lines parts:" , line.parts ) ;
+	console.log( "textArea lines metrics:" , line.metrics ) ;
+}
 
 return ;
 
