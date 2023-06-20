@@ -9,33 +9,49 @@ const svgKit = require( '..' ) ;
 
 
 
+var vg = new svgKit.VG( { viewBox: { x: 0 , y: 0 , width: 500 , height: 300 } } ) ;
+
 var vgFlowingText = new svgKit.VGFlowingText( {
 	x: 20 ,
 	y: 50 ,
 	width: 400 ,
 	height: 200 ,
-	attr: { fontSize: 30 , color: '#777' } ,
+	attr: {
+		fontSize: 30 , color: '#777' ,
+		outline: true ,
+		//outlineColor: '#afa' ,
+		//lineOutline: true ,
+		//lineColor: '#559'
+	} ,
 	//structuredText: [ { text: 'Hello ' } , { text: 'world!' } ]
 	structuredText: [
 		{ text: "Hello\nworld!\nWhat " } ,
-		{ text: "a wonderful " , attr: { fontSize: 25 , color: '#933' } } ,
-		{ text: "world!" , attr: { relOutlineWidth: 0.05 , outlineColor: '#b55' } } ,
+		{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,
+		{ text: "world!" , attr: { outline: true , outlineWidth: '0.05em' , outlineColor: '#b55' } } ,
 		{ text: "\nThis is an " } ,
-		{ text: "underlined part" , attr: { underline: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
+		{ text: "underlined part" , attr: {
+			underline: true , lineColor: '#599' ,
+			//outline: true
+		} } ,
 		{ text: "!" } ,
 		{ text: "\nAnd this is an " } ,
-		{ text: "striked through part" , attr: { lineThrough: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
+		{ text: "striked through part" , attr: {
+			lineThrough: true ,
+			//outline: true
+		} } ,
 		{ text: "!" } ,
-		{ text: "\nAnd this is an " } ,
-		{ text: "framed part" , attr: {
+		{ text: "\nAnd this is " } ,
+		{ text: "a framed part" , attr: {
 			frame: true ,
 			//frameCornerRadius: 10 , frameColor: '#557' , frameOutlineWidth: 1 , frameOutlineColor: '#66e' ,
-			frameRelCornerRadius: 0.1 , frameColor: '#557' , frameRelOutlineWidth: 0.1 , frameOutlineColor: '#66e' ,
-			relOutlineWidth: 0.025 , outlineColor: '#fff'
+			frameCornerRadius: '0.1em' , frameColor: '#557' , frameOutlineWidth: '0.1em' , frameOutlineColor: '#66e' ,
+			outline: true
 		} } ,
 		{ text: "!" }
 	]
 } ) ;
+
+vg.addEntity( vgFlowingText ) ;
 
 vgFlowingText.computeLines() ;
 //console.log( "vgFlowingText:" , vgFlowingText ) ;
@@ -43,16 +59,8 @@ vgFlowingText.computeLines() ;
 for ( let line of vgFlowingText.structuredTextLines ) {
 	console.log( '-'.repeat( 10 ) ) ;
 	console.log( "Lines metrics:" , line.metrics ) ;
-	console.log( "Lines parts:" , line.parts ) ;
+	console.dir( line , { depth: null } ) ;
 }
 
-var svg = '' ;
-
-svg += '<svg>\n' ;
-svg += vgFlowingText.renderText() + '\n' ;
-svg += '</svg>\n' ;
-
-fs.writeFileSync( __dirname + '/test.tmp.svg' , svg ) ;
-
-
+fs.writeFileSync( __dirname + '/test.tmp.svg' , vg.renderSvgText() + '\n' ) ;
 
