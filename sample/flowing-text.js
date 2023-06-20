@@ -27,7 +27,12 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 		{ text: "striked through part" , attr: { lineThrough: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
 		{ text: "!" } ,
 		{ text: "\nAnd this is an " } ,
-		{ text: "framed part" , attr: { frame: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
+		{ text: "framed part" , attr: {
+			frame: true ,
+			//frameCornerRadius: 10 , frameColor: '#557' , frameOutlineWidth: 1 , frameOutlineColor: '#66e' ,
+			frameRelCornerRadius: 0.1 , frameColor: '#557' , frameRelOutlineWidth: 0.1 , frameOutlineColor: '#66e' ,
+			relOutlineWidth: 0.025 , outlineColor: '#fff'
+		} } ,
 		{ text: "!" }
 	]
 } ) ;
