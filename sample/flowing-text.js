@@ -16,7 +16,20 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 	height: 200 ,
 	attr: { fontSize: 30 , color: '#777' } ,
 	//structuredText: [ { text: 'Hello ' } , { text: 'world!' } ]
-	structuredText: [ { text: "Hello\nworld!\nWhat " } , { text: "a wonderful " , attr: { fontSize: 25 , color: '#933' } } , { text: "world!" , attr: { relOutlineWidth: 0.05 , outlineColor: '#b55' } } ]
+	structuredText: [
+		{ text: "Hello\nworld!\nWhat " } ,
+		{ text: "a wonderful " , attr: { fontSize: 25 , color: '#933' } } ,
+		{ text: "world!" , attr: { relOutlineWidth: 0.05 , outlineColor: '#b55' } } ,
+		{ text: "\nThis is an " } ,
+		{ text: "underlined part" , attr: { underline: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
+		{ text: "!" } ,
+		{ text: "\nAnd this is an " } ,
+		{ text: "striked through part" , attr: { lineThrough: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
+		{ text: "!" } ,
+		{ text: "\nAnd this is an " } ,
+		{ text: "framed part" , attr: { frame: true , relOutlineWidth: 0.025 , outlineColor: '#fff'} } ,
+		{ text: "!" }
+	]
 } ) ;
 
 vgFlowingText.computeLines() ;
