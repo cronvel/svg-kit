@@ -9,15 +9,17 @@ const svgKit = require( '..' ) ;
 
 
 
-var vg = new svgKit.VG( { viewBox: { x: 0 , y: 0 , width: 500 , height: 300 } } ) ;
+var vg = new svgKit.VG( { viewBox: { x: 0 , y: 0 , width: 500 , height: 500 } } ) ;
 
 var vgFlowingText = new svgKit.VGFlowingText( {
 	x: 20 ,
 	y: 50 ,
-	width: 400 ,
-	height: 200 ,
-	//clip: false ,
+	//width: 400 , height: 200 ,
+	width: 200 , height: 400 ,
+	clip: false ,
 	debugContainer: true ,
+	//textWrapping: 'ellipsis' ,
+	textWrapping: 'wordWrap' ,
 	attr: {
 		fontSize: 30 , color: '#777' ,
 		outline: true ,
@@ -30,6 +32,7 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 		{ text: "Hello\nworld!\nWhat " } ,
 		{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,
 		{ text: "world!" , attr: { outline: true , outlineWidth: '0.05em' , outlineColor: '#b55' } } ,
+		//{ text: "\nThis is a very very very very very very long long long line..." } ,
 		{ text: "\nThis is an " } ,
 		{ text: "underlined part" , attr: {
 			underline: true , lineColor: '#599' ,
