@@ -9,7 +9,7 @@ const svgKit = require( '..' ) ;
 
 
 
-const font = opentype.loadSync( 'font.ttf' ) ;
+const font = opentype.loadSync( '../fonts/serif.ttf' ) ;
 
 var text = 'Hello world! |^°²,À' ,
 	fontSize = 30 ,
@@ -63,7 +63,7 @@ var vgRectLineHeight = new svgKit.VGRect( {
 var svg = '' ;
 
 svg += '<svg>\n' ;
-svg += vgRectLineHeight.renderText() + '\n' ;
+svg += vgRectLineHeight.renderSvgText() + '\n' ;
 //svg += vgRectLineGap.renderText() + '\n' ;
 //svg += vgRectTextHeight.renderText() + '\n' ;
 svg += path.toSVG() + '\n' ;
