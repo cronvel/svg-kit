@@ -16,6 +16,8 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 	y: 50 ,
 	width: 400 ,
 	height: 200 ,
+	//clip: false ,
+	debugContainer: true ,
 	attr: {
 		fontSize: 30 , color: '#777' ,
 		outline: true ,
@@ -54,14 +56,15 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 
 vg.addEntity( vgFlowingText ) ;
 
-vgFlowingText.computeLines() ;
-//console.log( "vgFlowingText:" , vgFlowingText ) ;
 
+/*
+vgFlowingText.computeLines() ;
 for ( let line of vgFlowingText.structuredTextLines ) {
 	console.log( '-'.repeat( 10 ) ) ;
 	console.log( "Lines metrics:" , line.metrics ) ;
 	console.dir( line , { depth: null } ) ;
 }
+//*/
 
 fs.writeFileSync( __dirname + '/test.tmp.svg' , vg.renderSvgText() + '\n' ) ;
 
