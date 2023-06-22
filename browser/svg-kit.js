@@ -785,6 +785,10 @@ VGEntity.prototype.renderSvgDom = function( options = {} , root = this ) {
 VGEntity.prototype.renderCanvas = function( canvasCtx , options = {} , root = this ) {
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
 
+	if ( this.renderHookForCanvas ) {
+		this.renderHookForCanvas( canvasCtx , options , root ) ;
+	}
+
 	if ( ! this.isContainer && ! this.isRenderingContainer ) { return ; }
 
 	// Inner content
@@ -3146,6 +3150,22 @@ VGRect.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
 
 VGRect.prototype.svgTag = 'rect' ;
 
+VGRect.prototype.set = function( params ) {
+	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( params.x !== undefined ) { this.x = params.x ; }
+	if ( params.y !== undefined ) { this.y = params.y ; }
+	if ( params.width !== undefined ) { this.width = params.width ; }
+	if ( params.height !== undefined ) { this.height = params.height ; }
+
+	// Round corner radius
+	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; }
+	if ( params.rx !== undefined ) { this.rx = params.rx ; }
+	if ( params.ry !== undefined ) { this.ry = params.ry ; }
+} ;
+
+
+
 VGRect.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		x: this.x ,
@@ -3161,18 +3181,18 @@ VGRect.prototype.svgAttributes = function( root = this ) {
 
 
 
-VGRect.prototype.set = function( params ) {
-	VGEntity.prototype.set.call( this , params ) ;
+VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
+	canvasCtx.rect( this.x , root.invertY ? -this.y : this.y , this.width , this.height ) ;
 
-	if ( params.x !== undefined ) { this.x = params.x ; }
-	if ( params.y !== undefined ) { this.y = params.y ; }
-	if ( params.width !== undefined ) { this.width = params.width ; }
-	if ( params.height !== undefined ) { this.height = params.height ; }
+	if ( this.style.fill && this.style.fill !== 'none' ) {
+		canvasCtx.fillStyle = this.style.fill ;
+	}
 
-	// Round corner radius
-	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; }
-	if ( params.rx !== undefined ) { this.rx = params.rx ; }
-	if ( params.ry !== undefined ) { this.ry = params.ry ; }
+	if ( this.style.stroke && this.style.stroke !== 'none' ) {
+		canvasCtx.strokeStyle = this.style.stroke ;
+	}
+
+	canvasCtx.fill() ;
 } ;
 
 
