@@ -662,7 +662,9 @@ VGEntity.prototype.renderSvgText = function( root = this ) {
 
 	for ( key in this.style ) {
 		// Key is in camelCase, but should use dash
-		styleStr += this.escape( camel.camelCaseToDash( key ) ) + ':' + this.escape( this.style[ key ] ) + ';' ;
+		let v = this.style[ key ] === null ? '' : this.style[ key ] ;
+		if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
+		styleStr += this.escape( camel.camelCaseToDash( key ) ) + ':' + this.escape( v ) + ';' ;
 	}
 
 	if ( styleStr ) { str += ' style="' + styleStr + '"' ; }
@@ -685,7 +687,9 @@ VGEntity.prototype.renderSvgText = function( root = this ) {
 		for ( rule of this.css ) {
 			str += rule.select + ' {\n' ;
 			for ( key in rule.style ) {
-				str += '    ' + this.escape( camel.camelCaseToDash( key ) ) + ': ' + this.escape( rule.style[ key ] ) + ';\n' ;
+				let v = rule.style[ key ] === null ? '' : rule.style[ key ] ;
+				if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
+				str += '    ' + this.escape( camel.camelCaseToDash( key ) ) + ': ' + this.escape( v ) + ';\n' ;
 			}
 			str += '}\n' ;
 		}
@@ -741,7 +745,12 @@ VGEntity.prototype.renderSvgDom = function( options = {} , root = this ) {
 
 	for ( key in this.style ) {
 		// Key is already in camelCase
-		this.$element.style[ key ] = this.style[ key ] ;
+		let v = this.style[ key ] === null ? '' : this.style[ key ] ;
+		if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
+		this.$element.style[ key ] = v ;
+
+		// Key is already in camelCase
+		//this.$element.style[ key ] = this.style[ key ] ;
 	}
 
 	if ( this.svgTextNode ) {
