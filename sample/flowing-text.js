@@ -39,7 +39,7 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 			//outline: true
 		} } ,
 		{ text: "!" } ,
-		{ text: "\nAnd this is an " } ,
+		{ text: "\nAnd this is a " } ,
 		{ text: "striked through part" , attr: {
 			lineThrough: true ,
 			//lineThickness: '0.075em' ,

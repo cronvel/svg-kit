@@ -18,7 +18,7 @@ async function test() {
 		height: 40 ,
 		style: {
 			fill: '#779' ,
-			stroke: '#55c'
+			stroke: '#c55'
 		}
 	} ) ;
 
@@ -29,7 +29,7 @@ async function test() {
 		y: 50 ,
 		//width: 400 , height: 200 ,
 		width: 200 , height: 400 ,
-		clip: false ,
+		//clip: false ,
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
 		textWrapping: 'wordWrap' ,
@@ -52,7 +52,7 @@ async function test() {
 				//outline: true
 			} } ,
 			{ text: "!" } ,
-			{ text: "\nAnd this is an " } ,
+			{ text: "\nAnd this is a " } ,
 			{ text: "striked through part" , attr: {
 				lineThrough: true ,
 				//lineThickness: '0.075em' ,
@@ -73,7 +73,7 @@ async function test() {
 	vg.addEntity( vgFlowingText ) ;
 
 	// Display using SVG DOM renderer
-	//document.body.appendChild( vg.renderSvgDom() ) ;
+	document.body.appendChild( vg.renderSvgDom() ) ;
 	// Display using SVG text renderer
 	//document.body.appendChild( svgKit.loadFromString( vg.renderSvgText() ) ) ;
 	// Display using the Canvas renderer
