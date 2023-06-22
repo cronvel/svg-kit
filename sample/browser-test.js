@@ -21,8 +21,18 @@ async function test() {
 			stroke: '#c55'
 		}
 	} ) ;
-
 	vg.addEntity( vgRect ) ;
+	
+	var vgText = new svgKit.VGText( {
+		text: 'Text!' ,
+		x: 100 ,
+		y: 40 ,
+		style: {
+			fontSize: 30 ,
+			fill: '#696' ,
+		}
+	} ) ;
+	vg.addEntity( vgText ) ;
 	
 	var vgFlowingText = new svgKit.VGFlowingText( {
 		x: 20 ,
@@ -69,7 +79,6 @@ async function test() {
 			{ text: "!" }
 		]
 	} ) ;
-
 	vg.addEntity( vgFlowingText ) ;
 
 	// Display using SVG DOM renderer

@@ -384,15 +384,15 @@ const VGEntity = require( './VGEntity.js' ) ;
 
 
 
-function VGEllipse( options ) {
-	VGEntity.call( this , options ) ;
+function VGEllipse( params ) {
+	VGEntity.call( this , params ) ;
 
 	this.x = 0 ;
 	this.y = 0 ;
 	this.rx = 0 ;
 	this.ry = 0 ;
 
-	if ( options ) { this.set( options ) ; }
+	if ( params ) { this.set( params ) ; }
 }
 
 module.exports = VGEllipse ;
@@ -405,17 +405,6 @@ VGEllipse.prototype.__prototypeVersion__ = require( '../package.json' ).version 
 
 
 VGEllipse.prototype.svgTag = 'ellipse' ;
-
-VGEllipse.prototype.svgAttributes = function( root = this ) {
-	var attr = {
-		cx: this.x ,
-		cy: root.invertY ? -this.y : this.y ,
-		rx: this.rx ,
-		ry: this.ry
-	} ;
-
-	return attr ;
-} ;
 
 
 
@@ -431,6 +420,29 @@ VGEllipse.prototype.set = function( params ) {
 	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; }
 	if ( params.rx !== undefined ) { this.rx = params.rx ; }
 	if ( params.ry !== undefined ) { this.ry = params.ry ; }
+} ;
+
+
+
+VGEllipse.prototype.svgAttributes = function( root = this ) {
+	var attr = {
+		cx: this.x ,
+		cy: root.invertY ? -this.y : this.y ,
+		rx: this.rx ,
+		ry: this.ry
+	} ;
+
+	return attr ;
+} ;
+
+
+
+VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
+	canvasCtx.ellipse( this.x , root.invertY ? -this.y : this.y , this.rx , this.ry ) ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+	canvasCtx.restore() ;
 } ;
 
 
@@ -789,21 +801,13 @@ VGEntity.prototype.renderCanvas = function( canvasCtx , options = {} , root = th
 		this.renderHookForCanvas( canvasCtx , options , root ) ;
 	}
 
-	if ( ! this.isContainer && ! this.isRenderingContainer ) { return ; }
-
-	// Inner content
-
-	if ( this.isRenderingContainer && this.renderingContainerHookForCanvas ) {
-		this.renderingContainerHookForCanvas( canvasCtx , options , root ) ;
-	}
+	if ( ! this.isContainer ) { return ; }
 
 	if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
 			entity.renderCanvas( canvasCtx , options , root ) ;
 		}
 	}
-
-	return this.$element ;
 } ;
 
 
@@ -2621,6 +2625,13 @@ VGPath.prototype.svgTag = 'path' ;
 
 
 
+VGPath.prototype.set = function( params ) {
+	VGEntity.prototype.set.call( this , params ) ;
+	if ( Array.isArray( params.commands ) ) { this.commands = params.commands ; }
+} ;
+
+
+
 VGPath.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		// That enigmatic SVG attribute 'd' probably means 'data' or 'draw'
@@ -2628,13 +2639,6 @@ VGPath.prototype.svgAttributes = function( root = this ) {
 	} ;
 
 	return attr ;
-} ;
-
-
-
-VGPath.prototype.set = function( params ) {
-	VGEntity.prototype.set.call( this , params ) ;
-	if ( Array.isArray( params.commands ) ) { this.commands = params.commands ; }
 } ;
 
 
@@ -2656,6 +2660,15 @@ VGPath.prototype.toD = function( root = this ) {
 	} ) ;
 
 	return build.d ;
+} ;
+
+
+
+VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD() ) ) ;
+	canvasCtx.restore() ;
 } ;
 
 
@@ -3328,11 +3341,11 @@ VGRect.prototype.svgAttributes = function( root = this ) {
 
 
 VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
-	//canvasCtx.save() ;
+	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
 	canvasCtx.rect( this.x , root.invertY ? -this.y : this.y , this.width , this.height ) ;
 	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
-	//canvasCtx.restore() ;
+	canvasCtx.restore() ;
 } ;
 
 
@@ -3405,28 +3418,6 @@ VGText.prototype.svgTag = 'text' ;
 
 
 
-VGText.prototype.svgAttributes = function( root = this ) {
-	var attr = {
-		x: this.x ,
-		y: root.invertY ? -this.y : this.y ,
-		'text-anchor': this.anchor || 'middle'
-	} ;
-
-	if ( this.length !== null ) { attr.textLength = this.length ; }
-	if ( this.adjustGlyph !== null ) { attr.lengthAdjust = 'spacingAndGlyphs' ; }
-
-	return attr ;
-} ;
-
-
-
-VGText.prototype.svgTextNode = function() {
-	// Text-formatting should be possible
-	return this.text ;
-} ;
-
-
-
 VGText.prototype.set = function( params ) {
 	VGEntity.prototype.set.call( this , params ) ;
 
@@ -3447,6 +3438,72 @@ VGText.prototype.set = function( params ) {
 	if ( params.lengthAdjust === 'spacingAndGlyphs' ) { this.adjustGlyph = true ; }
 	else if ( params.lengthAdjust === 'spacing' ) { this.adjustGlyph = false ; }
 	if ( params.adjustGlyph !== undefined ) { this.adjustGlyph = !! params.adjustGlyph ; }
+} ;
+
+
+
+VGText.prototype.svgTextNode = function() {
+	// Text-formatting should be possible
+	return this.text ;
+} ;
+
+
+
+VGText.prototype.svgAttributes = function( root = this ) {
+	var attr = {
+		x: this.x ,
+		y: root.invertY ? -this.y : this.y ,
+		'text-anchor': this.anchor || 'middle'
+	} ;
+
+	if ( this.length !== null ) { attr.textLength = this.length ; }
+	if ( this.adjustGlyph !== null ) { attr.lengthAdjust = 'spacingAndGlyphs' ; }
+
+	return attr ;
+} ;
+
+
+
+VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
+	var style = this.style ,
+		fill = false ,
+		stroke = false ,
+		fillStyle = style.fill && style.fill !== 'none' ? style.fill : null ,
+		strokeStyle = style.stroke && style.stroke !== 'none' ? style.stroke : null ,
+		lineWidth = + ( style.strokeWidth ?? 1 ) || 0 ;
+
+	canvasCtx.save() ;
+	canvasCtx.font = '' + style.fontSize + 'px ' + style.fontFamily ;
+	canvasCtx.textBaseline = 'alphabetic' ;
+	canvasCtx.direction = 'ltr' ;
+
+	// /!\ It produces different result when direction is right-to-left, but SVG Kit does not support that for instance...
+	canvasCtx.textAlign = 
+		this.anchor === 'start' ? 'left' :
+		this.anchor === 'end' ? 'right' :
+		'center' ;
+	
+	if ( fillStyle ) {
+		fill = true ;
+		canvasCtx.fillStyle = fillStyle ;
+	}
+
+	if ( strokeStyle && lineWidth ) {
+		stroke = true ;
+		canvasCtx.strokeStyle = strokeStyle ;
+		canvasCtx.lineWidth = lineWidth ;
+	}
+	
+	if ( ! style.paintOrder || style.paintOrder.startsWith( 'fill' ) ) {
+		if ( fill ) { canvasCtx.fillText( this.text , this.x , this.y ) ; }
+		if ( stroke ) { canvasCtx.strokeText( this.text , this.x , this.y ) ; }
+	}
+	else {
+		if ( stroke ) { canvasCtx.strokeText( this.text , this.x , this.y ) ; }
+		if ( fill ) { canvasCtx.fillText( this.text , this.x , this.y ) ; }
+	}
+
+	canvasCtx.restore() ;
 } ;
 
 
