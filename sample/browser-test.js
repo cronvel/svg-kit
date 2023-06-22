@@ -2,6 +2,9 @@
 "use strict" ;
 
 async function test() {
+	var $canvas = document.getElementById( 'canvas' ) ;
+	var ctx = $canvas.getContext( '2d' ) ;
+
 	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
 	var font = await svgKit.fontLib.getFontAsync( 'serif' ) ;
 	console.log( "Font:" , font ) ;
@@ -69,9 +72,13 @@ async function test() {
 
 	vg.addEntity( vgFlowingText ) ;
 
+	// Display using SVG DOM renderer
 	//document.body.appendChild( vg.renderSvgDom() ) ;
-	document.body.appendChild( svgKit.loadFromString( vg.renderSvgText() ) ) ;
-	//$svgContainer.innerHtml = vg.renderSvgText() ;
+	// Display using SVG text renderer
+	//document.body.appendChild( svgKit.loadFromString( vg.renderSvgText() ) ) ;
+	// Display using the Canvas renderer
+	$canvas.classList.remove( 'hidden' ) ;
+	vg.renderCanvas( ctx ) ;
 }
 
 svgKit.domKit.ready( test ) ;

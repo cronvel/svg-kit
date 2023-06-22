@@ -59,6 +59,9 @@ var vgFlowingText = new svgKit.VGFlowingText( {
 
 vg.addEntity( vgFlowingText ) ;
 
+//console.log( "Content size:" , vgFlowingText.contentWidth , vgFlowingText.contentHeight ) ;
+//console.log( "Character count:" , vgFlowingText.characterCount ) ;
+
 
 /*
 vgFlowingText.computeLines() ;

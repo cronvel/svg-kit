@@ -4,10 +4,15 @@
 <head>
     <meta charset="utf8" />
     <title>SVG Kit test</title>
+    <style>
+    	.hidden {
+    		display: none;
+    	}
+    </style>
 </head>
 <body>
 	<script src="../browser/svg-kit.js"></script>
 	<script src="browser-test.js"></script>
-	<div id="svg-text"></div>
+	<canvas id="canvas" class="hidden" width="500" height="500"></canvas>
 </body>
 </html>
