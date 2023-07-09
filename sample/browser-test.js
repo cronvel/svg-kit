@@ -28,6 +28,7 @@ async function test() {
 		y: 10 ,
 		width: 100 ,
 		height: 100 ,
+		sourceX: 50 , sourceY: 30 , sourceWidth: 100 , sourceHeight: 150 ,
 		url: './smiley.png'
 	} ) ;
 	vg.addEntity( vgImage ) ;

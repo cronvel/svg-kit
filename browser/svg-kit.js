@@ -2698,12 +2698,26 @@ const canvas = require( './canvas.js' ) ;
 function VGImage( params ) {
 	VGEntity.call( this , params ) ;
 
+	// Basic image
 	this.x = 0 ;
 	this.y = 0 ;
 	this.width = 0 ;
 	this.height = 0 ;
-
 	this.url = null ;
+
+	// Source Rect
+	this.sourceX = null ;
+	this.sourceY = null ;
+	this.sourceWidth = null ;
+	this.sourceHeight = null ;
+	this.sourceRect = false ;
+
+	// Nine-patch
+	this.sliceLeft = null ;
+	this.sliceRight = null ;
+	this.sliceTop = null ;
+	this.sliceBottom = null ;
+	this.ninePatch = false ;
 
 	if ( params ) { this.set( params ) ; }
 }
@@ -2725,6 +2739,17 @@ VGImage.prototype.set = function( params ) {
 	if ( params.width !== undefined ) { this.width = params.width ; }
 	if ( params.height !== undefined ) { this.height = params.height ; }
 	if ( params.url && typeof params.url === 'string' ) { this.url = params.url ; }
+
+	let sourceRectParams = false ;
+	if ( params.sourceX !== undefined ) { this.sourceX = params.sourceX ; sourceRectParams = true ; }
+	if ( params.sourceY !== undefined ) { this.sourceY = params.sourceY ; sourceRectParams = true ; }
+	if ( params.sourceWidth !== undefined ) { this.sourceWidth = params.sourceWidth ; sourceRectParams = true ; }
+	if ( params.sourceHeight !== undefined ) { this.sourceHeight = params.sourceHeight ; sourceRectParams = true ; }
+	if ( sourceRectParams ) {
+		this.sourceRect =
+			this.sourceX !== null && this.sourceY !== null
+			&& this.sourceWidth !== null && this.sourceHeight !== null ;
+	}
 } ;
 
 
@@ -2769,7 +2794,17 @@ VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {}
 
 	await new Promise( resolve => {
 		image.onload = () => {
-			canvasCtx.drawImage( image , this.x , this.y , this.width , this.height ) ;
+			if ( this.sourceRect ) {
+				canvasCtx.drawImage(
+					image ,
+					this.sourceX , this.sourceY , this.sourceWidth , this.sourceHeight ,
+					this.x , this.y , this.width , this.height
+				) ;
+			}
+			else {
+				canvasCtx.drawImage( image , this.x , this.y , this.width , this.height ) ;
+			}
+
 			resolve() ;
 		} ;
 	} ) ;
