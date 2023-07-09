@@ -33,6 +33,19 @@ async function test() {
 	} ) ;
 	vg.addEntity( vgImage ) ;
 
+	var vg9pImage = new svgKit.VGImage( {
+		x: 200 ,
+		y: 120 ,
+		width: 100 ,
+		height: 100 ,
+		sliceLeft: 70 ,
+		sliceTop: 70 ,
+		sliceBottom: 186 ,
+		sliceRight: 186 ,
+		url: './9p.png'
+	} ) ;
+	vg.addEntity( vg9pImage ) ;
+
 	var vgText = new svgKit.VGText( {
 		text: 'Text!' ,
 		x: 100 ,
