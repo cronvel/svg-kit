@@ -60,8 +60,13 @@ const UNITS_CALC = {
 const REGEXP = /^([0-9]+(?:\.[0-9]+)?) *([a-z%]+)?$/ ;
 
 Metric.prototype.set = function( value , unit = '' ) {
+	if ( value && typeof value === 'object' ) {
+		unit = value.unit ;
+		value = value.value ;
+	}
+
 	if ( typeof value === 'string' ) {
-		let match = value .match( REGEXP ) ;
+		let match = value.match( REGEXP ) ;
 		if ( ! match ) { return false ; }
 		value = parseFloat( match[ 1 ] ) ;
 		unit = match[ 2 ] || '' ;
@@ -73,7 +78,7 @@ Metric.prototype.set = function( value , unit = '' ) {
 		value = unit.value( value ) ;
 		unit = unit.unit ;
 	}
-	
+
 	this.value = value ;
 	this.unit = unit ;
 
@@ -95,6 +100,18 @@ Metric.chainedGet = function( ... metrics ) {
 	if ( typeof metrics[ 0 ] === 'number' ) { return metrics[ 0 ] ; }
 	var metric = metrics.shift() ;
 	return metric.get( ... metrics ) ;
+} ;
+
+
+
+Metric.isEqual = function( a , b ) {
+	if ( ! a && ! b ) { return true ; }
+	if ( ! a || ! b ) { return false ; }
+
+	return (
+		a.value === b.value
+		&& a.unit === b.unit
+	) ;
 } ;
 
 
@@ -127,12 +144,15 @@ Metric.chainedGet = function( ... metrics ) {
 
 "use strict" ;
 
+
+
 /*
 	VG: Vector Graphics.
 	A portable structure describing some vector graphics.
 */
 
-const svgKit = require( './svg-kit.js' ) ;
+
+
 const VGContainer = require( './VGContainer.js' ) ;
 
 var autoId = 0 ;
@@ -161,6 +181,7 @@ VG.prototype = Object.create( VGContainer.prototype ) ;
 VG.prototype.constructor = VG ;
 VG.prototype.__prototypeUID__ = 'svg-kit/VG' ;
 VG.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+console.warn( "SVG-Kit version: " + require( '../package.json' ).version ) ;
 
 
 
@@ -171,7 +192,7 @@ VG.prototype.svgTag = 'svg' ;
 VG.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		xmlns: "http://www.w3.org/2000/svg" ,
-		viewBox: this.viewBox.x + ' ' + ( root.invertY ? -this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
+		viewBox: this.viewBox.x + ' ' + ( root.invertY ? - this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
 	} ;
 
 	return attr ;
@@ -201,6 +222,18 @@ VG.prototype.set = function( params ) {
 
 
 
+VG.prototype.export = function( data = {} ) {
+	VGContainer.prototype.export.call( this , data ) ;
+
+	data.viewBox = this.viewBox ;
+	if ( this.css.length ) { data.css = this.css ; }
+	data.invertY = this.invertY ;
+
+	return data ;
+} ;
+
+
+
 /*
     To update a style:
     $style = $element.querySelector( 'style' ) ;
@@ -220,7 +253,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":43,"./VGContainer.js":3,"./svg-kit.js":18}],3:[function(require,module,exports){
+},{"../package.json":44,"./VGContainer.js":3}],3:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -287,6 +320,18 @@ VGContainer.prototype.set = function( params ) {
 
 
 
+VGContainer.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+
+	if ( this.entities.length ) {
+		data.entities = this.entities.map( e => e.export() ) ;
+	}
+
+	return data ;
+} ;
+
+
+
 VGContainer.prototype.addEntity = function( entity , clone = false ) {
 	entity = svgKit.objectToVG( entity , clone ) ;
 	if ( entity ) { this.entities.push( entity ) ; }
@@ -349,7 +394,7 @@ VGContainer.prototype.morphSvgDom = function( root = this ) {
 } ;
 
 
-},{"../package.json":43,"./VGEntity.js":5,"./svg-kit.js":18}],4:[function(require,module,exports){
+},{"../package.json":44,"./VGEntity.js":5,"./svg-kit.js":19}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -381,6 +426,7 @@ VGContainer.prototype.morphSvgDom = function( root = this ) {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const canvas = require( './canvas.js' ) ;
 
 
 
@@ -424,10 +470,23 @@ VGEllipse.prototype.set = function( params ) {
 
 
 
+VGEllipse.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+
+	data.x = this.x ;
+	data.y = this.y ;
+	data.rx = this.rx ;
+	data.ry = this.ry ;
+
+	return data ;
+} ;
+
+
+
 VGEllipse.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		cx: this.x ,
-		cy: root.invertY ? -this.y : this.y ,
+		cy: root.invertY ? - this.y : this.y ,
 		rx: this.rx ,
 		ry: this.ry
 	} ;
@@ -440,13 +499,14 @@ VGEllipse.prototype.svgAttributes = function( root = this ) {
 VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
-	canvasCtx.ellipse( this.x , root.invertY ? -this.y : this.y , this.rx , this.ry ) ;
+	canvasCtx.ellipse( this.x , root.invertY ? - this.y : this.y , this.rx , this.ry ) ;
 	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
 	canvasCtx.restore() ;
 } ;
 
 
-},{"../package.json":43,"./VGEntity.js":5}],5:[function(require,module,exports){
+},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],5:[function(require,module,exports){
+(function (process){(function (){
 /*
 	SVG Kit
 
@@ -477,6 +537,8 @@ VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , r
 
 
 
+const fontLib = require( './fontLib.js' ) ;
+
 const camel = require( 'string-kit/lib/camel' ) ;
 const escape = require( 'string-kit/lib/escape' ) ;
 
@@ -486,7 +548,7 @@ var autoId = 0 ;
 
 
 
-function VGEntity( options ) {
+function VGEntity( params ) {
 	this._id = '_vgEntId_' + ( autoId ++ ) ;	// Used when a VG has to create unique ID automatically (e.g. creating a <clipPath>)
 	this.id = null ;
 	this.class = new Set() ;
@@ -514,29 +576,6 @@ VGEntity.prototype.isContainer = false ;
 VGEntity.prototype.isRenderingContainer = false ;	// If set, it's not a high-level container but it's rendered as a container
 VGEntity.prototype.svgTag = 'none' ;
 VGEntity.prototype.svgAttributes = () => ( {} ) ;
-
-
-
-VGEntity.prototype.toJSON = function() {
-	var object = Object.assign( {} , this ) ;
-
-	object._type = this.__prototypeUID__ ;
-
-	if ( this.class.size ) { object.class = [ ... this.class ] ; }
-	else { delete object.class ; }
-
-	if ( ! object.id ) { delete object.id ; }
-	if ( ! object.data ) { delete object.data ; }
-	if ( ! object.button ) { delete object.button ; }
-	if ( ! object.hint ) { delete object.hint ; }
-	if ( ! object.area ) { delete object.area ; }
-
-	delete object.morphLog ;
-	delete object.$element ;
-	delete object.$style ;
-
-	return object ;
-} ;
 
 
 
@@ -588,6 +627,28 @@ VGEntity.prototype.set = function( params ) {
 
 
 
+VGEntity.prototype.export = function( data = {} ) {
+	data._type = this.__prototypeUID__ ;
+	data._id = this._id ;
+	if ( this.id ) { data.id = this.id ; }
+
+	if ( this.class.size ) { data.class = [ ... this.class ] ; }
+	if ( Object.keys( this.style ).length ) { data.style = this.style ; }
+
+	if ( this.data ) { data.data = this.data ; }
+	if ( this.button ) { data.button = this.button ; }
+	if ( this.hint ) { data.hint = this.hint ; }
+	if ( this.area ) { data.area = this.area ; }
+
+	return data ;
+} ;
+
+
+
+VGEntity.prototype.toJSON = function() { return this.export() ; } ;
+
+
+
 var morphVersion = 0 ;
 
 VGEntity.prototype.morph = function( data ) {
@@ -627,7 +688,7 @@ VGEntity.prototype.escape = function( value ) {
 
 
 // Render the Vector Graphic as a text SVG
-VGEntity.prototype.renderSvgText = function( root = this ) {
+VGEntity.prototype.renderSvgText = async function( root = this ) {
 	var key , rule , attr , str = '' , textNodeStr = '' , styleStr = '' ;
 
 	attr = this.svgAttributes( root ) ;
@@ -700,12 +761,12 @@ VGEntity.prototype.renderSvgText = function( root = this ) {
 	// Inner content
 
 	if ( this.isRenderingContainer && this.renderingContainerHookForSvgText ) {
-		str += this.renderingContainerHookForSvgText( root ) ;
+		str += await this.renderingContainerHookForSvgText( root ) ;
 	}
 
 	if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
-			str += entity.renderSvgText( root ) ;
+			str += await entity.renderSvgText( root ) ;
 		}
 	}
 
@@ -717,8 +778,41 @@ VGEntity.prototype.renderSvgText = function( root = this ) {
 
 
 
+// Preload fonts, should be done before rendering anything needed OpenType.js on the browser-side, since .fetch() is asynchronous.
+// Preload should handle all the async stuff.
+VGEntity.prototype.preloadFonts = async function() {
+	if ( ! process?.browser ) {
+		console.error( 'VGEntity#preloadFonts() is a browser-only method' ) ;
+		return ;
+	}
+
+	var fontNames = [] ,
+		nodeFontNames = this.getUsedFontNames() ;
+
+	if ( nodeFontNames ) { fontNames.push( ... nodeFontNames ) ; }
+
+	if ( this.isContainer && this.entities?.length ) {
+		for ( let entity of this.entities ) {
+			let childFontNames = entity.getUsedFontNames() ;
+			if ( childFontNames ) { fontNames.push( ... childFontNames ) ; }
+		}
+	}
+
+	console.warn( "fontNames:" , fontNames ) ;
+
+	await Promise.all( fontNames.map( fontName => fontLib.getFontAsync( fontName ) ) ) ;
+} ;
+
+
+
+// Should be derived
+// Return null or an array of font names used by this entity
+VGEntity.prototype.getUsedFontNames = function() { return null ; } ;
+
+
+
 // Render the Vector Graphic inside a browser, as DOM SVG
-VGEntity.prototype.renderSvgDom = function( options = {} , root = this ) {
+VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 	var key , rule , cssStr ,
 		attr = this.svgAttributes( root ) ;
 
@@ -788,12 +882,13 @@ VGEntity.prototype.renderSvgDom = function( options = {} , root = this ) {
 	// Inner content
 
 	if ( this.isRenderingContainer && this.renderingContainerHookForSvgDom ) {
-		this.renderingContainerHookForSvgDom( root ).forEach( $subElement => this.$element.appendChild( $subElement ) ) ;
+		let subElements = await this.renderingContainerHookForSvgDom( root ) ;
+		subElements.forEach( $subElement => this.$element.appendChild( $subElement ) ) ;
 	}
 
-	if ( this.isContainer && this.entities ) {
+	if ( this.isContainer && this.entities?.length ) {
 		for ( let entity of this.entities ) {
-			this.$element.appendChild( entity.renderSvgDom( undefined , root ) ) ;
+			this.$element.appendChild( await entity.renderSvgDom( undefined , root ) ) ;
 		}
 	}
 
@@ -803,18 +898,18 @@ VGEntity.prototype.renderSvgDom = function( options = {} , root = this ) {
 
 
 // Render the Vector Graphic inside a browser's canvas
-VGEntity.prototype.renderCanvas = function( canvasCtx , options = {} , root = this ) {
+VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , root = this ) {
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
 
 	if ( this.renderHookForCanvas ) {
-		this.renderHookForCanvas( canvasCtx , options , root ) ;
+		await this.renderHookForCanvas( canvasCtx , options , root ) ;
 	}
 
 	if ( ! this.isContainer ) { return ; }
 
 	if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
-			entity.renderCanvas( canvasCtx , options , root ) ;
+			await entity.renderCanvas( canvasCtx , options , root ) ;
 		}
 	}
 } ;
@@ -876,7 +971,8 @@ VGEntity.prototype.morphOneSvgDomEntry = function( data , root = this ) {
 } ;
 
 
-},{"../package.json":43,"string-kit/lib/camel":28,"string-kit/lib/escape":29}],6:[function(require,module,exports){
+}).call(this)}).call(this,require('_process'))
+},{"../package.json":44,"./fontLib.js":17,"_process":51,"string-kit/lib/camel":29,"string-kit/lib/escape":30}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1016,6 +1112,17 @@ function StructuredTextPart( params = {} ) {
 }
 
 module.exports = StructuredTextPart ;
+
+
+
+StructuredTextPart.prototype.export = function( data = {} ) {
+	data.text = this.text ;
+
+	let attr = this.attr.export( undefined , true ) ;
+	if ( attr ) { data.attr = attr ; }
+
+	return data ;
+} ;
 
 
 
@@ -1162,17 +1269,33 @@ TextAttribute.prototype.set = function( params ) {
 
 
 
+TextAttribute.prototype.export = function( data = {} , nullIfDefault = false ) {
+	var hasNonNull = false ;
+
+	for ( let key of Object.keys( this ) ) {
+		if ( this[ key ] !== null ) {
+			data[ key ] = this[ key ] ;
+			hasNonNull = true ;
+		}
+	}
+
+	if ( nullIfDefault && ! hasNonNull ) { return null ; }
+	return data ;
+} ;
+
+
+
 TextAttribute.prototype.isEqual = function( to ) {
 	return (
 		this.fontFamily === to.fontFamily
-		&& this.fontSize === to.fontSize
+		&& Metric.isEqual( this.fontSize , to.fontSize )
 		//&& this.fontStyle === to.fontStyle
 		//&& this.fontWeight === to.fontWeight
 
 		&& this.color === to.color
 		&& this.outline === to.outline
 		&& ( ! this.outline || (
-			this.outlineWidth === to.outlineWidth
+			Metric.isEqual( this.outlineWidth , to.outlineWidth )
 			&& this.outlineColor === to.outlineColor
 		) )
 
@@ -1180,10 +1303,10 @@ TextAttribute.prototype.isEqual = function( to ) {
 		&& this.lineThrough === to.lineThrough
 		&& ( ( ! this.underline && ! this.lineThrough ) || (
 			this.lineColor === to.lineColor
-			&& this.lineThickness === to.lineThickness
+			&& Metric.isEqual( this.lineThickness , to.lineThickness )
 			&& this.lineOutline === to.lineOutline
 			&& ( ! this.lineOutline || (
-				this.lineOutlineWidth === to.lineOutlineWidth
+				Metric.isEqual( this.lineOutlineWidth , to.lineOutlineWidth )
 				&& this.lineOutlineColor === to.lineOutlineColor
 			) )
 		) )
@@ -1191,9 +1314,9 @@ TextAttribute.prototype.isEqual = function( to ) {
 		&& this.frame === to.frame
 		&& ( ! this.frame || (
 			this.frameColor === to.frameColor
-			&& this.frameOutlineWidth === to.frameOutlineWidth
+			&& Metric.isEqual( this.frameOutlineWidth , to.frameOutlineWidth )
 			&& this.frameOutlineColor === to.frameOutlineColor
-			&& this.frameCornerRadius === to.frameCornerRadius
+			&& Metric.isEqual( this.frameCornerRadius , to.frameCornerRadius )
 		) )
 	) ;
 } ;
@@ -1212,7 +1335,7 @@ TextAttribute.prototype.getFontFamily = function( inherit = null ) {
 
 TextAttribute.prototype.setFontSize = function( v ) {
 	if ( v instanceof Metric ) { this.fontSize = v ; }
-	if ( typeof v === 'number' || typeof v === 'string' ) { this.fontSize = new Metric( v ) ; }
+	else if ( typeof v === 'number' || typeof v === 'string' || ( v && typeof v === 'object' ) ) { this.fontSize = new Metric( v ) ; }
 	else { this.fontSize = null ; }
 } ;
 
@@ -1244,7 +1367,7 @@ TextAttribute.prototype.getOutline = function( inherit = null ) {
 
 TextAttribute.prototype.setOutlineWidth = function( v ) {
 	if ( v instanceof Metric ) { this.outlineWidth = v ; }
-	if ( typeof v === 'number' || typeof v === 'string' ) { this.outlineWidth = new Metric( v ) ; }
+	else if ( typeof v === 'number' || typeof v === 'string' || ( v && typeof v === 'object' ) ) { this.outlineWidth = new Metric( v ) ; }
 	else { this.outlineWidth = null ; }
 } ;
 
@@ -1301,7 +1424,7 @@ TextAttribute.prototype.getLineColor = function( inherit = null ) {
 
 TextAttribute.prototype.setLineThickness = function( v ) {
 	if ( v instanceof Metric ) { this.lineThickness = v ; }
-	if ( typeof v === 'number' || typeof v === 'string' ) { this.lineThickness = new Metric( v ) ; }
+	else if ( typeof v === 'number' || typeof v === 'string' || ( v && typeof v === 'object' ) ) { this.lineThickness = new Metric( v ) ; }
 	else { this.lineThickness = null ; }
 } ;
 
@@ -1328,7 +1451,7 @@ TextAttribute.prototype.getLineOutline = function( inherit = null ) {
 
 TextAttribute.prototype.setLineOutlineWidth = function( v ) {
 	if ( v instanceof Metric ) { this.lineOutlineWidth = v ; }
-	if ( typeof v === 'number' || typeof v === 'string' ) { this.lineOutlineWidth = new Metric( v ) ; }
+	else if ( typeof v === 'number' || typeof v === 'string' || ( v && typeof v === 'object' ) ) { this.lineOutlineWidth = new Metric( v ) ; }
 	else { this.lineOutlineWidth = null ; }
 } ;
 
@@ -1377,7 +1500,7 @@ TextAttribute.prototype.getFrameColor = function( inherit = null ) {
 
 TextAttribute.prototype.setFrameOutlineWidth = function( v ) {
 	if ( v instanceof Metric ) { this.frameOutlineWidth = v ; }
-	if ( typeof v === 'number' || typeof v === 'string' ) { this.frameOutlineWidth = new Metric( v ) ; }
+	else if ( typeof v === 'number' || typeof v === 'string' || ( v && typeof v === 'object' ) ) { this.frameOutlineWidth = new Metric( v ) ; }
 	else { this.frameOutlineWidth = null ; }
 } ;
 
@@ -1401,7 +1524,7 @@ TextAttribute.prototype.getFrameOutlineColor = function( inherit = null ) {
 
 TextAttribute.prototype.setFrameCornerRadius = function( v ) {
 	if ( v instanceof Metric ) { this.frameCornerRadius = v ; }
-	if ( typeof v === 'number' || typeof v === 'string' ) { this.frameCornerRadius = new Metric( v ) ; }
+	else if ( typeof v === 'number' || typeof v === 'string' || ( v && typeof v === 'object' ) ) { this.frameCornerRadius = new Metric( v ) ; }
 	else { this.frameCornerRadius = null ; }
 } ;
 
@@ -1588,7 +1711,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 
 
 
-const fontLib = require( './fontLib.js' ) ;
+const fontLib = require( '../fontLib.js' ) ;
 
 
 
@@ -1672,7 +1795,7 @@ TextMetrics.measureStructuredTextPart = function( part , inheritedAttr ) {
 } ;
 
 
-},{"./fontLib.js":11}],10:[function(require,module,exports){
+},{"../fontLib.js":17}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1710,26 +1833,26 @@ const StructuredTextLine = require( './StructuredTextLine.js' ) ;
 const TextAttribute = require( './TextAttribute.js' ) ;
 const TextMetrics = require( './TextMetrics.js' ) ;
 
-const fontLib = require( './fontLib.js' ) ;
+const fontLib = require( '../fontLib.js' ) ;
 const canvas = require( '../canvas.js' ) ;
 
 
 
-function VGFlowingText( params = {} ) {
+function VGFlowingText( params ) {
 	VGEntity.call( this , params ) ;
 
-	this.x = + params.x || 0 ;
-	this.y = + params.y || 0 ;
-	this.width = + params.width || 0 ;
-	this.height = + params.height || 0 ;
-	this.clip = !! ( params.clip ?? true ) ;
+	this.x = 0 ;
+	this.y = 0 ;
+	this.width = 0 ;
+	this.height = 0 ;
+	this.clip = true ;
 	this.structuredText = [] ;	// Array of StructuredTextPart, the source
-	this.attr = new TextAttribute( params.attr ) ;
-	this.lineSpacing = + params.lineSpacing || 0 ;
-	this.textWrapping = params.textWrapping || null ;	// null/ellipsis/wordWrap
-	this.textHorizontalAlignment = params.textHorizontalAlignment || null ;	// null/left/right/center
-	//this.textVerticalAlignment = this.textVerticalAlignment || null ;	// null/top/bottom/center
-	
+	this.attr = params?.attr ? null : new TextAttribute() ;	// if it's defined, it will be created by this.set()
+	this.lineSpacing = 0 ;
+	this.textWrapping = null ;	// null/ellipsis/wordWrap
+	this.textHorizontalAlignment = null ;	// null/left/right/center
+	//this.textVerticalAlignment = null ;	// null/top/bottom/center
+
 	this.debugContainer = !! params.debugContainer ;
 
 	// Computed
@@ -1739,7 +1862,7 @@ function VGFlowingText( params = {} ) {
 	this._contentHeight = 0 ;
 	this._characterCount = 0 ;
 
-	if ( params.structuredText ) { this.setStructuredText( params.structuredText ) ; }
+	if ( params ) { this.set( params ) ; }
 }
 
 module.exports = VGFlowingText ;
@@ -1753,9 +1876,6 @@ VGFlowingText.prototype.__prototypeVersion__ = require( '../../package.json' ).v
 
 VGFlowingText.prototype.isRenderingContainer = true ;
 VGFlowingText.prototype.svgTag = 'g' ;
-//VGFlowingText.prototype.svgAttributes = function( root = this ) {} ;
-
-//VGFlowingText.prototype.set = function( params ) {} ;
 
 
 
@@ -1772,8 +1892,17 @@ Object.defineProperties( VGFlowingText.prototype , {
 	characterCount: { get: function() {
 		if ( ! this.areLinesComputed ) { this.computeLines() ; }
 		return this._characterCount ;
-	} } ,
+	} }
 } ) ;
+
+
+
+const TEXT_WRAPPING = {
+	wordWrap: 'wordWrap' ,
+	wordwrap: 'wordWrap' ,
+	'word-wrap': 'wordWrap' ,
+	ellipsis: 'ellipsis'
+} ;
 
 
 
@@ -1790,10 +1919,38 @@ VGFlowingText.prototype.set = function( params ) {
 	if ( params.structuredText ) { this.setStructuredText( params.structuredText ) ; }
 	if ( params.attr ) { this.attr = new TextAttribute( params.attr ) ; this.areLinesComputed = false ; }
 	if ( params.lineSpacing !== undefined ) { this.lineSpacing = + params.lineSpacing || 0 ; this.areLinesComputed = false ; }
-	if ( params.textWrapping !== undefined ) { this.textWrapping = params.textWrapping ; this.areLinesComputed = false ; }
 	if ( params.textHorizontalAlignment !== undefined ) { this.textHorizontalAlignment = params.textHorizontalAlignment ; this.areLinesComputed = false ; }
 
+	if ( params.textWrapping !== undefined ) {
+		this.textWrapping = TEXT_WRAPPING[ params.textWrapping ] || null ;
+		this.areLinesComputed = false ;
+	}
+
 	if ( params.debugContainer !== undefined ) { this.debugContainer = !! params.debugContainer ; }
+} ;
+
+
+
+VGFlowingText.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+
+	data.x = this.x ;
+	data.y = this.y ;
+	data.width = this.width ;
+	data.height = this.height ;
+	data.clip = this.clip ;
+
+	data.structuredText = this.structuredText.map( part => part.export() ) ;
+
+	let attr = this.attr.export( undefined , true ) ;
+	if ( attr ) { data.attr = attr ; }
+
+	if ( this.lineSpacing ) { data.lineSpacing = this.lineSpacing ; }
+	if ( this.textWrapping ) { data.textWrapping = this.textWrapping ; }
+	if ( this.textHorizontalAlignment ) { data.textHorizontalAlignment = this.textHorizontalAlignment ; }
+	//if ( this.textVerticalAlignment ) { data.textVerticalAlignment = this.textVerticalAlignment ; }
+
+	return data ;
 } ;
 
 
@@ -1921,7 +2078,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = function( line ) {
 			testLineMetrics.clear() ;
 			testLineMetrics.fuseWithRightPart( part.metrics ) ;
 		}
-		
+
 		lastTestLineMetrics.fuseWithRightPart( part.metrics ) ;
 	}
 
@@ -2078,18 +2235,33 @@ VGFlowingText.prototype.svgAttributes = function( root = this ) {
 
 
 
+VGFlowingText.prototype.getUsedFontNames = function() {
+	var fontNames = [] ;
+
+	for ( let structuredTextLine of this.structuredTextLines ) {
+		for ( let part of structuredTextLine.parts ) {
+			fontNames.push( part.attr.getFontFamily( this.attr ) ) ;
+		}
+	}
+
+	return fontNames ;
+} ;
+
+
+
 // Render the Vector Graphic as a text SVG
-VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this ) {
+VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root = this ) {
 	if ( ! this.areLinesComputed ) { this.computeLines() ; }
 
-	var str = '' ;
+	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+		str = '' ;
 
 	if ( this.clip ) {
 		// Nothing inside the <clipPath> is displayed
 		str += '<clipPath id="' + this._id + '_clipPath">' ;
 		str += '<rect' ;
 		str += ' x="' + this.x + '"' ;
-		str += ' y="' + this.y + '"' ;
+		str += ' y="' + ( this.y + yOffset ) + '"' ;
 		str += ' width="' + this.width + '"' ;
 		str += ' height="' + this.height + '"' ;
 		str += ' />' ;
@@ -2107,11 +2279,11 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this
 				frame = part.attr.getFrame( this.attr ) ;
 
 			console.error( "???" , fontFamily , fontSize , textStyleStr ) ;
-			let font = fontLib.getFont( fontFamily ) ;
+			let font = await fontLib.getFontAsync( fontFamily ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
 
 			if ( frame ) {
-				let frameY = part.metrics.baselineY - part.metrics.ascender ,
+				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
 					frameHeight = part.metrics.ascender - part.metrics.descender ,
 					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
@@ -2126,14 +2298,14 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this
 				if ( frameStyleStr ) { str += ' style="' + frameStyleStr + '"' ; }
 				str += ' />' ;
 			}
-			
+
 			if ( underline || lineThrough ) {
 				lineStyleStr = part.attr.getLineSvgStyleString( this.attr , fontSize ) ;
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
 			}
 
 			if ( underline ) {
-				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness ;
+				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness + yOffset ;
 
 				str += '<rect' ;
 				str += ' x="' + part.metrics.x + '"' ;
@@ -2144,7 +2316,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this
 				str += ' />' ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY , fontSize ) ;
+			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
 			let pathData = path.toPathData() ;
 
 			str += '<path' ;
@@ -2153,7 +2325,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this
 			str += ' />' ;
 
 			if ( lineThrough ) {
-				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness ;
+				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
 
 				str += '<rect' ;
 				str += ' x="' + part.metrics.x + '"' ;
@@ -2165,11 +2337,11 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this
 			}
 		}
 	}
-	
+
 	if ( this.debugContainer ) {
 		str += '<rect' ;
 		str += ' x="' + this.x + '"' ;
-		str += ' y="' + this.y + '"' ;
+		str += ' y="' + ( this.y + yOffset ) + '"' ;
 		str += ' width="' + this.width + '"' ;
 		str += ' height="' + this.height + '"' ;
 		str += ' style="fill:none;stroke:#f33"' ;
@@ -2181,11 +2353,12 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = function( root = this
 
 
 
-VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this ) {
+VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root = this ) {
 	if ( ! this.areLinesComputed ) { this.computeLines() ; }
 
-	var elementList = [] ;
-	
+	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+		elementList = [] ;
+
 	if ( this.clip ) {
 		// Nothing inside the <clipPath> is displayed
 		let $clipPath = document.createElementNS( 'http://www.w3.org/2000/svg' , 'clipPath' ) ;
@@ -2194,7 +2367,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 
 		let $rect = document.createElementNS( 'http://www.w3.org/2000/svg' , 'rect' ) ;
 		$rect.setAttribute( 'x' , this.x ) ;
-		$rect.setAttribute( 'y' , this.y ) ;
+		$rect.setAttribute( 'y' , this.y + yOffset ) ;
 		$rect.setAttribute( 'width' , this.width ) ;
 		$rect.setAttribute( 'height' , this.height ) ;
 		$clipPath.appendChild( $rect ) ;
@@ -2211,11 +2384,11 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 				frame = part.attr.getFrame( this.attr ) ;
 
 			console.error( "???" , fontFamily , fontSize , textStyleStr ) ;
-			let font = fontLib.getFont( fontFamily ) ;
+			let font = await fontLib.getFontAsync( fontFamily ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
 
 			if ( frame ) {
-				let frameY = part.metrics.baselineY - part.metrics.ascender ,
+				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
 					frameHeight = part.metrics.ascender - part.metrics.descender ,
 					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
@@ -2230,14 +2403,14 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 				if ( frameStyleStr ) { $frame.setAttribute( 'style' , frameStyleStr ) ; }
 				elementList.push( $frame ) ;
 			}
-			
+
 			if ( underline || lineThrough ) {
 				lineStyleStr = part.attr.getLineSvgStyleString( this.attr , fontSize ) ;
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
 			}
 
 			if ( underline ) {
-				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness ;
+				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness + yOffset ;
 
 				let $line = document.createElementNS( 'http://www.w3.org/2000/svg' , 'rect' ) ;
 				$line.setAttribute( 'x' , part.metrics.x ) ;
@@ -2248,7 +2421,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 				elementList.push( $line ) ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY , fontSize ) ;
+			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
 			let pathData = path.toPathData() ;
 
 			let $textPath = document.createElementNS( 'http://www.w3.org/2000/svg' , 'path' ) ;
@@ -2257,7 +2430,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 			elementList.push( $textPath ) ;
 
 			if ( lineThrough ) {
-				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness ;
+				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
 
 				let $line = document.createElementNS( 'http://www.w3.org/2000/svg' , 'rect' ) ;
 				$line.setAttribute( 'x' , part.metrics.x ) ;
@@ -2269,11 +2442,11 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 			}
 		}
 	}
-	
+
 	if ( this.debugContainer ) {
 		let $debugRect = document.createElementNS( 'http://www.w3.org/2000/svg' , 'rect' ) ;
 		$debugRect.setAttribute( 'x' , this.x ) ;
-		$debugRect.setAttribute( 'y' , this.y ) ;
+		$debugRect.setAttribute( 'y' , this.y + yOffset ) ;
 		$debugRect.setAttribute( 'width' , this.width ) ;
 		$debugRect.setAttribute( 'height' , this.height ) ;
 		$debugRect.setAttribute( 'style' , "fill:none;stroke:#f33;" ) ;
@@ -2286,15 +2459,17 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = function( root = this 
 
 
 
-VGFlowingText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
+VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , root = this ) {
 	if ( ! this.areLinesComputed ) { this.computeLines() ; }
+
+	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ;
 
 	// We have to save context because canvasCtx.clip() is not reversible
 	canvasCtx.save() ;
 
 	if ( this.clip ) {
 		canvasCtx.beginPath() ;
-		canvasCtx.rect( this.x , this.y , this.width , this.height ) ;
+		canvasCtx.rect( this.x , this.y + yOffset , this.width , this.height ) ;
 		canvasCtx.clip() ;
 	}
 
@@ -2309,11 +2484,11 @@ VGFlowingText.prototype.renderHookForCanvas = function( canvasCtx , options = {}
 				frame = part.attr.getFrame( this.attr ) ;
 
 			console.error( "???" , fontFamily , fontSize , textStyle ) ;
-			let font = fontLib.getFont( fontFamily ) ;
+			let font = await fontLib.getFontAsync( fontFamily ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
 
 			if ( frame ) {
-				let frameY = part.metrics.baselineY - part.metrics.ascender ,
+				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
 					frameHeight = part.metrics.ascender - part.metrics.descender ,
 					frameStyle = part.attr.getFrameSvgStyle( this.attr , fontSize ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
@@ -2326,39 +2501,39 @@ VGFlowingText.prototype.renderHookForCanvas = function( canvasCtx , options = {}
 				else {
 					canvasCtx.rect( part.metrics.x , frameY , part.metrics.width , frameHeight ) ;
 				}
-				
+
 				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , frameStyle ) ;
 			}
-			
+
 			if ( underline || lineThrough ) {
 				lineStyle = part.attr.getLineSvgStyle( this.attr , fontSize ) ;
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
 			}
 
 			if ( underline ) {
-				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness ;
+				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness + yOffset ;
 				canvasCtx.beginPath() ;
 				canvasCtx.rect( part.metrics.x , underlineY , part.metrics.width , lineThickness ) ;
 				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY , fontSize ) ;
+			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
 			let pathData = path.toPathData() ;
 			let path2d = new Path2D( pathData ) ;
 			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2d ) ;
 
 			if ( lineThrough ) {
-				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness ;
+				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
 				canvasCtx.beginPath() ;
 				canvasCtx.rect( part.metrics.x , lineThroughY , part.metrics.width , lineThickness ) ;
 				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
 			}
 		}
 	}
-	
+
 	if ( this.debugContainer ) {
 		canvasCtx.beginPath() ;
-		canvasCtx.rect( this.x , this.y , this.width , this.height ) ;
+		canvasCtx.rect( this.x , this.y + yOffset , this.width , this.height ) ;
 		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , { fill: 'none' , stroke: '#f33' } ) ;
 	}
 
@@ -2377,7 +2552,8 @@ VGFlowingText.prototype.renderHookForCanvas = function( canvasCtx , options = {}
 
 
 VGFlowingText.prototype.splitIntoCharacters = function( line ) {
-	let splitted = [] ;
+	let splitted = [] , context ;
+
 	const reusableSize = {
 		width: 0 , height: 0 , ascent: 0 , descent: 0
 	} ;
@@ -2408,6 +2584,8 @@ VGFlowingText.prototype.splitIntoCharacters = function( line ) {
 
 
 VGFlowingText.prototype.computeXYOffset = function() {
+	var Control ;
+
 	this.xOffset = this.currentMeasure.left + this.scrollX ;
 	this.yOffset = this.currentMeasure.top + this.scrollY ;
 
@@ -2424,104 +2602,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":43,"../VGEntity.js":5,"../canvas.js":16,"./StructuredTextLine.js":6,"./StructuredTextPart.js":7,"./TextAttribute.js":8,"./TextMetrics.js":9,"./fontLib.js":11}],11:[function(require,module,exports){
-(function (process,__dirname){(function (){
-/*
-	SVG Kit
-
-	Copyright (c) 2017 - 2023 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-/*
-	This is a cache for the loaded fonts.
-*/
-
-const path = require( 'path' ) ;
-const opentype = require( 'opentype.js' ) ;
-
-
-
-const fontLib = {} ;
-module.exports = fontLib ;
-
-
-const fontUrl = {} ;
-const fontCache = {} ;
-
-fontLib.setFontUrl = ( fontName , url ) => fontUrl[ fontName ] = url ;
-fontLib.getFontUrl = fontName => fontUrl[ fontName ] ;
-
-
-if ( process?.browser ) {
-	fontLib.getFontAsync = async ( fontName ) => {
-		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
-
-		var url = fontLib.getFontUrl( fontName ) ;
-		if ( ! url ) { return null ; }
-
-		var response = await fetch( url ) ;
-		
-		if ( ! response.ok ) {
-			throw new Error( "HTTP error! Status: " + response.status ) ;
-		}
-		
-		var blob = await response.blob() ;
-		var arrayBuffer = await blob.arrayBuffer() ;
-		var font = await opentype.parse( arrayBuffer ) ;
-		fontCache[ fontName ] = font ;
-		console.log( "Loaded font: " , fontName , font ) ;
-
-		return font ;
-	} ;
-
-	fontLib.getFont = fontName => {
-		var font = fontCache[ fontName ] ;
-		if ( font ) { return font ; }
-		throw new Error( "Can't load synchronously inside a web browser!" ) ;
-	} ;
-}
-else {
-	const builtinPath = path.join( __dirname , '..' , '..' , 'fonts' ) ;
-
-	fontUrl['serif'] = builtinPath + '/serif.ttf' ;
-
-	fontLib.getFont = fontName => {
-		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
-
-		var url = fontLib.getFontUrl( fontName ) ;
-		if ( ! url ) { return null ; }
-
-		var font = opentype.loadSync( url ) ;
-		fontCache[ fontName ] = font ;
-
-		return font ;
-	} ;
-}
-
-}).call(this)}).call(this,require('_process'),"/lib/VGFlowingText")
-},{"_process":50,"opentype.js":25,"path":49}],12:[function(require,module,exports){
+},{"../../package.json":44,"../VGEntity.js":5,"../canvas.js":16,"../fontLib.js":17,"./StructuredTextLine.js":6,"./StructuredTextPart.js":7,"./TextAttribute.js":8,"./TextMetrics.js":9}],11:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2557,9 +2638,9 @@ const VGContainer = require( './VGContainer.js' ) ;
 
 
 
-function VGGroup( options ) {
-	VGContainer.call( this , options ) ;
-	if ( options ) { this.set( options ) ; }
+function VGGroup( params ) {
+	VGContainer.call( this , params ) ;
+	if ( params ) { this.set( params ) ; }
 }
 
 module.exports = VGGroup ;
@@ -2578,7 +2659,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":43,"./VGContainer.js":3,"./svg-kit.js":18}],13:[function(require,module,exports){
+},{"../package.json":44,"./VGContainer.js":3,"./svg-kit.js":19}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2610,15 +2691,135 @@ VGGroup.prototype.set = function( params ) {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const canvas = require( './canvas.js' ) ;
 
 
 
-function VGPath( options ) {
-	VGEntity.call( this , options ) ;
+function VGImage( params ) {
+	VGEntity.call( this , params ) ;
+
+	this.x = 0 ;
+	this.y = 0 ;
+	this.width = 0 ;
+	this.height = 0 ;
+
+	this.url = null ;
+
+	if ( params ) { this.set( params ) ; }
+}
+
+module.exports = VGImage ;
+
+VGImage.prototype = Object.create( VGEntity.prototype ) ;
+VGImage.prototype.constructor = VGImage ;
+VGImage.prototype.__prototypeUID__ = 'svg-kit/VGImage' ;
+VGImage.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+
+
+VGImage.prototype.set = function( params ) {
+	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( params.x !== undefined ) { this.x = params.x ; }
+	if ( params.y !== undefined ) { this.y = params.y ; }
+	if ( params.width !== undefined ) { this.width = params.width ; }
+	if ( params.height !== undefined ) { this.height = params.height ; }
+	if ( params.url && typeof params.url === 'string' ) { this.url = params.url ; }
+} ;
+
+
+
+VGImage.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+
+	data.x = this.x ;
+	data.y = this.y ;
+	data.width = this.width ;
+	data.height = this.height ;
+	data.url = this.url ;
+
+	return data ;
+} ;
+
+
+
+VGImage.prototype.svgTag = 'image' ;
+
+
+
+VGImage.prototype.svgAttributes = function( root = this ) {
+	var attr = {
+		x: this.x ,
+		y: root.invertY ? - this.y - this.height : this.y ,
+		width: this.width ,
+		height: this.height ,
+		href: this.url
+	} ;
+
+	return attr ;
+} ;
+
+
+
+VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , root = this ) {
+	canvasCtx.save() ;
+
+	var image = new Image() ;
+	image.src = this.url ;
+
+	await new Promise( resolve => {
+		image.onload = () => {
+			canvasCtx.drawImage( image , this.x , this.y , this.width , this.height ) ;
+			resolve() ;
+		} ;
+	} ) ;
+
+	canvasCtx.restore() ;
+} ;
+
+
+},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],13:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const VGEntity = require( './VGEntity.js' ) ;
+const canvas = require( './canvas.js' ) ;
+
+
+
+function VGPath( params ) {
+	VGEntity.call( this , params ) ;
 
 	this.commands = [] ;
 
-	if ( options ) { this.set( options ) ; }
+	if ( params ) { this.set( params ) ; }
 }
 
 module.exports = VGPath ;
@@ -2637,6 +2838,14 @@ VGPath.prototype.svgTag = 'path' ;
 VGPath.prototype.set = function( params ) {
 	VGEntity.prototype.set.call( this , params ) ;
 	if ( Array.isArray( params.commands ) ) { this.commands = params.commands ; }
+} ;
+
+
+
+VGPath.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+	if ( this.commands.length ) { data.commands = this.commands ; }
+	return data ;
 } ;
 
 
@@ -2660,7 +2869,7 @@ VGPath.prototype.toD = function( root = this ) {
 		pu: false ,	// Pen Up, when true, turtle-like commands move without tracing anything
 		cx: 0 ,		// cursor position x
 		cy: 0 ,		// cursor position y
-		ca: root.invertY ? -Math.PI / 2 : Math.PI / 2		// cursor angle, default to positive Y-axis
+		ca: root.invertY ? - Math.PI / 2 : Math.PI / 2		// cursor angle, default to positive Y-axis
 	} ;
 
 	this.commands.forEach( ( command , index ) => {
@@ -2694,7 +2903,7 @@ builders.close = ( command , build ) => {
 } ;
 
 builders.move = ( command , build ) => {
-	var y = build.root.invertY ? -command.y : command.y ;
+	var y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 'm ' + command.x + ' ' + y ;
@@ -2709,7 +2918,7 @@ builders.move = ( command , build ) => {
 } ;
 
 builders.line = ( command , build ) => {
-	var y = build.root.invertY ? -command.y : command.y ;
+	var y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 'l ' + command.x + ' ' + y ;
@@ -2724,9 +2933,9 @@ builders.line = ( command , build ) => {
 } ;
 
 builders.curve = ( command , build ) => {
-	var cy1 = build.root.invertY ? -command.cy1 : command.cy1 ,
-		cy2 = build.root.invertY ? -command.cy2 : command.cy2 ,
-		y = build.root.invertY ? -command.y : command.y ;
+	var cy1 = build.root.invertY ? - command.cy1 : command.cy1 ,
+		cy2 = build.root.invertY ? - command.cy2 : command.cy2 ,
+		y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 'c ' + command.cx1 + ' ' + cy1 + ' ' + command.cx2 + ' ' + cy2 + ' '  + command.x + ' ' + y ;
@@ -2741,8 +2950,8 @@ builders.curve = ( command , build ) => {
 } ;
 
 builders.smoothCurve = ( command , build ) => {
-	var cy = build.root.invertY ? -command.cy : command.cy ,
-		y = build.root.invertY ? -command.y : command.y ;
+	var cy = build.root.invertY ? - command.cy : command.cy ,
+		y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 's ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
@@ -2757,8 +2966,8 @@ builders.smoothCurve = ( command , build ) => {
 } ;
 
 builders.qCurve = ( command , build ) => {
-	var cy = build.root.invertY ? -command.cy : command.cy ,
-		y = build.root.invertY ? -command.y : command.y ;
+	var cy = build.root.invertY ? - command.cy : command.cy ,
+		y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 'q ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
@@ -2773,7 +2982,7 @@ builders.qCurve = ( command , build ) => {
 } ;
 
 builders.smoothQCurve = ( command , build ) => {
-	var y = build.root.invertY ? -command.y : command.y ;
+	var y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 't ' + command.x + ' ' + y ;
@@ -2788,9 +2997,9 @@ builders.smoothQCurve = ( command , build ) => {
 } ;
 
 builders.arc = ( command , build ) => {
-	var ra = build.root.invertY ? -command.ra : command.ra ,
+	var ra = build.root.invertY ? - command.ra : command.ra ,
 		pr = build.root.invertY ? ! command.pr : command.pr ,
-		y = build.root.invertY ? -command.y : command.y ;
+		y = build.root.invertY ? - command.y : command.y ;
 
 	if ( command.rel ) {
 		build.d += 'a ' + command.rx + ' ' + command.ry + ' ' + ra + ' ' + ( + command.la ) + ' '  + ( + pr ) + ' ' + command.x + ' ' + y ;
@@ -2874,7 +3083,7 @@ builders.forward = ( command , build ) => {
 } ;
 
 builders.turn = ( command , build ) => {
-	var a = build.root.invertY ? -command.a : command.a ;
+	var a = build.root.invertY ? - command.a : command.a ;
 
 	if ( command.rel ) {
 		build.ca += degToRad( a ) ;
@@ -2885,13 +3094,13 @@ builders.turn = ( command , build ) => {
 } ;
 
 builders.forwardTurn = ( command , build ) => {
-	var a = build.root.invertY ? -command.a : command.a ;
+	var a = build.root.invertY ? - command.a : command.a ;
 
 	/*
 		We will first transpose to a circle of center 0,0 and we are starting at x=radius,y=0 and moving positively
 	*/
 	var angleRad = degToRad( a ) ,
-		angleSign = angleRad >= 0 ? 1 : -1 ,
+		angleSign = angleRad >= 0 ? 1 : - 1 ,
 		alpha = Math.abs( angleRad ) ,
 		radius = command.l / alpha ,
 		trX = radius * Math.cos( alpha ) ,
@@ -3093,7 +3302,7 @@ VGPath.prototype.negativeArc = function( data ) {
 		rel: true ,
 		rx: data.rx || 0 ,
 		ry: data.ry || 0 ,
-		ra: -( data.ra || data.a || 0 ) ,	// x-axis rotation
+		ra: - ( data.ra || data.a || 0 ) ,	// x-axis rotation
 		la:
 			data.largeArc !== undefined ? !! data.largeArc :
 			data.longArc !== undefined ? !! data.longArc :
@@ -3116,7 +3325,7 @@ VGPath.prototype.negativeArcTo = function( data ) {
 		type: 'arc' ,
 		rx: data.rx || 0 ,
 		ry: data.ry || 0 ,
-		ra: -( data.ra || data.a || 0 ) ,	// x-axis rotation
+		ra: - ( data.ra || data.a || 0 ) ,	// x-axis rotation
 		la:
 			data.largeArc !== undefined ? !! data.largeArc :
 			data.longArc !== undefined ? !! data.longArc :
@@ -3199,7 +3408,7 @@ VGPath.prototype.forward = function( data ) {
 VGPath.prototype.backward = function( data ) {
 	this.commands.push( {
 		type: 'forward' ,
-		l: -( typeof data === 'number' ? data : data.length || data.l || 0 )
+		l: - ( typeof data === 'number' ? data : data.length || data.l || 0 )
 	} ) ;
 } ;
 
@@ -3225,7 +3434,7 @@ VGPath.prototype.negativeTurn = function( data ) {
 	this.commands.push( {
 		type: 'turn' ,
 		rel: true ,
-		a: -( typeof data === 'number' ? data : data.angle || data.a || 0 )
+		a: - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
 	} ) ;
 } ;
 
@@ -3251,12 +3460,12 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 	this.commands.push( {
 		type: 'forwardTurn' ,
 		l: data.length || data.l || 0 ,
-		a: -( data.angle || data.a || 0 )
+		a: - ( data.angle || data.a || 0 )
 	} ) ;
 } ;
 
 
-},{"../package.json":43,"./VGEntity.js":5}],14:[function(require,module,exports){
+},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3316,8 +3525,6 @@ VGRect.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
 
 
 
-VGRect.prototype.svgTag = 'rect' ;
-
 VGRect.prototype.set = function( params ) {
 	VGEntity.prototype.set.call( this , params ) ;
 
@@ -3334,10 +3541,30 @@ VGRect.prototype.set = function( params ) {
 
 
 
+VGRect.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+
+	data.x = this.x ;
+	data.y = this.y ;
+	data.width = this.width ;
+	data.height = this.height ;
+
+	if ( this.rx ) { data.rx = this.rx ; }
+	if ( this.ry ) { data.ry = this.ry ; }
+
+	return data ;
+} ;
+
+
+
+VGRect.prototype.svgTag = 'rect' ;
+
+
+
 VGRect.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		x: this.x ,
-		y: root.invertY ? -this.y : this.y ,
+		y: root.invertY ? - this.y - this.height : this.y ,
 		width: this.width ,
 		height: this.height ,
 		rx: this.rx ,
@@ -3352,13 +3579,13 @@ VGRect.prototype.svgAttributes = function( root = this ) {
 VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
-	canvasCtx.rect( this.x , root.invertY ? -this.y : this.y , this.width , this.height ) ;
+	canvasCtx.rect( this.x , root.invertY ? - this.y - this.height : this.y , this.width , this.height ) ;
 	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
 	canvasCtx.restore() ;
 } ;
 
 
-},{"../package.json":43,"./VGEntity.js":5,"./canvas.js":16}],15:[function(require,module,exports){
+},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3451,6 +3678,22 @@ VGText.prototype.set = function( params ) {
 
 
 
+VGText.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+
+	data.x = this.x ;
+	data.y = this.y ;
+	data.text = this.text ;
+
+	if ( this.anchor ) { data.anchor = this.anchor ; }
+	if ( this.length !== null ) { data.length = this.length ; }
+	if ( this.adjustGlyph ) { data.adjustGlyph = this.adjustGlyph ; }
+
+	return data ;
+} ;
+
+
+
 VGText.prototype.svgTextNode = function() {
 	// Text-formatting should be possible
 	return this.text ;
@@ -3461,7 +3704,7 @@ VGText.prototype.svgTextNode = function() {
 VGText.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		x: this.x ,
-		y: root.invertY ? -this.y : this.y ,
+		y: root.invertY ? - this.y : this.y ,
 		'text-anchor': this.anchor || 'middle'
 	} ;
 
@@ -3487,11 +3730,11 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root
 	canvasCtx.direction = 'ltr' ;
 
 	// /!\ It produces different result when direction is right-to-left, but SVG Kit does not support that for instance...
-	canvasCtx.textAlign = 
+	canvasCtx.textAlign =
 		this.anchor === 'start' ? 'left' :
 		this.anchor === 'end' ? 'right' :
 		'center' ;
-	
+
 	if ( fillStyle ) {
 		fill = true ;
 		canvasCtx.fillStyle = fillStyle ;
@@ -3502,7 +3745,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root
 		canvasCtx.strokeStyle = strokeStyle ;
 		canvasCtx.lineWidth = lineWidth ;
 	}
-	
+
 	if ( ! style.paintOrder || style.paintOrder.startsWith( 'fill' ) ) {
 		if ( fill ) { canvasCtx.fillText( this.text , this.x , this.y ) ; }
 		if ( stroke ) { canvasCtx.strokeText( this.text , this.x , this.y ) ; }
@@ -3516,7 +3759,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root
 } ;
 
 
-},{"../package.json":43,"./VGEntity.js":5}],16:[function(require,module,exports){
+},{"../package.json":44,"./VGEntity.js":5}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3569,9 +3812,9 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 		canvasCtx.strokeStyle = strokeStyle ;
 		canvasCtx.lineWidth = lineWidth ;
 	}
-	
+
 	if ( ! fill && ! stroke ) { return ; }
-	
+
 	if ( ! style.paintOrder || style.paintOrder.startsWith( 'fill' ) ) {
 		if ( fill ) {
 			if ( path2d ) { canvasCtx.fill( path2d ) ; }
@@ -3596,6 +3839,121 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 
 
 },{}],17:[function(require,module,exports){
+(function (process,__dirname){(function (){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+/*
+	This is a cache for the loaded fonts.
+*/
+
+const path = require( 'path' ) ;
+const opentype = require( 'opentype.js' ) ;
+
+
+
+const fontLib = {} ;
+module.exports = fontLib ;
+
+
+
+const fontUrl = {} ;
+const fontCache = {} ;
+
+fontLib.setFontUrl = ( fontName , url ) => fontUrl[ fontName ] = url ;
+fontLib.getFontUrl = fontName => fontUrl[ fontName ] ;
+
+
+
+if ( process?.browser ) {
+	fontLib.getFontAsync = async ( fontName ) => {
+		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
+
+		var url = fontLib.getFontUrl( fontName ) ;
+		if ( ! url ) { return null ; }
+
+		var response = await fetch( url ) ;
+
+		if ( ! response.ok ) {
+			throw new Error( "HTTP error! Status: " + response.status ) ;
+		}
+
+		var blob = await response.blob() ;
+		var arrayBuffer = await blob.arrayBuffer() ;
+		var font = await opentype.parse( arrayBuffer ) ;
+		fontCache[ fontName ] = font ;
+		console.log( "Loaded font: " , fontName , font ) ;
+
+		return font ;
+	} ;
+
+	fontLib.getFont = fontName => {
+		var font = fontCache[ fontName ] ;
+		if ( font ) { return font ; }
+		//console.error( "Font not found:" , fontName , fontCache ) ;
+		throw new Error( "Font '" + fontName + "' was not preloaded and we can't load synchronously inside a web browser..." ) ;
+	} ;
+}
+else {
+	const builtinPath = path.join( __dirname , '..' , 'fonts' ) ;
+
+	fontUrl['serif'] = builtinPath + '/serif.ttf' ;
+
+	fontLib.getFontAsync = async ( fontName ) => {
+		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
+
+		var url = fontLib.getFontUrl( fontName ) ;
+		if ( ! url ) { return null ; }
+
+		var buffer = await fs.promises.readFile( url ) ;
+		var font = await opentype.parse( buffer ) ;
+		fontCache[ fontName ] = font ;
+		console.log( "Loaded font: " , fontName , font ) ;
+
+		return font ;
+	} ;
+
+	fontLib.getFont = fontName => {
+		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
+
+		var url = fontLib.getFontUrl( fontName ) ;
+		if ( ! url ) { return null ; }
+
+		var font = opentype.loadSync( url ) ;
+		fontCache[ fontName ] = font ;
+
+		return font ;
+	} ;
+}
+
+
+}).call(this)}).call(this,require('_process'),"/lib")
+},{"_process":51,"opentype.js":26,"path":50}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3632,7 +3990,7 @@ module.exports = path ;
 
 
 path.dFromPoints = ( points , invertY ) => {
-	var yMul = invertY ? -1 : 1 ,
+	var yMul = invertY ? - 1 : 1 ,
 		str = 'M' ;
 
 	points.forEach( point => {
@@ -3643,7 +4001,7 @@ path.dFromPoints = ( points , invertY ) => {
 } ;
 
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -3679,8 +4037,6 @@ const fs = require( 'fs' ).promises ;
 const domKit = require( 'dom-kit' ) ;
 const escape = require( 'string-kit/lib/escape.js' ) ;
 
-function noop() {}
-
 
 
 const svgKit = {} ;
@@ -3697,8 +4053,9 @@ svgKit.VGRect = require( './VGRect.js' ) ;
 svgKit.VGEllipse = require( './VGEllipse.js' ) ;
 svgKit.VGPath = require( './VGPath.js' ) ;
 svgKit.VGText = require( './VGText.js' ) ;
+svgKit.VGImage = require( './VGImage.js' ) ;
 
-svgKit.fontLib = require( './VGFlowingText/fontLib.js' ) ;
+svgKit.fontLib = require( './fontLib.js' ) ;
 svgKit.VGFlowingText = require( './VGFlowingText/VGFlowingText.js' ) ;
 svgKit.StructuredTextLine = require( './VGFlowingText/StructuredTextLine.js' ) ;
 svgKit.StructuredTextPart = require( './VGFlowingText/StructuredTextPart.js' ) ;
@@ -4139,7 +4496,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"./VG.js":2,"./VGContainer.js":3,"./VGEllipse.js":4,"./VGEntity.js":5,"./VGFlowingText/StructuredTextLine.js":6,"./VGFlowingText/StructuredTextPart.js":7,"./VGFlowingText/TextAttribute.js":8,"./VGFlowingText/TextMetrics.js":9,"./VGFlowingText/VGFlowingText.js":10,"./VGFlowingText/fontLib.js":11,"./VGGroup.js":12,"./VGPath.js":13,"./VGRect.js":14,"./VGText.js":15,"./canvas.js":16,"./path.js":17,"_process":50,"dom-kit":23,"fs":44,"opentype.js":25,"string-kit/lib/escape.js":29}],19:[function(require,module,exports){
+},{"./VG.js":2,"./VGContainer.js":3,"./VGEllipse.js":4,"./VGEntity.js":5,"./VGFlowingText/StructuredTextLine.js":6,"./VGFlowingText/StructuredTextPart.js":7,"./VGFlowingText/TextAttribute.js":8,"./VGFlowingText/TextMetrics.js":9,"./VGFlowingText/VGFlowingText.js":10,"./VGGroup.js":11,"./VGImage.js":12,"./VGPath.js":13,"./VGRect.js":14,"./VGText.js":15,"./canvas.js":16,"./fontLib.js":17,"./path.js":18,"_process":51,"dom-kit":24,"fs":45,"opentype.js":26,"string-kit/lib/escape.js":30}],20:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -4393,7 +4750,7 @@ exports.XMLSerializer = require('./dom').XMLSerializer ;
 exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":20,"./entities":21,"./sax":22}],20:[function(require,module,exports){
+},{"./dom":21,"./entities":22,"./sax":23}],21:[function(require,module,exports){
 
 "use strict" ;
 
@@ -5801,7 +6158,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{"nwmatcher":24,"string-kit":38}],21:[function(require,module,exports){
+},{"nwmatcher":25,"string-kit":39}],22:[function(require,module,exports){
 exports.entityMap = {
        lt: '<',
        gt: '>',
@@ -6046,7 +6403,7 @@ exports.entityMap = {
        diams: "♦"
 };
 //for(var  n in exports.entityMap){console.log(exports.entityMap[n].charCodeAt())}
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -6664,7 +7021,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Dom Kit
@@ -7260,7 +7617,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@cronvel/xmldom":19,"_process":50}],24:[function(require,module,exports){
+},{"@cronvel/xmldom":20,"_process":51}],25:[function(require,module,exports){
 /*
  * Copyright (C) 2007-2018 Diego Perini
  * All rights reserved.
@@ -9038,7 +9395,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
   return Dom;
 });
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 (function (Buffer){(function (){
 /**
  * https://opentype.js.org v1.3.4 | (c) Frederik De Bleser and other contributors | MIT License | Uses tiny-inflate by Devon Govett and string.prototype.codepointat polyfill by Mathias Bynens
@@ -23519,7 +23876,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":46,"fs":44}],26:[function(require,module,exports){
+},{"buffer":47,"fs":45}],27:[function(require,module,exports){
 /*
 	String Kit
 
@@ -23933,7 +24290,7 @@ function arrayConcatSlice( intoArray , sourceArray , start = 0 , end = sourceArr
 }
 
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 /*
 	String Kit
 
@@ -24202,7 +24559,7 @@ ansi.parse = str => {
 } ;
 
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 /*
 	String Kit
 
@@ -24291,7 +24648,7 @@ camel.camelCaseToDash =
 camel.camelCaseToDashed = ( str ) => camel.camelCaseToSeparated( str , '-' , false ) ;
 
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 /*
 	String Kit
 
@@ -24396,7 +24753,7 @@ exports.unicodePercentEncode = str => str.replace( /[\x00-\x1f\u0100-\uffff\x7f%
 exports.httpHeaderValue = str => exports.unicodePercentEncode( str ) ;
 
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 (function (Buffer){(function (){
 /*
 	String Kit
@@ -25637,7 +25994,7 @@ function round( v , step ) {
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./StringNumber.js":26,"./ansi.js":27,"./escape.js":29,"./inspect.js":32,"./naturalSort.js":36,"./unicode.js":41,"buffer":46}],31:[function(require,module,exports){
+},{"./StringNumber.js":27,"./ansi.js":28,"./escape.js":30,"./inspect.js":33,"./naturalSort.js":37,"./unicode.js":42,"buffer":47}],32:[function(require,module,exports){
 /*
 	String Kit
 
@@ -25953,7 +26310,7 @@ fuzzy.levenshtein = ( left , right ) => {
 } ;
 
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 (function (Buffer,process){(function (){
 /*
 	String Kit
@@ -26717,9 +27074,9 @@ inspectStyle.html = Object.assign( {} , inspectStyle.none , {
 
 
 }).call(this)}).call(this,{"isBuffer":require("../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":48,"./ansi.js":27,"./escape.js":29,"_process":50}],33:[function(require,module,exports){
+},{"../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":49,"./ansi.js":28,"./escape.js":30,"_process":51}],34:[function(require,module,exports){
 module.exports={"߀":"0","́":""," ":" ","Ⓐ":"A","Ａ":"A","À":"A","Á":"A","Â":"A","Ầ":"A","Ấ":"A","Ẫ":"A","Ẩ":"A","Ã":"A","Ā":"A","Ă":"A","Ằ":"A","Ắ":"A","Ẵ":"A","Ẳ":"A","Ȧ":"A","Ǡ":"A","Ä":"A","Ǟ":"A","Ả":"A","Å":"A","Ǻ":"A","Ǎ":"A","Ȁ":"A","Ȃ":"A","Ạ":"A","Ậ":"A","Ặ":"A","Ḁ":"A","Ą":"A","Ⱥ":"A","Ɐ":"A","Ꜳ":"AA","Æ":"AE","Ǽ":"AE","Ǣ":"AE","Ꜵ":"AO","Ꜷ":"AU","Ꜹ":"AV","Ꜻ":"AV","Ꜽ":"AY","Ⓑ":"B","Ｂ":"B","Ḃ":"B","Ḅ":"B","Ḇ":"B","Ƀ":"B","Ɓ":"B","ｃ":"C","Ⓒ":"C","Ｃ":"C","Ꜿ":"C","Ḉ":"C","Ç":"C","Ⓓ":"D","Ｄ":"D","Ḋ":"D","Ď":"D","Ḍ":"D","Ḑ":"D","Ḓ":"D","Ḏ":"D","Đ":"D","Ɗ":"D","Ɖ":"D","ᴅ":"D","Ꝺ":"D","Ð":"Dh","Ǳ":"DZ","Ǆ":"DZ","ǲ":"Dz","ǅ":"Dz","ɛ":"E","Ⓔ":"E","Ｅ":"E","È":"E","É":"E","Ê":"E","Ề":"E","Ế":"E","Ễ":"E","Ể":"E","Ẽ":"E","Ē":"E","Ḕ":"E","Ḗ":"E","Ĕ":"E","Ė":"E","Ë":"E","Ẻ":"E","Ě":"E","Ȅ":"E","Ȇ":"E","Ẹ":"E","Ệ":"E","Ȩ":"E","Ḝ":"E","Ę":"E","Ḙ":"E","Ḛ":"E","Ɛ":"E","Ǝ":"E","ᴇ":"E","ꝼ":"F","Ⓕ":"F","Ｆ":"F","Ḟ":"F","Ƒ":"F","Ꝼ":"F","Ⓖ":"G","Ｇ":"G","Ǵ":"G","Ĝ":"G","Ḡ":"G","Ğ":"G","Ġ":"G","Ǧ":"G","Ģ":"G","Ǥ":"G","Ɠ":"G","Ꞡ":"G","Ᵹ":"G","Ꝿ":"G","ɢ":"G","Ⓗ":"H","Ｈ":"H","Ĥ":"H","Ḣ":"H","Ḧ":"H","Ȟ":"H","Ḥ":"H","Ḩ":"H","Ḫ":"H","Ħ":"H","Ⱨ":"H","Ⱶ":"H","Ɥ":"H","Ⓘ":"I","Ｉ":"I","Ì":"I","Í":"I","Î":"I","Ĩ":"I","Ī":"I","Ĭ":"I","İ":"I","Ï":"I","Ḯ":"I","Ỉ":"I","Ǐ":"I","Ȉ":"I","Ȋ":"I","Ị":"I","Į":"I","Ḭ":"I","Ɨ":"I","Ⓙ":"J","Ｊ":"J","Ĵ":"J","Ɉ":"J","ȷ":"J","Ⓚ":"K","Ｋ":"K","Ḱ":"K","Ǩ":"K","Ḳ":"K","Ķ":"K","Ḵ":"K","Ƙ":"K","Ⱪ":"K","Ꝁ":"K","Ꝃ":"K","Ꝅ":"K","Ꞣ":"K","Ⓛ":"L","Ｌ":"L","Ŀ":"L","Ĺ":"L","Ľ":"L","Ḷ":"L","Ḹ":"L","Ļ":"L","Ḽ":"L","Ḻ":"L","Ł":"L","Ƚ":"L","Ɫ":"L","Ⱡ":"L","Ꝉ":"L","Ꝇ":"L","Ꞁ":"L","Ǉ":"LJ","ǈ":"Lj","Ⓜ":"M","Ｍ":"M","Ḿ":"M","Ṁ":"M","Ṃ":"M","Ɱ":"M","Ɯ":"M","ϻ":"M","Ꞥ":"N","Ƞ":"N","Ⓝ":"N","Ｎ":"N","Ǹ":"N","Ń":"N","Ñ":"N","Ṅ":"N","Ň":"N","Ṇ":"N","Ņ":"N","Ṋ":"N","Ṉ":"N","Ɲ":"N","Ꞑ":"N","ᴎ":"N","Ǌ":"NJ","ǋ":"Nj","Ⓞ":"O","Ｏ":"O","Ò":"O","Ó":"O","Ô":"O","Ồ":"O","Ố":"O","Ỗ":"O","Ổ":"O","Õ":"O","Ṍ":"O","Ȭ":"O","Ṏ":"O","Ō":"O","Ṑ":"O","Ṓ":"O","Ŏ":"O","Ȯ":"O","Ȱ":"O","Ö":"O","Ȫ":"O","Ỏ":"O","Ő":"O","Ǒ":"O","Ȍ":"O","Ȏ":"O","Ơ":"O","Ờ":"O","Ớ":"O","Ỡ":"O","Ở":"O","Ợ":"O","Ọ":"O","Ộ":"O","Ǫ":"O","Ǭ":"O","Ø":"O","Ǿ":"O","Ɔ":"O","Ɵ":"O","Ꝋ":"O","Ꝍ":"O","Œ":"OE","Ƣ":"OI","Ꝏ":"OO","Ȣ":"OU","Ⓟ":"P","Ｐ":"P","Ṕ":"P","Ṗ":"P","Ƥ":"P","Ᵽ":"P","Ꝑ":"P","Ꝓ":"P","Ꝕ":"P","Ⓠ":"Q","Ｑ":"Q","Ꝗ":"Q","Ꝙ":"Q","Ɋ":"Q","Ⓡ":"R","Ｒ":"R","Ŕ":"R","Ṙ":"R","Ř":"R","Ȑ":"R","Ȓ":"R","Ṛ":"R","Ṝ":"R","Ŗ":"R","Ṟ":"R","Ɍ":"R","Ɽ":"R","Ꝛ":"R","Ꞧ":"R","Ꞃ":"R","Ⓢ":"S","Ｓ":"S","ẞ":"S","Ś":"S","Ṥ":"S","Ŝ":"S","Ṡ":"S","Š":"S","Ṧ":"S","Ṣ":"S","Ṩ":"S","Ș":"S","Ş":"S","Ȿ":"S","Ꞩ":"S","Ꞅ":"S","Ⓣ":"T","Ｔ":"T","Ṫ":"T","Ť":"T","Ṭ":"T","Ț":"T","Ţ":"T","Ṱ":"T","Ṯ":"T","Ŧ":"T","Ƭ":"T","Ʈ":"T","Ⱦ":"T","Ꞇ":"T","Þ":"Th","Ꜩ":"TZ","Ⓤ":"U","Ｕ":"U","Ù":"U","Ú":"U","Û":"U","Ũ":"U","Ṹ":"U","Ū":"U","Ṻ":"U","Ŭ":"U","Ü":"U","Ǜ":"U","Ǘ":"U","Ǖ":"U","Ǚ":"U","Ủ":"U","Ů":"U","Ű":"U","Ǔ":"U","Ȕ":"U","Ȗ":"U","Ư":"U","Ừ":"U","Ứ":"U","Ữ":"U","Ử":"U","Ự":"U","Ụ":"U","Ṳ":"U","Ų":"U","Ṷ":"U","Ṵ":"U","Ʉ":"U","Ⓥ":"V","Ｖ":"V","Ṽ":"V","Ṿ":"V","Ʋ":"V","Ꝟ":"V","Ʌ":"V","Ꝡ":"VY","Ⓦ":"W","Ｗ":"W","Ẁ":"W","Ẃ":"W","Ŵ":"W","Ẇ":"W","Ẅ":"W","Ẉ":"W","Ⱳ":"W","Ⓧ":"X","Ｘ":"X","Ẋ":"X","Ẍ":"X","Ⓨ":"Y","Ｙ":"Y","Ỳ":"Y","Ý":"Y","Ŷ":"Y","Ỹ":"Y","Ȳ":"Y","Ẏ":"Y","Ÿ":"Y","Ỷ":"Y","Ỵ":"Y","Ƴ":"Y","Ɏ":"Y","Ỿ":"Y","Ⓩ":"Z","Ｚ":"Z","Ź":"Z","Ẑ":"Z","Ż":"Z","Ž":"Z","Ẓ":"Z","Ẕ":"Z","Ƶ":"Z","Ȥ":"Z","Ɀ":"Z","Ⱬ":"Z","Ꝣ":"Z","ⓐ":"a","ａ":"a","ẚ":"a","à":"a","á":"a","â":"a","ầ":"a","ấ":"a","ẫ":"a","ẩ":"a","ã":"a","ā":"a","ă":"a","ằ":"a","ắ":"a","ẵ":"a","ẳ":"a","ȧ":"a","ǡ":"a","ä":"a","ǟ":"a","ả":"a","å":"a","ǻ":"a","ǎ":"a","ȁ":"a","ȃ":"a","ạ":"a","ậ":"a","ặ":"a","ḁ":"a","ą":"a","ⱥ":"a","ɐ":"a","ɑ":"a","ꜳ":"aa","æ":"ae","ǽ":"ae","ǣ":"ae","ꜵ":"ao","ꜷ":"au","ꜹ":"av","ꜻ":"av","ꜽ":"ay","ⓑ":"b","ｂ":"b","ḃ":"b","ḅ":"b","ḇ":"b","ƀ":"b","ƃ":"b","ɓ":"b","Ƃ":"b","ⓒ":"c","ć":"c","ĉ":"c","ċ":"c","č":"c","ç":"c","ḉ":"c","ƈ":"c","ȼ":"c","ꜿ":"c","ↄ":"c","C":"c","Ć":"c","Ĉ":"c","Ċ":"c","Č":"c","Ƈ":"c","Ȼ":"c","ⓓ":"d","ｄ":"d","ḋ":"d","ď":"d","ḍ":"d","ḑ":"d","ḓ":"d","ḏ":"d","đ":"d","ƌ":"d","ɖ":"d","ɗ":"d","Ƌ":"d","Ꮷ":"d","ԁ":"d","Ɦ":"d","ð":"dh","ǳ":"dz","ǆ":"dz","ⓔ":"e","ｅ":"e","è":"e","é":"e","ê":"e","ề":"e","ế":"e","ễ":"e","ể":"e","ẽ":"e","ē":"e","ḕ":"e","ḗ":"e","ĕ":"e","ė":"e","ë":"e","ẻ":"e","ě":"e","ȅ":"e","ȇ":"e","ẹ":"e","ệ":"e","ȩ":"e","ḝ":"e","ę":"e","ḙ":"e","ḛ":"e","ɇ":"e","ǝ":"e","ⓕ":"f","ｆ":"f","ḟ":"f","ƒ":"f","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ⓖ":"g","ｇ":"g","ǵ":"g","ĝ":"g","ḡ":"g","ğ":"g","ġ":"g","ǧ":"g","ģ":"g","ǥ":"g","ɠ":"g","ꞡ":"g","ꝿ":"g","ᵹ":"g","ⓗ":"h","ｈ":"h","ĥ":"h","ḣ":"h","ḧ":"h","ȟ":"h","ḥ":"h","ḩ":"h","ḫ":"h","ẖ":"h","ħ":"h","ⱨ":"h","ⱶ":"h","ɥ":"h","ƕ":"hv","ⓘ":"i","ｉ":"i","ì":"i","í":"i","î":"i","ĩ":"i","ī":"i","ĭ":"i","ï":"i","ḯ":"i","ỉ":"i","ǐ":"i","ȉ":"i","ȋ":"i","ị":"i","į":"i","ḭ":"i","ɨ":"i","ı":"i","ⓙ":"j","ｊ":"j","ĵ":"j","ǰ":"j","ɉ":"j","ⓚ":"k","ｋ":"k","ḱ":"k","ǩ":"k","ḳ":"k","ķ":"k","ḵ":"k","ƙ":"k","ⱪ":"k","ꝁ":"k","ꝃ":"k","ꝅ":"k","ꞣ":"k","ⓛ":"l","ｌ":"l","ŀ":"l","ĺ":"l","ľ":"l","ḷ":"l","ḹ":"l","ļ":"l","ḽ":"l","ḻ":"l","ſ":"l","ł":"l","ƚ":"l","ɫ":"l","ⱡ":"l","ꝉ":"l","ꞁ":"l","ꝇ":"l","ɭ":"l","ǉ":"lj","ⓜ":"m","ｍ":"m","ḿ":"m","ṁ":"m","ṃ":"m","ɱ":"m","ɯ":"m","ⓝ":"n","ｎ":"n","ǹ":"n","ń":"n","ñ":"n","ṅ":"n","ň":"n","ṇ":"n","ņ":"n","ṋ":"n","ṉ":"n","ƞ":"n","ɲ":"n","ŉ":"n","ꞑ":"n","ꞥ":"n","ԉ":"n","ǌ":"nj","ⓞ":"o","ｏ":"o","ò":"o","ó":"o","ô":"o","ồ":"o","ố":"o","ỗ":"o","ổ":"o","õ":"o","ṍ":"o","ȭ":"o","ṏ":"o","ō":"o","ṑ":"o","ṓ":"o","ŏ":"o","ȯ":"o","ȱ":"o","ö":"o","ȫ":"o","ỏ":"o","ő":"o","ǒ":"o","ȍ":"o","ȏ":"o","ơ":"o","ờ":"o","ớ":"o","ỡ":"o","ở":"o","ợ":"o","ọ":"o","ộ":"o","ǫ":"o","ǭ":"o","ø":"o","ǿ":"o","ꝋ":"o","ꝍ":"o","ɵ":"o","ɔ":"o","ᴑ":"o","œ":"oe","ƣ":"oi","ꝏ":"oo","ȣ":"ou","ⓟ":"p","ｐ":"p","ṕ":"p","ṗ":"p","ƥ":"p","ᵽ":"p","ꝑ":"p","ꝓ":"p","ꝕ":"p","ρ":"p","ⓠ":"q","ｑ":"q","ɋ":"q","ꝗ":"q","ꝙ":"q","ⓡ":"r","ｒ":"r","ŕ":"r","ṙ":"r","ř":"r","ȑ":"r","ȓ":"r","ṛ":"r","ṝ":"r","ŗ":"r","ṟ":"r","ɍ":"r","ɽ":"r","ꝛ":"r","ꞧ":"r","ꞃ":"r","ⓢ":"s","ｓ":"s","ś":"s","ṥ":"s","ŝ":"s","ṡ":"s","š":"s","ṧ":"s","ṣ":"s","ṩ":"s","ș":"s","ş":"s","ȿ":"s","ꞩ":"s","ꞅ":"s","ẛ":"s","ʂ":"s","ß":"ss","ⓣ":"t","ｔ":"t","ṫ":"t","ẗ":"t","ť":"t","ṭ":"t","ț":"t","ţ":"t","ṱ":"t","ṯ":"t","ŧ":"t","ƭ":"t","ʈ":"t","ⱦ":"t","ꞇ":"t","þ":"th","ꜩ":"tz","ⓤ":"u","ｕ":"u","ù":"u","ú":"u","û":"u","ũ":"u","ṹ":"u","ū":"u","ṻ":"u","ŭ":"u","ü":"u","ǜ":"u","ǘ":"u","ǖ":"u","ǚ":"u","ủ":"u","ů":"u","ű":"u","ǔ":"u","ȕ":"u","ȗ":"u","ư":"u","ừ":"u","ứ":"u","ữ":"u","ử":"u","ự":"u","ụ":"u","ṳ":"u","ų":"u","ṷ":"u","ṵ":"u","ʉ":"u","ⓥ":"v","ｖ":"v","ṽ":"v","ṿ":"v","ʋ":"v","ꝟ":"v","ʌ":"v","ꝡ":"vy","ⓦ":"w","ｗ":"w","ẁ":"w","ẃ":"w","ŵ":"w","ẇ":"w","ẅ":"w","ẘ":"w","ẉ":"w","ⱳ":"w","ⓧ":"x","ｘ":"x","ẋ":"x","ẍ":"x","ⓨ":"y","ｙ":"y","ỳ":"y","ý":"y","ŷ":"y","ỹ":"y","ȳ":"y","ẏ":"y","ÿ":"y","ỷ":"y","ẙ":"y","ỵ":"y","ƴ":"y","ɏ":"y","ỿ":"y","ⓩ":"z","ｚ":"z","ź":"z","ẑ":"z","ż":"z","ž":"z","ẓ":"z","ẕ":"z","ƶ":"z","ȥ":"z","ɀ":"z","ⱬ":"z","ꝣ":"z"}
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26758,7 +27115,7 @@ module.exports = function( str ) {
 
 
 
-},{"./latinize-map.json":33}],35:[function(require,module,exports){
+},{"./latinize-map.json":34}],36:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26818,7 +27175,7 @@ exports.occurrenceCount = function( str , subStr , overlap = false ) {
 } ;
 
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26965,7 +27322,7 @@ function naturalSort( a , b ) {
 module.exports = naturalSort ;
 
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27022,7 +27379,7 @@ exports.regexp.array2alternatives = function array2alternatives( array ) {
 
 
 
-},{"./escape.js":29}],38:[function(require,module,exports){
+},{"./escape.js":30}],39:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27115,7 +27472,7 @@ stringKit.installPolyfills = function installPolyfills() {
 //*/
 
 
-},{"./StringNumber.js":26,"./ansi.js":27,"./camel.js":28,"./escape.js":29,"./format.js":30,"./fuzzy.js":31,"./inspect.js":32,"./latinize.js":34,"./misc.js":35,"./naturalSort.js":36,"./regexp.js":37,"./toTitleCase.js":39,"./unicode.js":41,"./wordwrap.js":42}],39:[function(require,module,exports){
+},{"./StringNumber.js":27,"./ansi.js":28,"./camel.js":29,"./escape.js":30,"./format.js":31,"./fuzzy.js":32,"./inspect.js":33,"./latinize.js":35,"./misc.js":36,"./naturalSort.js":37,"./regexp.js":38,"./toTitleCase.js":40,"./unicode.js":42,"./wordwrap.js":43}],40:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27204,10 +27561,10 @@ module.exports = ( str , options = DEFAULT_OPTIONS ) => {
 } ;
 
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 module.exports=[{"s":9728,"e":9747,"w":1},{"s":9748,"e":9749,"w":2},{"s":9750,"e":9799,"w":1},{"s":9800,"e":9811,"w":2},{"s":9812,"e":9854,"w":1},{"s":9855,"e":9855,"w":2},{"s":9856,"e":9874,"w":1},{"s":9875,"e":9875,"w":2},{"s":9876,"e":9888,"w":1},{"s":9889,"e":9889,"w":2},{"s":9890,"e":9897,"w":1},{"s":9898,"e":9899,"w":2},{"s":9900,"e":9916,"w":1},{"s":9917,"e":9918,"w":2},{"s":9919,"e":9923,"w":1},{"s":9924,"e":9925,"w":2},{"s":9926,"e":9933,"w":1},{"s":9934,"e":9934,"w":2},{"s":9935,"e":9939,"w":1},{"s":9940,"e":9940,"w":2},{"s":9941,"e":9961,"w":1},{"s":9962,"e":9962,"w":2},{"s":9963,"e":9969,"w":1},{"s":9970,"e":9971,"w":2},{"s":9972,"e":9972,"w":1},{"s":9973,"e":9973,"w":2},{"s":9974,"e":9977,"w":1},{"s":9978,"e":9978,"w":2},{"s":9979,"e":9980,"w":1},{"s":9981,"e":9981,"w":2},{"s":9982,"e":9983,"w":1},{"s":9984,"e":9988,"w":1},{"s":9989,"e":9989,"w":2},{"s":9990,"e":9993,"w":1},{"s":9994,"e":9995,"w":2},{"s":9996,"e":10023,"w":1},{"s":10024,"e":10024,"w":2},{"s":10025,"e":10059,"w":1},{"s":10060,"e":10060,"w":2},{"s":10061,"e":10061,"w":1},{"s":10062,"e":10062,"w":2},{"s":10063,"e":10066,"w":1},{"s":10067,"e":10069,"w":2},{"s":10070,"e":10070,"w":1},{"s":10071,"e":10071,"w":2},{"s":10072,"e":10132,"w":1},{"s":10133,"e":10135,"w":2},{"s":10136,"e":10159,"w":1},{"s":10160,"e":10160,"w":2},{"s":10161,"e":10174,"w":1},{"s":10175,"e":10175,"w":2},{"s":126976,"e":126979,"w":1},{"s":126980,"e":126980,"w":2},{"s":126981,"e":127182,"w":1},{"s":127183,"e":127183,"w":2},{"s":127184,"e":127373,"w":1},{"s":127374,"e":127374,"w":2},{"s":127375,"e":127376,"w":1},{"s":127377,"e":127386,"w":2},{"s":127387,"e":127487,"w":1},{"s":127744,"e":127776,"w":2},{"s":127777,"e":127788,"w":1},{"s":127789,"e":127797,"w":2},{"s":127798,"e":127798,"w":1},{"s":127799,"e":127868,"w":2},{"s":127869,"e":127869,"w":1},{"s":127870,"e":127891,"w":2},{"s":127892,"e":127903,"w":1},{"s":127904,"e":127946,"w":2},{"s":127947,"e":127950,"w":1},{"s":127951,"e":127955,"w":2},{"s":127956,"e":127967,"w":1},{"s":127968,"e":127984,"w":2},{"s":127985,"e":127987,"w":1},{"s":127988,"e":127988,"w":2},{"s":127989,"e":127991,"w":1},{"s":127992,"e":127994,"w":2},{"s":128000,"e":128062,"w":2},{"s":128063,"e":128063,"w":1},{"s":128064,"e":128064,"w":2},{"s":128065,"e":128065,"w":1},{"s":128066,"e":128252,"w":2},{"s":128253,"e":128254,"w":1},{"s":128255,"e":128317,"w":2},{"s":128318,"e":128330,"w":1},{"s":128331,"e":128334,"w":2},{"s":128335,"e":128335,"w":1},{"s":128336,"e":128359,"w":2},{"s":128360,"e":128377,"w":1},{"s":128378,"e":128378,"w":2},{"s":128379,"e":128404,"w":1},{"s":128405,"e":128406,"w":2},{"s":128407,"e":128419,"w":1},{"s":128420,"e":128420,"w":2},{"s":128421,"e":128506,"w":1},{"s":128507,"e":128591,"w":2},{"s":128592,"e":128639,"w":1},{"s":128640,"e":128709,"w":2},{"s":128710,"e":128715,"w":1},{"s":128716,"e":128716,"w":2},{"s":128717,"e":128719,"w":1},{"s":128720,"e":128722,"w":2},{"s":128723,"e":128724,"w":1},{"s":128725,"e":128727,"w":2},{"s":128728,"e":128746,"w":1},{"s":128747,"e":128748,"w":2},{"s":128749,"e":128755,"w":1},{"s":128756,"e":128764,"w":2},{"s":128765,"e":128991,"w":1},{"s":128992,"e":129003,"w":2},{"s":129004,"e":129291,"w":1},{"s":129292,"e":129338,"w":2},{"s":129339,"e":129339,"w":1},{"s":129340,"e":129349,"w":2},{"s":129350,"e":129350,"w":1},{"s":129351,"e":129400,"w":2},{"s":129401,"e":129401,"w":1},{"s":129402,"e":129483,"w":2},{"s":129484,"e":129484,"w":1},{"s":129485,"e":129535,"w":2},{"s":129536,"e":129647,"w":1},{"s":129648,"e":129652,"w":2},{"s":129653,"e":129655,"w":1},{"s":129656,"e":129658,"w":2},{"s":129659,"e":129663,"w":1},{"s":129664,"e":129670,"w":2},{"s":129671,"e":129679,"w":1},{"s":129680,"e":129704,"w":2},{"s":129705,"e":129711,"w":1},{"s":129712,"e":129718,"w":2},{"s":129719,"e":129727,"w":1},{"s":129728,"e":129730,"w":2},{"s":129731,"e":129743,"w":1},{"s":129744,"e":129750,"w":2},{"s":129751,"e":129791,"w":1}]
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27555,7 +27912,7 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./unicode-emoji-width-ranges.json":40}],42:[function(require,module,exports){
+},{"./unicode-emoji-width-ranges.json":41}],43:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27759,10 +28116,10 @@ module.exports = function wordwrap( str , options ) {
 } ;
 
 
-},{"./unicode.js":41}],43:[function(require,module,exports){
+},{"./unicode.js":42}],44:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.4.0",
+  "version": "0.5.0-alpha.2",
   "description": "A small SVG toolkit.",
   "main": "lib/svg-kit.js",
   "directories": {
@@ -27799,9 +28156,9 @@ module.exports={
   }
 }
 
-},{}],44:[function(require,module,exports){
-
 },{}],45:[function(require,module,exports){
+
+},{}],46:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -27953,7 +28310,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * The buffer module from node.js, for the browser.
@@ -29734,7 +30091,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":45,"buffer":46,"ieee754":47}],47:[function(require,module,exports){
+},{"base64-js":46,"buffer":47,"ieee754":48}],48:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -29821,7 +30178,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],48:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -29844,7 +30201,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -30377,7 +30734,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":50}],50:[function(require,module,exports){
+},{"_process":51}],51:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -30563,5 +30920,5 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[18])(18)
+},{}]},{},[19])(19)
 });

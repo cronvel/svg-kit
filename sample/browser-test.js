@@ -22,7 +22,16 @@ async function test() {
 		}
 	} ) ;
 	vg.addEntity( vgRect ) ;
-	
+
+	var vgImage = new svgKit.VGImage( {
+		x: 200 ,
+		y: 10 ,
+		width: 100 ,
+		height: 100 ,
+		url: './smiley.png'
+	} ) ;
+	vg.addEntity( vgImage ) ;
+
 	var vgText = new svgKit.VGText( {
 		text: 'Text!' ,
 		x: 100 ,
@@ -82,12 +91,12 @@ async function test() {
 	vg.addEntity( vgFlowingText ) ;
 
 	// Display using SVG DOM renderer
-	document.body.appendChild( vg.renderSvgDom() ) ;
+	document.body.appendChild( await vg.renderSvgDom() ) ;
 	// Display using SVG text renderer
 	//document.body.appendChild( svgKit.loadFromString( vg.renderSvgText() ) ) ;
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
-	vg.renderCanvas( ctx ) ;
+	await vg.renderCanvas( ctx ) ;
 }
 
 svgKit.domKit.ready( test ) ;
