@@ -9,7 +9,7 @@ async function test() {
 	var font = await svgKit.fontLib.getFontAsync( 'serif' ) ;
 	console.log( "Font:" , font ) ;
 
-	var vg = new svgKit.VG( { viewBox: { x: 0 , y: 0 , width: 500 , height: 500 } } ) ;
+	var vg = new svgKit.VG( { viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } } ) ;
 
 	var vgRect = new svgKit.VGRect( {
 		x: 10 ,
@@ -36,8 +36,8 @@ async function test() {
 	var vg9pImage = new svgKit.VGImage( {
 		x: 200 ,
 		y: 120 ,
-		width: 100 ,
-		height: 100 ,
+		width: 350 ,
+		height: 250 ,
 		sliceLeft: 70 ,
 		sliceTop: 70 ,
 		sliceBottom: 186 ,
