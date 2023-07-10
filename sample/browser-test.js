@@ -38,10 +38,10 @@ async function test() {
 		y: 120 ,
 		width: 350 ,
 		height: 250 ,
-		sliceLeft: 70 ,
-		sliceTop: 70 ,
-		sliceBottom: 186 ,
-		sliceRight: 186 ,
+		sourceLeftWidth: 70 ,
+		sourceRightWidth: 70 ,
+		sourceTopHeight: 70 ,
+		sourceBottomHeight: 70 ,
 		url: './9p.png'
 	} ) ;
 	vg.addEntity( vg9pImage ) ;
