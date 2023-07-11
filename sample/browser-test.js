@@ -2,7 +2,10 @@
 "use strict" ;
 
 async function test() {
-	var $canvas = document.getElementById( 'canvas' ) ;
+	var $canvas = document.getElementById( 'canvas' ) ,
+		$svgDom = document.getElementById( 'svgDom' ) ,
+		$svgText = document.getElementById( 'svgText' ) ;
+
 	var ctx = $canvas.getContext( '2d' ) ;
 
 	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
@@ -107,13 +110,24 @@ async function test() {
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
-	// Display using SVG DOM renderer
-	document.body.appendChild( await vg.renderSvgDom() ) ;
-	// Display using SVG text renderer
-	//document.body.appendChild( svgKit.loadFromString( vg.renderSvgText() ) ) ;
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
 	await vg.renderCanvas( ctx ) ;
+
+	// Display using SVG DOM renderer
+	$svgDom.appendChild( await vg.renderSvgDom() ) ;
+
+	// Display using SVG text renderer
+	var svgText = await vg.renderSvgText() ;
+	svgText = svgText.replace( />/g , '>\n' ) ;
+	$svgText.appendChild( svgKit.loadFromString( svgText ) ) ;
+	
+	// Create a download link for the SVG
+	var anchor = window.document.createElement( 'a' ) ;
+	anchor.href = window.URL.createObjectURL( new Blob( [ svgText ] , { type: 'application/octet-stream' } ) ) ;
+	anchor.download = 'test.tmp.svg' ;
+	anchor.innerText = 'download' ;
+	$svgText.appendChild( anchor ) ;
 }
 
 svgKit.domKit.ready( test ) ;

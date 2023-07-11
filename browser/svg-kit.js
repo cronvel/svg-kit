@@ -192,6 +192,8 @@ VG.prototype.svgTag = 'svg' ;
 VG.prototype.svgAttributes = function( root = this ) {
 	var attr = {
 		xmlns: "http://www.w3.org/2000/svg" ,
+		// xlink is required for image, since href works only on the browser, everywhere else we need xlink:href instead
+		'xmlns:xlink': "http://www.w3.org/1999/xlink" ,
 		viewBox: this.viewBox.x + ' ' + ( root.invertY ? - this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
 	} ;
 
@@ -539,6 +541,7 @@ VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , r
 
 const fontLib = require( './fontLib.js' ) ;
 
+const dom = require( 'dom-kit' ) ;
 const camel = require( 'string-kit/lib/camel' ) ;
 const escape = require( 'string-kit/lib/escape' ) ;
 
@@ -778,39 +781,6 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 
 
 
-// Preload fonts, should be done before rendering anything needed OpenType.js on the browser-side, since .fetch() is asynchronous.
-// Preload should handle all the async stuff.
-VGEntity.prototype.preloadFonts = async function() {
-	if ( ! process?.browser ) {
-		console.error( 'VGEntity#preloadFonts() is a browser-only method' ) ;
-		return ;
-	}
-
-	var fontNames = [] ,
-		nodeFontNames = this.getUsedFontNames() ;
-
-	if ( nodeFontNames ) { fontNames.push( ... nodeFontNames ) ; }
-
-	if ( this.isContainer && this.entities?.length ) {
-		for ( let entity of this.entities ) {
-			let childFontNames = entity.getUsedFontNames() ;
-			if ( childFontNames ) { fontNames.push( ... childFontNames ) ; }
-		}
-	}
-
-	console.warn( "fontNames:" , fontNames ) ;
-
-	await Promise.all( fontNames.map( fontName => fontLib.getFontAsync( fontName ) ) ) ;
-} ;
-
-
-
-// Should be derived
-// Return null or an array of font names used by this entity
-VGEntity.prototype.getUsedFontNames = function() { return null ; } ;
-
-
-
 // Render the Vector Graphic inside a browser, as DOM SVG
 VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 	var key , rule , cssStr ,
@@ -827,24 +797,14 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 		this.class.forEach( className => this.$element.classList.add( className ) ) ;
 	}
 
-	for ( key in attr ) {
-		this.$element.setAttribute( key , attr[ key ] ) ;
-	}
-
-	if ( this.data ) {
-		for ( key in this.data ) {
-			this.$element.setAttribute( 'data-' + key , this.data[ key ] ) ;
-		}
-	}
+	dom.attr( this.$element , attr ) ;
+	if ( this.data ) { dom.attr( this.$element , this.data , 'data-' ) ; }
 
 	for ( key in this.style ) {
 		// Key is already in camelCase
 		let v = this.style[ key ] === null ? '' : this.style[ key ] ;
 		if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
 		this.$element.style[ key ] = v ;
-
-		// Key is already in camelCase
-		//this.$element.style[ key ] = this.style[ key ] ;
 	}
 
 	if ( this.svgTextNode ) {
@@ -971,8 +931,41 @@ VGEntity.prototype.morphOneSvgDomEntry = function( data , root = this ) {
 } ;
 
 
+
+// Preload fonts, should be done before rendering anything needed OpenType.js on the browser-side, since .fetch() is asynchronous.
+// Preload should handle all the async stuff.
+VGEntity.prototype.preloadFonts = async function() {
+	if ( ! process?.browser ) {
+		console.error( 'VGEntity#preloadFonts() is a browser-only method' ) ;
+		return ;
+	}
+
+	var fontNames = [] ,
+		nodeFontNames = this.getUsedFontNames() ;
+
+	if ( nodeFontNames ) { fontNames.push( ... nodeFontNames ) ; }
+
+	if ( this.isContainer && this.entities?.length ) {
+		for ( let entity of this.entities ) {
+			let childFontNames = entity.getUsedFontNames() ;
+			if ( childFontNames ) { fontNames.push( ... childFontNames ) ; }
+		}
+	}
+
+	console.warn( "fontNames:" , fontNames ) ;
+
+	await Promise.all( fontNames.map( fontName => fontLib.getFontAsync( fontName ) ) ) ;
+} ;
+
+
+
+// Should be derived
+// Return null or an array of font names used by this entity
+VGEntity.prototype.getUsedFontNames = function() { return null ; } ;
+
+
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":45,"./fontLib.js":17,"_process":52,"string-kit/lib/camel":30,"string-kit/lib/escape":31}],6:[function(require,module,exports){
+},{"../package.json":45,"./fontLib.js":17,"_process":52,"dom-kit":25,"string-kit/lib/camel":30,"string-kit/lib/escape":31}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2806,6 +2799,99 @@ VGImage.prototype.svgAttributes = function( root = this ) {
 
 
 
+VGImage.prototype.renderingContainerHookForSvgText = async function( root = this ) {
+	var imageSize = await getImageSize( this.url ) ;
+
+	if ( this.ninePatch ) {
+		// Also support clip
+		return this.renderSvgTextNinePatchImage( imageSize , root ) ;
+	}
+	else if ( this.clip ) {
+		return this.renderSvgTextClipImage( imageSize , {
+				sx: this.sourceX ,
+				sy: this.sourceY ,
+				sw: this.sourceWidth ,
+				sh: this.sourceHeight ,
+				dx: this.x ,
+				dy: this.y ,
+				dw: this.width ,
+				dh: this.height
+			} ,
+			root
+		) ;
+	}
+	else {
+		// Regular image (not clipped, not 9-patch) never reach this place right now
+		let str = '' ;
+		str += '<image' ;
+		str += ' x="' + this.x + '"' ;
+		str += ' y="' + ( root.invertY ? - this.y - this.height : this.y ) + '"' ;
+		str += ' width="' + this.width + '"' ;
+		str += ' height="' + this.height + '"' ;
+		str += ' preserveAspectRatio="none"' ;
+		str += ' href="' + this.url + '"' ;
+		str += ' />' ;
+
+		return str ;
+	}
+
+	return elementList ;
+} ;
+
+
+
+const CLIP_EXTRA_SIZE = 0.5 ;
+
+VGImage.prototype.renderSvgTextClipImage = function( imageSize , coord , root , n = 0 ) {
+	var str = '' ,
+		yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+		scaleX = coord.dw / coord.sw ,
+		scaleY = coord.dh / coord.sh ;
+
+	// Nothing inside the <clipPath> is displayed
+	var clipPathId = this._id + '_clipPath_' + n ;
+	str += '<clipPath id="' + clipPathId + '">' ;
+
+	str += '<rect' ;
+	str += ' x="' + coord.dx + '"' ;
+	str += ' y="' + ( coord.dy + yOffset ) + '"' ;
+	// Clip have some issues when multiple clip are supposed to touch themselve,
+	// so we add an extra width/height to avoid white lines in-between
+	str += ' width="' + ( coord.dw + CLIP_EXTRA_SIZE ) + '"' ;
+	str += ' height="' + ( coord.dh + CLIP_EXTRA_SIZE ) + '"' ;
+	str += ' />' ;
+
+	str += '</clipPath>' ;
+
+	str += '<image' ;
+	str += ' x="' + ( coord.dx - coord.sx * scaleX ) + '"' ;
+	str += ' y="' + ( coord.dy - coord.sy * scaleY + yOffset ) + '"' ;
+	str += ' width="' + ( imageSize.width * scaleX ) + '"' ;
+	str += ' height="' + ( imageSize.height * scaleY ) + '"' ;
+	str += ' preserveAspectRatio="none"' ;
+	str += ' clip-path="url(#' + clipPathId + ')"' ;
+	str += ' xlink:href="' + this.url + '"' ;
+	str += ' />' ;
+
+	return str ;
+} ;
+
+
+
+VGImage.prototype.renderSvgTextNinePatchImage = function( imageSize , root ) {
+	var str = '' ,
+		n = 0 ,
+		coords = this.getNinePatchCoords( imageSize ) ;
+
+	for ( let coord of coords ) {
+		str += this.renderSvgTextClipImage( imageSize , coord , root , n ++ ) ;
+	}
+
+	return str ;
+} ;
+
+
+
 VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this ) {
 	var elementList = [] ;
 
@@ -2848,14 +2934,14 @@ VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this 
 
 
 
-VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementList , root ) {
+VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementList , root , n = 0 ) {
 	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
 		scaleX = coord.dw / coord.sw ,
 		scaleY = coord.dh / coord.sh ;
 
 	// Nothing inside the <clipPath> is displayed
 	var $clipPath = document.createElementNS( 'http://www.w3.org/2000/svg' , 'clipPath' ) ;
-	var clipPathId = this._id + '_clipPath_' + elementList.length ;
+	var clipPathId = this._id + '_clipPath_' + n ;
 	dom.attr( $clipPath , { id: clipPathId } ) ;
 	elementList.push( $clipPath ) ;
 
@@ -2863,10 +2949,10 @@ VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementL
 	dom.attr( $rect , {
 		x: coord.dx ,
 		y: coord.dy + yOffset ,
-		// Clip have some issues when multiple clip are supposed to touch themselve,
+		// Clip have some issues when multiple clip are supposed to touch themselves,
 		// so we add an extra width/height to avoid white lines in-between
-		width: coord.dw + 0.25 ,
-		height: coord.dh + 0.25
+		width: coord.dw + CLIP_EXTRA_SIZE ,
+		height: coord.dh + CLIP_EXTRA_SIZE
 	} ) ;
 	$clipPath.appendChild( $rect ) ;
 
@@ -2886,10 +2972,11 @@ VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementL
 
 
 VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList , root ) {
-	var coords = this.getNinePatchCoords( imageSize ) ;
+	var n = 0 ,
+		coords = this.getNinePatchCoords( imageSize ) ;
 
 	for ( let coord of coords ) {
-		this.renderSvgDomClipImage( imageSize , coord , elementList , root ) ;
+		this.renderSvgDomClipImage( imageSize , coord , elementList , root , n ++ ) ;
 	}
 } ;
 
