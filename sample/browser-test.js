@@ -9,7 +9,10 @@ async function test() {
 	var font = await svgKit.fontLib.getFontAsync( 'serif' ) ;
 	console.log( "Font:" , font ) ;
 
-	var vg = new svgKit.VG( { viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } } ) ;
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
 
 	var vgRect = new svgKit.VGRect( {
 		x: 10 ,
