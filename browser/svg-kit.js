@@ -253,7 +253,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":44,"./VGContainer.js":3}],3:[function(require,module,exports){
+},{"../package.json":45,"./VGContainer.js":3}],3:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -394,7 +394,7 @@ VGContainer.prototype.morphSvgDom = function( root = this ) {
 } ;
 
 
-},{"../package.json":44,"./VGEntity.js":5,"./svg-kit.js":19}],4:[function(require,module,exports){
+},{"../package.json":45,"./VGEntity.js":5,"./svg-kit.js":20}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -505,7 +505,7 @@ VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , r
 } ;
 
 
-},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],5:[function(require,module,exports){
+},{"../package.json":45,"./VGEntity.js":5,"./canvas.js":16}],5:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -972,7 +972,7 @@ VGEntity.prototype.morphOneSvgDomEntry = function( data , root = this ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":44,"./fontLib.js":17,"_process":51,"string-kit/lib/camel":29,"string-kit/lib/escape":30}],6:[function(require,module,exports){
+},{"../package.json":45,"./fontLib.js":17,"_process":52,"string-kit/lib/camel":30,"string-kit/lib/escape":31}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2602,7 +2602,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":44,"../VGEntity.js":5,"../canvas.js":16,"../fontLib.js":17,"./StructuredTextLine.js":6,"./StructuredTextPart.js":7,"./TextAttribute.js":8,"./TextMetrics.js":9}],11:[function(require,module,exports){
+},{"../../package.json":45,"../VGEntity.js":5,"../canvas.js":16,"../fontLib.js":17,"./StructuredTextLine.js":6,"./StructuredTextPart.js":7,"./TextAttribute.js":8,"./TextMetrics.js":9}],11:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2659,7 +2659,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":44,"./VGContainer.js":3,"./svg-kit.js":19}],12:[function(require,module,exports){
+},{"../package.json":45,"./VGContainer.js":3,"./svg-kit.js":20}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2692,6 +2692,7 @@ VGGroup.prototype.set = function( params ) {
 
 const VGEntity = require( './VGEntity.js' ) ;
 const canvas = require( './canvas.js' ) ;
+const getImageSize = require( './getImageSize.js' ) ;
 
 const dom = require( 'dom-kit' ) ;
 
@@ -2808,53 +2809,46 @@ VGImage.prototype.svgAttributes = function( root = this ) {
 VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this ) {
 	var elementList = [] ;
 
-	var image = new Image() ;
-	image.src = this.url ;
+	var imageSize = await getImageSize( this.url ) ;
 
-	await new Promise( resolve => {
-		image.onload = () => {
-			if ( this.ninePatch ) {
-				// Also support clip
-				this.renderSvgDomNinePatchImage( image , elementList , root ) ;
-			}
-			else if ( this.clip ) {
-				this.renderSvgDomClipImage( image , {
-						sx: this.sourceX ,
-						sy: this.sourceY ,
-						sw: this.sourceWidth ,
-						sh: this.sourceHeight ,
-						dx: this.x ,
-						dy: this.y ,
-						dw: this.width ,
-						dh: this.height
-					} ,
-					elementList , root
-				) ;
-			}
-			else {
-				// Regular image (not clipped, not 9-patch) never reach this place right now
-				let $image = document.createElementNS( 'http://www.w3.org/2000/svg' , 'image' ) ;
-				dom.attr( $image , {
-					x: this.x ,
-					y: root.invertY ? - this.y - this.height : this.y ,
-					width: this.width ,
-					height: this.height ,
-					preserveAspectRatio: 'none' ,
-					href: this.url
-				} ) ;
-				elementList.push( $image ) ;
-			}
-
-			resolve() ;
-		} ;
-	} ) ;
+	if ( this.ninePatch ) {
+		// Also support clip
+		this.renderSvgDomNinePatchImage( imageSize , elementList , root ) ;
+	}
+	else if ( this.clip ) {
+		this.renderSvgDomClipImage( imageSize , {
+				sx: this.sourceX ,
+				sy: this.sourceY ,
+				sw: this.sourceWidth ,
+				sh: this.sourceHeight ,
+				dx: this.x ,
+				dy: this.y ,
+				dw: this.width ,
+				dh: this.height
+			} ,
+			elementList , root
+		) ;
+	}
+	else {
+		// Regular image (not clipped, not 9-patch) never reach this place right now
+		let $image = document.createElementNS( 'http://www.w3.org/2000/svg' , 'image' ) ;
+		dom.attr( $image , {
+			x: this.x ,
+			y: root.invertY ? - this.y - this.height : this.y ,
+			width: this.width ,
+			height: this.height ,
+			preserveAspectRatio: 'none' ,
+			href: this.url
+		} ) ;
+		elementList.push( $image ) ;
+	}
 
 	return elementList ;
 } ;
 
 
 
-VGImage.prototype.renderSvgDomClipImage = function( image , coord , elementList , root ) {
+VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementList , root ) {
 	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
 		scaleX = coord.dw / coord.sw ,
 		scaleY = coord.dh / coord.sh ;
@@ -2880,8 +2874,8 @@ VGImage.prototype.renderSvgDomClipImage = function( image , coord , elementList 
 	dom.attr( $image , {
 		x: coord.dx - coord.sx * scaleX ,
 		y: coord.dy - coord.sy * scaleY + yOffset ,
-		width: image.naturalWidth * scaleX ,
-		height: image.naturalHeight * scaleY ,
+		width: imageSize.width * scaleX ,
+		height: imageSize.height * scaleY ,
 		preserveAspectRatio: 'none' ,
 		'clip-path': 'url(#' + clipPathId + ')' ,
 		href: this.url
@@ -2891,11 +2885,11 @@ VGImage.prototype.renderSvgDomClipImage = function( image , coord , elementList 
 
 
 
-VGImage.prototype.renderSvgDomNinePatchImage = function( image , elementList , root ) {
-	var coords = this.getNinePatchCoords( image ) ;
+VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList , root ) {
+	var coords = this.getNinePatchCoords( imageSize ) ;
 
 	for ( let coord of coords ) {
-		this.renderSvgDomClipImage( image , coord , elementList , root ) ;
+		this.renderSvgDomClipImage( imageSize , coord , elementList , root ) ;
 	}
 } ;
 
@@ -2940,7 +2934,7 @@ VGImage.prototype.renderCanvasClipImage = function( canvasCtx , image ) {
 
 
 VGImage.prototype.renderCanvasNinePatchImage = function( canvasCtx , image ) {
-	var coords = this.getNinePatchCoords( image ) ;
+	var coords = this.getNinePatchCoords( { width: image.naturalWidth , height: image.naturalHeight } ) ;
 
 	for ( let coord of coords ) {
 		canvasCtx.drawImage(
@@ -2953,7 +2947,7 @@ VGImage.prototype.renderCanvasNinePatchImage = function( canvasCtx , image ) {
 
 
 
-VGImage.prototype.getNinePatchCoords = function( image ) {
+VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 	var sourceX , sourceY , sourceWidth , sourceHeight ,
 		coords = [] ;
 
@@ -2966,8 +2960,8 @@ VGImage.prototype.getNinePatchCoords = function( image ) {
 	else {
 		sourceX = 0 ;
 		sourceY = 0 ;
-		sourceWidth = image.naturalWidth ;
-		sourceHeight = image.naturalHeight ;
+		sourceWidth = imageSize.width ;
+		sourceHeight = imageSize.height ;
 	}
 
 	var leftWidth = this.sourceLeftWidth ,
@@ -3098,7 +3092,7 @@ VGImage.prototype.getNinePatchCoords = function( image ) {
 } ;
 
 
-},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16,"dom-kit":24}],13:[function(require,module,exports){
+},{"../package.json":45,"./VGEntity.js":5,"./canvas.js":16,"./getImageSize.js":18,"dom-kit":25}],13:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3785,7 +3779,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 } ;
 
 
-},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],14:[function(require,module,exports){
+},{"../package.json":45,"./VGEntity.js":5,"./canvas.js":16}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3905,7 +3899,7 @@ VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root
 } ;
 
 
-},{"../package.json":44,"./VGEntity.js":5,"./canvas.js":16}],15:[function(require,module,exports){
+},{"../package.json":45,"./VGEntity.js":5,"./canvas.js":16}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4079,7 +4073,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root
 } ;
 
 
-},{"../package.json":44,"./VGEntity.js":5}],16:[function(require,module,exports){
+},{"../package.json":45,"./VGEntity.js":5}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4273,7 +4267,65 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":51,"opentype.js":26,"path":50}],18:[function(require,module,exports){
+},{"_process":52,"opentype.js":27,"path":51}],18:[function(require,module,exports){
+(function (process){(function (){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+if ( process.browser ) {
+	module.exports = url => new Promise( resolve => {
+		var image = new Image() ;
+		image.src = url ;
+		image.onload = () => {
+			resolve( { width: image.naturalWidth , height: image.naturalHeight } ) ;
+		} ;
+	} ) ;
+}
+else {
+	const imageSize = require( 'image-size' ) ;
+
+	module.exports = url => new Promise( ( resolve , reject ) => {
+		imageSize( url , ( error , size ) => {
+			if ( error ) {
+				reject( error ) ;
+				return ;
+			}
+
+			resolve( size ) ;
+		} ) ;
+	} ) ;
+}
+
+
+}).call(this)}).call(this,require('_process'))
+},{"_process":52,"image-size":46}],19:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4321,7 +4373,7 @@ path.dFromPoints = ( points , invertY ) => {
 } ;
 
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -4816,7 +4868,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"./VG.js":2,"./VGContainer.js":3,"./VGEllipse.js":4,"./VGEntity.js":5,"./VGFlowingText/StructuredTextLine.js":6,"./VGFlowingText/StructuredTextPart.js":7,"./VGFlowingText/TextAttribute.js":8,"./VGFlowingText/TextMetrics.js":9,"./VGFlowingText/VGFlowingText.js":10,"./VGGroup.js":11,"./VGImage.js":12,"./VGPath.js":13,"./VGRect.js":14,"./VGText.js":15,"./canvas.js":16,"./fontLib.js":17,"./path.js":18,"_process":51,"dom-kit":24,"fs":45,"opentype.js":26,"string-kit/lib/escape.js":30}],20:[function(require,module,exports){
+},{"./VG.js":2,"./VGContainer.js":3,"./VGEllipse.js":4,"./VGEntity.js":5,"./VGFlowingText/StructuredTextLine.js":6,"./VGFlowingText/StructuredTextPart.js":7,"./VGFlowingText/TextAttribute.js":8,"./VGFlowingText/TextMetrics.js":9,"./VGFlowingText/VGFlowingText.js":10,"./VGGroup.js":11,"./VGImage.js":12,"./VGPath.js":13,"./VGRect.js":14,"./VGText.js":15,"./canvas.js":16,"./fontLib.js":17,"./path.js":19,"_process":52,"dom-kit":25,"fs":46,"opentype.js":27,"string-kit/lib/escape.js":31}],21:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -5070,7 +5122,7 @@ exports.XMLSerializer = require('./dom').XMLSerializer ;
 exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":21,"./entities":22,"./sax":23}],21:[function(require,module,exports){
+},{"./dom":22,"./entities":23,"./sax":24}],22:[function(require,module,exports){
 
 "use strict" ;
 
@@ -6478,7 +6530,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{"nwmatcher":25,"string-kit":39}],22:[function(require,module,exports){
+},{"nwmatcher":26,"string-kit":40}],23:[function(require,module,exports){
 exports.entityMap = {
        lt: '<',
        gt: '>',
@@ -6723,7 +6775,7 @@ exports.entityMap = {
        diams: "♦"
 };
 //for(var  n in exports.entityMap){console.log(exports.entityMap[n].charCodeAt())}
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -7341,7 +7393,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Dom Kit
@@ -7409,19 +7461,16 @@ domKit.toXml = $doc => xmlSerializer.serializeToString( $doc ) ;
 
 // Return a fragment from html code
 domKit.fromHtml = html => {
-	var i , $doc , $fragment ;
-
 	// Fragment allow us to return a collection that... well... is not a collection,
 	// and that's fine because the html code may contains multiple top-level element
-	$fragment = document.createDocumentFragment() ;
-
-	$doc = document.createElement( 'div' ) ;	// whatever type...
+	var $fragment = document.createDocumentFragment() ,
+		$doc = document.createElement( 'div' ) ;	// whatever type...
 
 	// either .innerHTML or .insertAdjacentHTML()
 	//$doc.innerHTML = html ;
 	$doc.insertAdjacentHTML( 'beforeend' , html ) ;
 
-	for ( i = 0 ; i < $doc.children.length ; i ++ ) {
+	for ( let i = 0 ; i < $doc.children.length ; i ++ ) {
 		$fragment.appendChild( $doc.children[ i ] ) ;
 	}
 
@@ -7443,20 +7492,19 @@ domKit.addJsScript = ( url , $element = document.body ) => {
 } ;
 
 
+
 // Batch processing, like array, HTMLCollection, and so on...
 domKit.batch = ( method , elements , ... args ) => {
-	var i ;
-
 	if ( elements instanceof Element ) {
 		method( elements , ... args ) ;
 	}
 	else if ( Array.isArray( elements ) ) {
-		for ( i = 0 ; i < elements.length ; i ++ ) {
+		for ( let i = 0 ; i < elements.length ; i ++ ) {
 			method( elements[ i ] , ... args ) ;
 		}
 	}
 	else if ( elements instanceof NodeList || elements instanceof NamedNodeMap ) {
-		for ( i = 0 ; i < elements.length ; i ++ ) {
+		for ( let i = 0 ; i < elements.length ; i ++ ) {
 			method( elements[ i ] , ... args ) ;
 		}
 	}
@@ -7466,9 +7514,7 @@ domKit.batch = ( method , elements , ... args ) => {
 
 // Set a bunch of css properties given as an object
 domKit.css = ( $element , object ) => {
-	var key ;
-
-	for ( key in object ) {
+	for ( let key in object ) {
 		$element.style[ key ] = object[ key ] ;
 	}
 } ;
@@ -7476,12 +7522,8 @@ domKit.css = ( $element , object ) => {
 
 
 // Set a bunch of attributes given as an object
-domKit.attr = ( $element , object , prefix ) => {
-	var key ;
-
-	prefix = prefix || '' ;
-
-	for ( key in object ) {
+domKit.attr = ( $element , object , prefix = '' ) => {
+	for ( let key in object ) {
 		if ( object[ key ] === null ) { $element.removeAttribute( prefix + key ) ; }
 		else { $element.setAttribute( prefix + key , object[ key ] ) ; }
 	}
@@ -7490,12 +7532,8 @@ domKit.attr = ( $element , object , prefix ) => {
 
 
 // Set/unset a bunch of classes given as an object
-domKit.class = ( $element , object , prefix ) => {
-	var key ;
-
-	prefix = prefix || '' ;
-
-	for ( key in object ) {
+domKit.class = ( $element , object , prefix = '' ) => {
+	for ( let key in object ) {
 		if ( object[ key ] ) { $element.classList.add( prefix + key ) ; }
 		else { $element.classList.remove( prefix + key ) ; }
 	}
@@ -7543,14 +7581,14 @@ domKit.moveChildrenInto = ( $source , $destination ) => {
 // Move all attributes of an element into the destination
 domKit.moveAttributes = ( $source , $destination ) => {
 	Array.from( $source.attributes ).forEach( ( attr ) => {
-		var name = attr.name ;
-		var value = attr.value ;
+		let name = attr.name ,
+			value = attr.value ;
 
 		$source.removeAttribute( name ) ;
 
 		// Do not copy namespaced attributes for instance,
 		// should probably protect this behind a third argument
-		if ( name !== 'xmlns' && name.indexOf( ':' ) === -1 && value ) {
+		if ( name !== 'xmlns' && name.indexOf( ':' ) === - 1 && value ) {
 			//console.warn( 'moving: ' , name, value , $destination.getAttribute( name ) ) ;
 			$destination.setAttribute( name , value ) ;
 		}
@@ -7560,7 +7598,7 @@ domKit.moveAttributes = ( $source , $destination ) => {
 
 
 domKit.styleToAttribute = ( $element , property , blacklistedValues ) => {
-	if ( $element.style[ property ] && ( ! blacklistedValues || blacklistedValues.indexOf( $element.style[ property ] ) === -1 ) ) {
+	if ( $element.style[ property ] && ( ! blacklistedValues || blacklistedValues.indexOf( $element.style[ property ] ) === - 1 ) ) {
 		$element.setAttribute( property , $element.style[ property ] ) ;
 		$element.style[ property ] = null ;
 	}
@@ -7570,9 +7608,8 @@ domKit.styleToAttribute = ( $element , property , blacklistedValues ) => {
 
 // Children of this element get all their ID prefixed, any url(#id) references are patched accordingly
 domKit.prefixIds = ( $element , prefix ) => {
-	var elements , replacement = {} ;
-
-	elements = $element.querySelectorAll( '*' ) ;
+	var replacement = {} ,
+		elements = $element.querySelectorAll( '*' ) ;
 
 	domKit.batch( domKit.prefixIds.idAttributePass , elements , prefix , replacement ) ;
 	domKit.batch( domKit.prefixIds.otherAttributesPass , elements , replacement ) ;
@@ -7651,28 +7688,26 @@ domKit.preload.preloaded = {} ;
 		* primary `string` keep those elements but remove the namespace
 */
 domKit.filterByNamespace = ( $container , options ) => {
-	var i , $child , namespace , tagName , split ;
-
 	// Nothing to do? return now...
 	if ( ! options || typeof options !== 'object' ) { return ; }
 
 	domKit.filterAttributesByNamespace( $container , options ) ;
 
-	for ( i = $container.childNodes.length - 1 ; i >= 0 ; i -- ) {
-		$child = $container.childNodes[ i ] ;
+	for ( let i = $container.childNodes.length - 1 ; i >= 0 ; i -- ) {
+		let $child = $container.childNodes[ i ] ;
 
 		if ( $child.nodeType === 1 ) {
-			if ( $child.tagName.indexOf( ':' ) !== -1 ) {
-				split = $child.tagName.split( ':' ) ;
-				namespace = split[ 0 ] ;
-				tagName = split[ 1 ] ;
+			if ( $child.tagName.indexOf( ':' ) !== - 1 ) {
+				let split = $child.tagName.split( ':' ) ,
+					namespace = split[ 0 ] ,
+					tagName = split[ 1 ] ;
 
 				if ( namespace === options.primary ) {
 					$child.tagName = tagName ;
 					domKit.filterByNamespace( $child , options ) ;
 				}
 				else if ( options.whitelist ) {
-					if ( options.whitelist.indexOf( namespace ) !== -1 ) {
+					if ( options.whitelist.indexOf( namespace ) !== - 1 ) {
 						domKit.filterByNamespace( $child , options ) ;
 					}
 					else {
@@ -7680,7 +7715,7 @@ domKit.filterByNamespace = ( $container , options ) => {
 					}
 				}
 				else if ( options.blacklist ) {
-					if ( options.blacklist.indexOf( namespace ) !== -1 ) {
+					if ( options.blacklist.indexOf( namespace ) !== - 1 ) {
 						$container.removeChild( $child ) ;
 					}
 					else {
@@ -7702,31 +7737,29 @@ domKit.filterByNamespace = ( $container , options ) => {
 
 // Filter attributes by namespace
 domKit.filterAttributesByNamespace = ( $container , options ) => {
-	var i , attr , namespace , attrName , value , split ;
-
 	// Nothing to do? return now...
 	if ( ! options || typeof options !== 'object' ) { return ; }
 
-	for ( i = $container.attributes.length - 1 ; i >= 0 ; i -- ) {
-		attr = $container.attributes[ i ] ;
+	for ( let i = $container.attributes.length - 1 ; i >= 0 ; i -- ) {
+		let attr = $container.attributes[ i ] ;
 
-		if ( attr.name.indexOf( ':' ) !== -1 ) {
-			split = attr.name.split( ':' ) ;
-			namespace = split[ 0 ] ;
-			attrName = split[ 1 ] ;
-			value = attr.value ;
+		if ( attr.name.indexOf( ':' ) !== - 1 ) {
+			let split = attr.name.split( ':' ) ,
+				namespace = split[ 0 ] ,
+				attrName = split[ 1 ] ,
+				value = attr.value ;
 
 			if ( namespace === options.primary ) {
 				$container.removeAttributeNode( attr ) ;
 				$container.setAttribute( attrName , value ) ;
 			}
 			else if ( options.whitelist ) {
-				if ( options.whitelist.indexOf( namespace ) === -1 ) {
+				if ( options.whitelist.indexOf( namespace ) === - 1 ) {
 					$container.removeAttributeNode( attr ) ;
 				}
 			}
 			else if ( options.blacklist ) {
-				if ( options.blacklist.indexOf( namespace ) !== -1 ) {
+				if ( options.blacklist.indexOf( namespace ) !== - 1 ) {
 					$container.removeAttributeNode( attr ) ;
 				}
 			}
@@ -7738,10 +7771,8 @@ domKit.filterAttributesByNamespace = ( $container , options ) => {
 
 // Remove comments
 domKit.removeComments = $container => {
-	var i , $child ;
-
-	for ( i = $container.childNodes.length - 1 ; i >= 0 ; i -- ) {
-		$child = $container.childNodes[ i ] ;
+	for ( let i = $container.childNodes.length - 1 ; i >= 0 ; i -- ) {
+		let $child = $container.childNodes[ i ] ;
 
 		if ( $child.nodeType === 8 ) {
 			$container.removeChild( $child ) ;
@@ -7756,10 +7787,10 @@ domKit.removeComments = $container => {
 
 // Remove white-space-only text-node
 domKit.removeWhiteSpaces = ( $container , onlyWhiteLines ) => {
-	var i , $child , $lastTextNode = null ;
+	var $lastTextNode = null ;
 
-	for ( i = $container.childNodes.length - 1 ; i >= 0 ; i -- ) {
-		$child = $container.childNodes[ i ] ;
+	for ( let i = $container.childNodes.length - 1 ; i >= 0 ; i -- ) {
+		let $child = $container.childNodes[ i ] ;
 		//console.log( '$child.nodeType' , $child.nodeType ) ;
 
 		if ( $child.nodeType === 3 ) {
@@ -7844,13 +7875,13 @@ domKit.decomposeMatrix3d = matrix => {
 		sY = Math.sqrt( matrix[4] * matrix[4] + matrix[5] * matrix[5] + matrix[6] * matrix[6] ) ,
 		sZ = Math.sqrt( matrix[8] * matrix[8] + matrix[9] * matrix[9] + matrix[10] * matrix[10] ) ;
 
-	var rX = Math.atan2( -matrix[9] / sZ , matrix[10] / sZ ) / radians ,
+	var rX = Math.atan2( - matrix[9] / sZ , matrix[10] / sZ ) / radians ,
 		rY = Math.asin( matrix[8] / sZ ) / radians ,
-		rZ = Math.atan2( -matrix[4] / sY , matrix[0] / sX ) / radians ;
+		rZ = Math.atan2( - matrix[4] / sY , matrix[0] / sX ) / radians ;
 
-	if ( matrix[4] === 1 || matrix[4] === -1 ) {
+	if ( matrix[4] === 1 || matrix[4] === - 1 ) {
 		rX = 0 ;
-		rY = matrix[4] * -Math.PI / 2 ;
+		rY = matrix[4] * - Math.PI / 2 ;
 		rZ = matrix[4] * Math.atan2( matrix[6] / sY , matrix[5] / sY ) / radians ;
 	}
 
@@ -7937,7 +7968,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@cronvel/xmldom":20,"_process":51}],25:[function(require,module,exports){
+},{"@cronvel/xmldom":21,"_process":52}],26:[function(require,module,exports){
 /*
  * Copyright (C) 2007-2018 Diego Perini
  * All rights reserved.
@@ -9715,7 +9746,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
   return Dom;
 });
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 (function (Buffer){(function (){
 /**
  * https://opentype.js.org v1.3.4 | (c) Frederik De Bleser and other contributors | MIT License | Uses tiny-inflate by Devon Govett and string.prototype.codepointat polyfill by Mathias Bynens
@@ -24196,7 +24227,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":47,"fs":45}],27:[function(require,module,exports){
+},{"buffer":48,"fs":46}],28:[function(require,module,exports){
 /*
 	String Kit
 
@@ -24610,7 +24641,7 @@ function arrayConcatSlice( intoArray , sourceArray , start = 0 , end = sourceArr
 }
 
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 /*
 	String Kit
 
@@ -24879,7 +24910,7 @@ ansi.parse = str => {
 } ;
 
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 /*
 	String Kit
 
@@ -24968,7 +24999,7 @@ camel.camelCaseToDash =
 camel.camelCaseToDashed = ( str ) => camel.camelCaseToSeparated( str , '-' , false ) ;
 
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 /*
 	String Kit
 
@@ -25073,7 +25104,7 @@ exports.unicodePercentEncode = str => str.replace( /[\x00-\x1f\u0100-\uffff\x7f%
 exports.httpHeaderValue = str => exports.unicodePercentEncode( str ) ;
 
 
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 (function (Buffer){(function (){
 /*
 	String Kit
@@ -26314,7 +26345,7 @@ function round( v , step ) {
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./StringNumber.js":27,"./ansi.js":28,"./escape.js":30,"./inspect.js":33,"./naturalSort.js":37,"./unicode.js":42,"buffer":47}],32:[function(require,module,exports){
+},{"./StringNumber.js":28,"./ansi.js":29,"./escape.js":31,"./inspect.js":34,"./naturalSort.js":38,"./unicode.js":43,"buffer":48}],33:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26630,7 +26661,7 @@ fuzzy.levenshtein = ( left , right ) => {
 } ;
 
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (Buffer,process){(function (){
 /*
 	String Kit
@@ -27394,9 +27425,9 @@ inspectStyle.html = Object.assign( {} , inspectStyle.none , {
 
 
 }).call(this)}).call(this,{"isBuffer":require("../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":49,"./ansi.js":28,"./escape.js":30,"_process":51}],34:[function(require,module,exports){
+},{"../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":50,"./ansi.js":29,"./escape.js":31,"_process":52}],35:[function(require,module,exports){
 module.exports={"߀":"0","́":""," ":" ","Ⓐ":"A","Ａ":"A","À":"A","Á":"A","Â":"A","Ầ":"A","Ấ":"A","Ẫ":"A","Ẩ":"A","Ã":"A","Ā":"A","Ă":"A","Ằ":"A","Ắ":"A","Ẵ":"A","Ẳ":"A","Ȧ":"A","Ǡ":"A","Ä":"A","Ǟ":"A","Ả":"A","Å":"A","Ǻ":"A","Ǎ":"A","Ȁ":"A","Ȃ":"A","Ạ":"A","Ậ":"A","Ặ":"A","Ḁ":"A","Ą":"A","Ⱥ":"A","Ɐ":"A","Ꜳ":"AA","Æ":"AE","Ǽ":"AE","Ǣ":"AE","Ꜵ":"AO","Ꜷ":"AU","Ꜹ":"AV","Ꜻ":"AV","Ꜽ":"AY","Ⓑ":"B","Ｂ":"B","Ḃ":"B","Ḅ":"B","Ḇ":"B","Ƀ":"B","Ɓ":"B","ｃ":"C","Ⓒ":"C","Ｃ":"C","Ꜿ":"C","Ḉ":"C","Ç":"C","Ⓓ":"D","Ｄ":"D","Ḋ":"D","Ď":"D","Ḍ":"D","Ḑ":"D","Ḓ":"D","Ḏ":"D","Đ":"D","Ɗ":"D","Ɖ":"D","ᴅ":"D","Ꝺ":"D","Ð":"Dh","Ǳ":"DZ","Ǆ":"DZ","ǲ":"Dz","ǅ":"Dz","ɛ":"E","Ⓔ":"E","Ｅ":"E","È":"E","É":"E","Ê":"E","Ề":"E","Ế":"E","Ễ":"E","Ể":"E","Ẽ":"E","Ē":"E","Ḕ":"E","Ḗ":"E","Ĕ":"E","Ė":"E","Ë":"E","Ẻ":"E","Ě":"E","Ȅ":"E","Ȇ":"E","Ẹ":"E","Ệ":"E","Ȩ":"E","Ḝ":"E","Ę":"E","Ḙ":"E","Ḛ":"E","Ɛ":"E","Ǝ":"E","ᴇ":"E","ꝼ":"F","Ⓕ":"F","Ｆ":"F","Ḟ":"F","Ƒ":"F","Ꝼ":"F","Ⓖ":"G","Ｇ":"G","Ǵ":"G","Ĝ":"G","Ḡ":"G","Ğ":"G","Ġ":"G","Ǧ":"G","Ģ":"G","Ǥ":"G","Ɠ":"G","Ꞡ":"G","Ᵹ":"G","Ꝿ":"G","ɢ":"G","Ⓗ":"H","Ｈ":"H","Ĥ":"H","Ḣ":"H","Ḧ":"H","Ȟ":"H","Ḥ":"H","Ḩ":"H","Ḫ":"H","Ħ":"H","Ⱨ":"H","Ⱶ":"H","Ɥ":"H","Ⓘ":"I","Ｉ":"I","Ì":"I","Í":"I","Î":"I","Ĩ":"I","Ī":"I","Ĭ":"I","İ":"I","Ï":"I","Ḯ":"I","Ỉ":"I","Ǐ":"I","Ȉ":"I","Ȋ":"I","Ị":"I","Į":"I","Ḭ":"I","Ɨ":"I","Ⓙ":"J","Ｊ":"J","Ĵ":"J","Ɉ":"J","ȷ":"J","Ⓚ":"K","Ｋ":"K","Ḱ":"K","Ǩ":"K","Ḳ":"K","Ķ":"K","Ḵ":"K","Ƙ":"K","Ⱪ":"K","Ꝁ":"K","Ꝃ":"K","Ꝅ":"K","Ꞣ":"K","Ⓛ":"L","Ｌ":"L","Ŀ":"L","Ĺ":"L","Ľ":"L","Ḷ":"L","Ḹ":"L","Ļ":"L","Ḽ":"L","Ḻ":"L","Ł":"L","Ƚ":"L","Ɫ":"L","Ⱡ":"L","Ꝉ":"L","Ꝇ":"L","Ꞁ":"L","Ǉ":"LJ","ǈ":"Lj","Ⓜ":"M","Ｍ":"M","Ḿ":"M","Ṁ":"M","Ṃ":"M","Ɱ":"M","Ɯ":"M","ϻ":"M","Ꞥ":"N","Ƞ":"N","Ⓝ":"N","Ｎ":"N","Ǹ":"N","Ń":"N","Ñ":"N","Ṅ":"N","Ň":"N","Ṇ":"N","Ņ":"N","Ṋ":"N","Ṉ":"N","Ɲ":"N","Ꞑ":"N","ᴎ":"N","Ǌ":"NJ","ǋ":"Nj","Ⓞ":"O","Ｏ":"O","Ò":"O","Ó":"O","Ô":"O","Ồ":"O","Ố":"O","Ỗ":"O","Ổ":"O","Õ":"O","Ṍ":"O","Ȭ":"O","Ṏ":"O","Ō":"O","Ṑ":"O","Ṓ":"O","Ŏ":"O","Ȯ":"O","Ȱ":"O","Ö":"O","Ȫ":"O","Ỏ":"O","Ő":"O","Ǒ":"O","Ȍ":"O","Ȏ":"O","Ơ":"O","Ờ":"O","Ớ":"O","Ỡ":"O","Ở":"O","Ợ":"O","Ọ":"O","Ộ":"O","Ǫ":"O","Ǭ":"O","Ø":"O","Ǿ":"O","Ɔ":"O","Ɵ":"O","Ꝋ":"O","Ꝍ":"O","Œ":"OE","Ƣ":"OI","Ꝏ":"OO","Ȣ":"OU","Ⓟ":"P","Ｐ":"P","Ṕ":"P","Ṗ":"P","Ƥ":"P","Ᵽ":"P","Ꝑ":"P","Ꝓ":"P","Ꝕ":"P","Ⓠ":"Q","Ｑ":"Q","Ꝗ":"Q","Ꝙ":"Q","Ɋ":"Q","Ⓡ":"R","Ｒ":"R","Ŕ":"R","Ṙ":"R","Ř":"R","Ȑ":"R","Ȓ":"R","Ṛ":"R","Ṝ":"R","Ŗ":"R","Ṟ":"R","Ɍ":"R","Ɽ":"R","Ꝛ":"R","Ꞧ":"R","Ꞃ":"R","Ⓢ":"S","Ｓ":"S","ẞ":"S","Ś":"S","Ṥ":"S","Ŝ":"S","Ṡ":"S","Š":"S","Ṧ":"S","Ṣ":"S","Ṩ":"S","Ș":"S","Ş":"S","Ȿ":"S","Ꞩ":"S","Ꞅ":"S","Ⓣ":"T","Ｔ":"T","Ṫ":"T","Ť":"T","Ṭ":"T","Ț":"T","Ţ":"T","Ṱ":"T","Ṯ":"T","Ŧ":"T","Ƭ":"T","Ʈ":"T","Ⱦ":"T","Ꞇ":"T","Þ":"Th","Ꜩ":"TZ","Ⓤ":"U","Ｕ":"U","Ù":"U","Ú":"U","Û":"U","Ũ":"U","Ṹ":"U","Ū":"U","Ṻ":"U","Ŭ":"U","Ü":"U","Ǜ":"U","Ǘ":"U","Ǖ":"U","Ǚ":"U","Ủ":"U","Ů":"U","Ű":"U","Ǔ":"U","Ȕ":"U","Ȗ":"U","Ư":"U","Ừ":"U","Ứ":"U","Ữ":"U","Ử":"U","Ự":"U","Ụ":"U","Ṳ":"U","Ų":"U","Ṷ":"U","Ṵ":"U","Ʉ":"U","Ⓥ":"V","Ｖ":"V","Ṽ":"V","Ṿ":"V","Ʋ":"V","Ꝟ":"V","Ʌ":"V","Ꝡ":"VY","Ⓦ":"W","Ｗ":"W","Ẁ":"W","Ẃ":"W","Ŵ":"W","Ẇ":"W","Ẅ":"W","Ẉ":"W","Ⱳ":"W","Ⓧ":"X","Ｘ":"X","Ẋ":"X","Ẍ":"X","Ⓨ":"Y","Ｙ":"Y","Ỳ":"Y","Ý":"Y","Ŷ":"Y","Ỹ":"Y","Ȳ":"Y","Ẏ":"Y","Ÿ":"Y","Ỷ":"Y","Ỵ":"Y","Ƴ":"Y","Ɏ":"Y","Ỿ":"Y","Ⓩ":"Z","Ｚ":"Z","Ź":"Z","Ẑ":"Z","Ż":"Z","Ž":"Z","Ẓ":"Z","Ẕ":"Z","Ƶ":"Z","Ȥ":"Z","Ɀ":"Z","Ⱬ":"Z","Ꝣ":"Z","ⓐ":"a","ａ":"a","ẚ":"a","à":"a","á":"a","â":"a","ầ":"a","ấ":"a","ẫ":"a","ẩ":"a","ã":"a","ā":"a","ă":"a","ằ":"a","ắ":"a","ẵ":"a","ẳ":"a","ȧ":"a","ǡ":"a","ä":"a","ǟ":"a","ả":"a","å":"a","ǻ":"a","ǎ":"a","ȁ":"a","ȃ":"a","ạ":"a","ậ":"a","ặ":"a","ḁ":"a","ą":"a","ⱥ":"a","ɐ":"a","ɑ":"a","ꜳ":"aa","æ":"ae","ǽ":"ae","ǣ":"ae","ꜵ":"ao","ꜷ":"au","ꜹ":"av","ꜻ":"av","ꜽ":"ay","ⓑ":"b","ｂ":"b","ḃ":"b","ḅ":"b","ḇ":"b","ƀ":"b","ƃ":"b","ɓ":"b","Ƃ":"b","ⓒ":"c","ć":"c","ĉ":"c","ċ":"c","č":"c","ç":"c","ḉ":"c","ƈ":"c","ȼ":"c","ꜿ":"c","ↄ":"c","C":"c","Ć":"c","Ĉ":"c","Ċ":"c","Č":"c","Ƈ":"c","Ȼ":"c","ⓓ":"d","ｄ":"d","ḋ":"d","ď":"d","ḍ":"d","ḑ":"d","ḓ":"d","ḏ":"d","đ":"d","ƌ":"d","ɖ":"d","ɗ":"d","Ƌ":"d","Ꮷ":"d","ԁ":"d","Ɦ":"d","ð":"dh","ǳ":"dz","ǆ":"dz","ⓔ":"e","ｅ":"e","è":"e","é":"e","ê":"e","ề":"e","ế":"e","ễ":"e","ể":"e","ẽ":"e","ē":"e","ḕ":"e","ḗ":"e","ĕ":"e","ė":"e","ë":"e","ẻ":"e","ě":"e","ȅ":"e","ȇ":"e","ẹ":"e","ệ":"e","ȩ":"e","ḝ":"e","ę":"e","ḙ":"e","ḛ":"e","ɇ":"e","ǝ":"e","ⓕ":"f","ｆ":"f","ḟ":"f","ƒ":"f","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ⓖ":"g","ｇ":"g","ǵ":"g","ĝ":"g","ḡ":"g","ğ":"g","ġ":"g","ǧ":"g","ģ":"g","ǥ":"g","ɠ":"g","ꞡ":"g","ꝿ":"g","ᵹ":"g","ⓗ":"h","ｈ":"h","ĥ":"h","ḣ":"h","ḧ":"h","ȟ":"h","ḥ":"h","ḩ":"h","ḫ":"h","ẖ":"h","ħ":"h","ⱨ":"h","ⱶ":"h","ɥ":"h","ƕ":"hv","ⓘ":"i","ｉ":"i","ì":"i","í":"i","î":"i","ĩ":"i","ī":"i","ĭ":"i","ï":"i","ḯ":"i","ỉ":"i","ǐ":"i","ȉ":"i","ȋ":"i","ị":"i","į":"i","ḭ":"i","ɨ":"i","ı":"i","ⓙ":"j","ｊ":"j","ĵ":"j","ǰ":"j","ɉ":"j","ⓚ":"k","ｋ":"k","ḱ":"k","ǩ":"k","ḳ":"k","ķ":"k","ḵ":"k","ƙ":"k","ⱪ":"k","ꝁ":"k","ꝃ":"k","ꝅ":"k","ꞣ":"k","ⓛ":"l","ｌ":"l","ŀ":"l","ĺ":"l","ľ":"l","ḷ":"l","ḹ":"l","ļ":"l","ḽ":"l","ḻ":"l","ſ":"l","ł":"l","ƚ":"l","ɫ":"l","ⱡ":"l","ꝉ":"l","ꞁ":"l","ꝇ":"l","ɭ":"l","ǉ":"lj","ⓜ":"m","ｍ":"m","ḿ":"m","ṁ":"m","ṃ":"m","ɱ":"m","ɯ":"m","ⓝ":"n","ｎ":"n","ǹ":"n","ń":"n","ñ":"n","ṅ":"n","ň":"n","ṇ":"n","ņ":"n","ṋ":"n","ṉ":"n","ƞ":"n","ɲ":"n","ŉ":"n","ꞑ":"n","ꞥ":"n","ԉ":"n","ǌ":"nj","ⓞ":"o","ｏ":"o","ò":"o","ó":"o","ô":"o","ồ":"o","ố":"o","ỗ":"o","ổ":"o","õ":"o","ṍ":"o","ȭ":"o","ṏ":"o","ō":"o","ṑ":"o","ṓ":"o","ŏ":"o","ȯ":"o","ȱ":"o","ö":"o","ȫ":"o","ỏ":"o","ő":"o","ǒ":"o","ȍ":"o","ȏ":"o","ơ":"o","ờ":"o","ớ":"o","ỡ":"o","ở":"o","ợ":"o","ọ":"o","ộ":"o","ǫ":"o","ǭ":"o","ø":"o","ǿ":"o","ꝋ":"o","ꝍ":"o","ɵ":"o","ɔ":"o","ᴑ":"o","œ":"oe","ƣ":"oi","ꝏ":"oo","ȣ":"ou","ⓟ":"p","ｐ":"p","ṕ":"p","ṗ":"p","ƥ":"p","ᵽ":"p","ꝑ":"p","ꝓ":"p","ꝕ":"p","ρ":"p","ⓠ":"q","ｑ":"q","ɋ":"q","ꝗ":"q","ꝙ":"q","ⓡ":"r","ｒ":"r","ŕ":"r","ṙ":"r","ř":"r","ȑ":"r","ȓ":"r","ṛ":"r","ṝ":"r","ŗ":"r","ṟ":"r","ɍ":"r","ɽ":"r","ꝛ":"r","ꞧ":"r","ꞃ":"r","ⓢ":"s","ｓ":"s","ś":"s","ṥ":"s","ŝ":"s","ṡ":"s","š":"s","ṧ":"s","ṣ":"s","ṩ":"s","ș":"s","ş":"s","ȿ":"s","ꞩ":"s","ꞅ":"s","ẛ":"s","ʂ":"s","ß":"ss","ⓣ":"t","ｔ":"t","ṫ":"t","ẗ":"t","ť":"t","ṭ":"t","ț":"t","ţ":"t","ṱ":"t","ṯ":"t","ŧ":"t","ƭ":"t","ʈ":"t","ⱦ":"t","ꞇ":"t","þ":"th","ꜩ":"tz","ⓤ":"u","ｕ":"u","ù":"u","ú":"u","û":"u","ũ":"u","ṹ":"u","ū":"u","ṻ":"u","ŭ":"u","ü":"u","ǜ":"u","ǘ":"u","ǖ":"u","ǚ":"u","ủ":"u","ů":"u","ű":"u","ǔ":"u","ȕ":"u","ȗ":"u","ư":"u","ừ":"u","ứ":"u","ữ":"u","ử":"u","ự":"u","ụ":"u","ṳ":"u","ų":"u","ṷ":"u","ṵ":"u","ʉ":"u","ⓥ":"v","ｖ":"v","ṽ":"v","ṿ":"v","ʋ":"v","ꝟ":"v","ʌ":"v","ꝡ":"vy","ⓦ":"w","ｗ":"w","ẁ":"w","ẃ":"w","ŵ":"w","ẇ":"w","ẅ":"w","ẘ":"w","ẉ":"w","ⱳ":"w","ⓧ":"x","ｘ":"x","ẋ":"x","ẍ":"x","ⓨ":"y","ｙ":"y","ỳ":"y","ý":"y","ŷ":"y","ỹ":"y","ȳ":"y","ẏ":"y","ÿ":"y","ỷ":"y","ẙ":"y","ỵ":"y","ƴ":"y","ɏ":"y","ỿ":"y","ⓩ":"z","ｚ":"z","ź":"z","ẑ":"z","ż":"z","ž":"z","ẓ":"z","ẕ":"z","ƶ":"z","ȥ":"z","ɀ":"z","ⱬ":"z","ꝣ":"z"}
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27435,7 +27466,7 @@ module.exports = function( str ) {
 
 
 
-},{"./latinize-map.json":34}],36:[function(require,module,exports){
+},{"./latinize-map.json":35}],37:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27495,7 +27526,7 @@ exports.occurrenceCount = function( str , subStr , overlap = false ) {
 } ;
 
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27642,7 +27673,7 @@ function naturalSort( a , b ) {
 module.exports = naturalSort ;
 
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27699,7 +27730,7 @@ exports.regexp.array2alternatives = function array2alternatives( array ) {
 
 
 
-},{"./escape.js":30}],39:[function(require,module,exports){
+},{"./escape.js":31}],40:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27792,7 +27823,7 @@ stringKit.installPolyfills = function installPolyfills() {
 //*/
 
 
-},{"./StringNumber.js":27,"./ansi.js":28,"./camel.js":29,"./escape.js":30,"./format.js":31,"./fuzzy.js":32,"./inspect.js":33,"./latinize.js":35,"./misc.js":36,"./naturalSort.js":37,"./regexp.js":38,"./toTitleCase.js":40,"./unicode.js":42,"./wordwrap.js":43}],40:[function(require,module,exports){
+},{"./StringNumber.js":28,"./ansi.js":29,"./camel.js":30,"./escape.js":31,"./format.js":32,"./fuzzy.js":33,"./inspect.js":34,"./latinize.js":36,"./misc.js":37,"./naturalSort.js":38,"./regexp.js":39,"./toTitleCase.js":41,"./unicode.js":43,"./wordwrap.js":44}],41:[function(require,module,exports){
 /*
 	String Kit
 
@@ -27881,10 +27912,10 @@ module.exports = ( str , options = DEFAULT_OPTIONS ) => {
 } ;
 
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 module.exports=[{"s":9728,"e":9747,"w":1},{"s":9748,"e":9749,"w":2},{"s":9750,"e":9799,"w":1},{"s":9800,"e":9811,"w":2},{"s":9812,"e":9854,"w":1},{"s":9855,"e":9855,"w":2},{"s":9856,"e":9874,"w":1},{"s":9875,"e":9875,"w":2},{"s":9876,"e":9888,"w":1},{"s":9889,"e":9889,"w":2},{"s":9890,"e":9897,"w":1},{"s":9898,"e":9899,"w":2},{"s":9900,"e":9916,"w":1},{"s":9917,"e":9918,"w":2},{"s":9919,"e":9923,"w":1},{"s":9924,"e":9925,"w":2},{"s":9926,"e":9933,"w":1},{"s":9934,"e":9934,"w":2},{"s":9935,"e":9939,"w":1},{"s":9940,"e":9940,"w":2},{"s":9941,"e":9961,"w":1},{"s":9962,"e":9962,"w":2},{"s":9963,"e":9969,"w":1},{"s":9970,"e":9971,"w":2},{"s":9972,"e":9972,"w":1},{"s":9973,"e":9973,"w":2},{"s":9974,"e":9977,"w":1},{"s":9978,"e":9978,"w":2},{"s":9979,"e":9980,"w":1},{"s":9981,"e":9981,"w":2},{"s":9982,"e":9983,"w":1},{"s":9984,"e":9988,"w":1},{"s":9989,"e":9989,"w":2},{"s":9990,"e":9993,"w":1},{"s":9994,"e":9995,"w":2},{"s":9996,"e":10023,"w":1},{"s":10024,"e":10024,"w":2},{"s":10025,"e":10059,"w":1},{"s":10060,"e":10060,"w":2},{"s":10061,"e":10061,"w":1},{"s":10062,"e":10062,"w":2},{"s":10063,"e":10066,"w":1},{"s":10067,"e":10069,"w":2},{"s":10070,"e":10070,"w":1},{"s":10071,"e":10071,"w":2},{"s":10072,"e":10132,"w":1},{"s":10133,"e":10135,"w":2},{"s":10136,"e":10159,"w":1},{"s":10160,"e":10160,"w":2},{"s":10161,"e":10174,"w":1},{"s":10175,"e":10175,"w":2},{"s":126976,"e":126979,"w":1},{"s":126980,"e":126980,"w":2},{"s":126981,"e":127182,"w":1},{"s":127183,"e":127183,"w":2},{"s":127184,"e":127373,"w":1},{"s":127374,"e":127374,"w":2},{"s":127375,"e":127376,"w":1},{"s":127377,"e":127386,"w":2},{"s":127387,"e":127487,"w":1},{"s":127744,"e":127776,"w":2},{"s":127777,"e":127788,"w":1},{"s":127789,"e":127797,"w":2},{"s":127798,"e":127798,"w":1},{"s":127799,"e":127868,"w":2},{"s":127869,"e":127869,"w":1},{"s":127870,"e":127891,"w":2},{"s":127892,"e":127903,"w":1},{"s":127904,"e":127946,"w":2},{"s":127947,"e":127950,"w":1},{"s":127951,"e":127955,"w":2},{"s":127956,"e":127967,"w":1},{"s":127968,"e":127984,"w":2},{"s":127985,"e":127987,"w":1},{"s":127988,"e":127988,"w":2},{"s":127989,"e":127991,"w":1},{"s":127992,"e":127994,"w":2},{"s":128000,"e":128062,"w":2},{"s":128063,"e":128063,"w":1},{"s":128064,"e":128064,"w":2},{"s":128065,"e":128065,"w":1},{"s":128066,"e":128252,"w":2},{"s":128253,"e":128254,"w":1},{"s":128255,"e":128317,"w":2},{"s":128318,"e":128330,"w":1},{"s":128331,"e":128334,"w":2},{"s":128335,"e":128335,"w":1},{"s":128336,"e":128359,"w":2},{"s":128360,"e":128377,"w":1},{"s":128378,"e":128378,"w":2},{"s":128379,"e":128404,"w":1},{"s":128405,"e":128406,"w":2},{"s":128407,"e":128419,"w":1},{"s":128420,"e":128420,"w":2},{"s":128421,"e":128506,"w":1},{"s":128507,"e":128591,"w":2},{"s":128592,"e":128639,"w":1},{"s":128640,"e":128709,"w":2},{"s":128710,"e":128715,"w":1},{"s":128716,"e":128716,"w":2},{"s":128717,"e":128719,"w":1},{"s":128720,"e":128722,"w":2},{"s":128723,"e":128724,"w":1},{"s":128725,"e":128727,"w":2},{"s":128728,"e":128746,"w":1},{"s":128747,"e":128748,"w":2},{"s":128749,"e":128755,"w":1},{"s":128756,"e":128764,"w":2},{"s":128765,"e":128991,"w":1},{"s":128992,"e":129003,"w":2},{"s":129004,"e":129291,"w":1},{"s":129292,"e":129338,"w":2},{"s":129339,"e":129339,"w":1},{"s":129340,"e":129349,"w":2},{"s":129350,"e":129350,"w":1},{"s":129351,"e":129400,"w":2},{"s":129401,"e":129401,"w":1},{"s":129402,"e":129483,"w":2},{"s":129484,"e":129484,"w":1},{"s":129485,"e":129535,"w":2},{"s":129536,"e":129647,"w":1},{"s":129648,"e":129652,"w":2},{"s":129653,"e":129655,"w":1},{"s":129656,"e":129658,"w":2},{"s":129659,"e":129663,"w":1},{"s":129664,"e":129670,"w":2},{"s":129671,"e":129679,"w":1},{"s":129680,"e":129704,"w":2},{"s":129705,"e":129711,"w":1},{"s":129712,"e":129718,"w":2},{"s":129719,"e":129727,"w":1},{"s":129728,"e":129730,"w":2},{"s":129731,"e":129743,"w":1},{"s":129744,"e":129750,"w":2},{"s":129751,"e":129791,"w":1}]
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 /*
 	String Kit
 
@@ -28232,7 +28263,7 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./unicode-emoji-width-ranges.json":41}],43:[function(require,module,exports){
+},{"./unicode-emoji-width-ranges.json":42}],44:[function(require,module,exports){
 /*
 	String Kit
 
@@ -28436,7 +28467,7 @@ module.exports = function wordwrap( str , options ) {
 } ;
 
 
-},{"./unicode.js":42}],44:[function(require,module,exports){
+},{"./unicode.js":43}],45:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
   "version": "0.5.0-alpha.2",
@@ -28447,7 +28478,8 @@ module.exports={
   },
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
-    "dom-kit": "^0.5.1",
+    "dom-kit": "^0.5.2",
+    "image-size": "^1.0.2",
     "opentype.js": "^1.3.4",
     "string-kit": "^0.17.10"
   },
@@ -28476,9 +28508,9 @@ module.exports={
   }
 }
 
-},{}],45:[function(require,module,exports){
-
 },{}],46:[function(require,module,exports){
+
+},{}],47:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -28630,7 +28662,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],47:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * The buffer module from node.js, for the browser.
@@ -30411,7 +30443,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":46,"buffer":47,"ieee754":48}],48:[function(require,module,exports){
+},{"base64-js":47,"buffer":48,"ieee754":49}],49:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -30498,7 +30530,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -30521,7 +30553,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -31054,7 +31086,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":51}],51:[function(require,module,exports){
+},{"_process":52}],52:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -31240,5 +31272,5 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[19])(19)
+},{}]},{},[20])(20)
 });
