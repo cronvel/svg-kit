@@ -2742,13 +2742,6 @@ const ASPECT = {
 	slice: 'cover'		// SVG uses "slice" while CSS uses "cover"
 } ;
 
-const SVG_PRESERVE_ASPECT_RATIO = {
-	stretch: 'none' ,
-	contain: 'xMidYmid meet' ,
-	// Doesn't seem to works for images
-	cover: 'xMidYmid slice'
-} ;
-
 
 
 VGImage.prototype.set = function( params ) {
@@ -2795,33 +2788,15 @@ VGImage.prototype.export = function( data = {} ) {
 	data.width = this.width ;
 	data.height = this.height ;
 	data.url = this.url ;
+	if ( this.aspect !== 'stretch' ) { data.aspect = this.aspect ; }
 
 	return data ;
 } ;
 
 
 
-Object.defineProperties( VGImage.prototype , {
-	svgTag: { get: function() { return this.clip || this.ninePatch ? 'g' : 'image' ; } } ,
-	isRenderingContainer: { get: function() { return this.clip || this.ninePatch ; } }
-} ) ;
-
-
-
-VGImage.prototype.svgAttributes = function( root = this ) {
-	if ( this.clip || this.ninePatch ) { return {} ; }
-
-	var attr = {
-		x: this.x ,
-		y: root.invertY ? - this.y - this.height : this.y ,
-		width: this.width ,
-		height: this.height ,
-		preserveAspectRatio: SVG_PRESERVE_ASPECT_RATIO[ this.aspect ] ,
-		href: this.url
-	} ;
-
-	return attr ;
-} ;
+VGImage.prototype.svgTag = 'g' ;
+VGImage.prototype.isRenderingContainer = true ;
 
 
 
@@ -2832,8 +2807,10 @@ VGImage.prototype.renderingContainerHookForSvgText = async function( root = this
 		// Also support clip
 		return this.renderSvgTextNinePatchImage( imageSize , root ) ;
 	}
-	else if ( this.clip ) {
-		return this.renderSvgTextClipImage( imageSize , {
+
+	if ( this.clip ) {
+		return this.renderSvgTextClipImage(
+			imageSize , {
 				sx: this.sourceX ,
 				sy: this.sourceY ,
 				sw: this.sourceWidth ,
@@ -2846,56 +2823,46 @@ VGImage.prototype.renderingContainerHookForSvgText = async function( root = this
 			root
 		) ;
 	}
-	else {
-		// Regular image (not clipped, not 9-patch) never reach this place right now
-		let str = '' ;
-		str += '<image' ;
-		str += ' x="' + this.x + '"' ;
-		str += ' y="' + ( root.invertY ? - this.y - this.height : this.y ) + '"' ;
-		str += ' width="' + this.width + '"' ;
-		str += ' height="' + this.height + '"' ;
-		str += ' preserveAspectRatio="' + SVG_PRESERVE_ASPECT_RATIO[ this.aspect ] + '"' ;
-		str += ' href="' + this.url + '"' ;
-		str += ' />' ;
 
-		return str ;
-	}
-
-	return elementList ;
+	// Regular image (not clipped, not 9-patch) never reach this place right now
+	let coords = this.getAspectCoords( imageSize ) ;
+	return this.renderSvgTextClipImage( imageSize , coords , root ) ;
 } ;
 
 
 
 const CLIP_EXTRA_SIZE = 0.5 ;
 
-VGImage.prototype.renderSvgTextClipImage = function( imageSize , coord , root , n = 0 ) {
+VGImage.prototype.renderSvgTextClipImage = function( imageSize , coords , root , n = 0 ) {
 	var str = '' ,
 		yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
-		scaleX = coord.dw / coord.sw ,
-		scaleY = coord.dh / coord.sh ;
+		scaleX = coords.dw / coords.sw ,
+		scaleY = coords.dh / coords.sh ;
 
-	// Nothing inside the <clipPath> is displayed
-	var clipPathId = this._id + '_clipPath_' + n ;
-	str += '<clipPath id="' + clipPathId + '">' ;
+	if ( ! coords.noClip ) {
+		// Nothing inside the <clipPath> is displayed
+		var clipPathId = this._id + '_clipPath_' + n ;
+		str += '<clipPath id="' + clipPathId + '">' ;
 
-	str += '<rect' ;
-	str += ' x="' + coord.dx + '"' ;
-	str += ' y="' + ( coord.dy + yOffset ) + '"' ;
-	// Clip have some issues when multiple clip are supposed to touch themselve,
-	// so we add an extra width/height to avoid white lines in-between
-	str += ' width="' + ( coord.dw + CLIP_EXTRA_SIZE ) + '"' ;
-	str += ' height="' + ( coord.dh + CLIP_EXTRA_SIZE ) + '"' ;
-	str += ' />' ;
+		str += '<rect' ;
+		str += ' x="' + coords.dx + '"' ;
+		str += ' y="' + ( coords.dy + yOffset ) + '"' ;
+		// Clip have some issues when multiple clip are supposed to touch themselve,
+		// so we add an extra width/height to avoid white lines in-between
+		str += ' width="' + ( coords.dw + CLIP_EXTRA_SIZE ) + '"' ;
+		str += ' height="' + ( coords.dh + CLIP_EXTRA_SIZE ) + '"' ;
+		str += ' />' ;
 
-	str += '</clipPath>' ;
+		str += '</clipPath>' ;
+	}
 
 	str += '<image' ;
-	str += ' x="' + ( coord.dx - coord.sx * scaleX ) + '"' ;
-	str += ' y="' + ( coord.dy - coord.sy * scaleY + yOffset ) + '"' ;
+	str += ' x="' + ( coords.dx - coords.sx * scaleX ) + '"' ;
+	str += ' y="' + ( coords.dy - coords.sy * scaleY + yOffset ) + '"' ;
 	str += ' width="' + ( imageSize.width * scaleX ) + '"' ;
 	str += ' height="' + ( imageSize.height * scaleY ) + '"' ;
 	str += ' preserveAspectRatio="none"' ;
-	str += ' clip-path="url(#' + clipPathId + ')"' ;
+	if ( ! coords.noClip ) { str += ' clip-path="url(#' + clipPathId + ')"' ; }
 	str += ' xlink:href="' + this.url + '"' ;
 	str += ' />' ;
 
@@ -2907,10 +2874,10 @@ VGImage.prototype.renderSvgTextClipImage = function( imageSize , coord , root , 
 VGImage.prototype.renderSvgTextNinePatchImage = function( imageSize , root ) {
 	var str = '' ,
 		n = 0 ,
-		coords = this.getNinePatchCoords( imageSize ) ;
+		coordsList = this.getNinePatchCoordsList( imageSize ) ;
 
-	for ( let coord of coords ) {
-		str += this.renderSvgTextClipImage( imageSize , coord , root , n ++ ) ;
+	for ( let coords of coordsList ) {
+		str += this.renderSvgTextClipImage( imageSize , coords , root , n ++ ) ;
 	}
 
 	return str ;
@@ -2928,7 +2895,8 @@ VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this 
 		this.renderSvgDomNinePatchImage( imageSize , elementList , root ) ;
 	}
 	else if ( this.clip ) {
-		this.renderSvgDomClipImage( imageSize , {
+		this.renderSvgDomClipImage(
+			imageSize , {
 				sx: this.sourceX ,
 				sy: this.sourceY ,
 				sw: this.sourceWidth ,
@@ -2942,17 +2910,8 @@ VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this 
 		) ;
 	}
 	else {
-		// Regular image (not clipped, not 9-patch) never reach this place right now
-		let $image = document.createElementNS( 'http://www.w3.org/2000/svg' , 'image' ) ;
-		dom.attr( $image , {
-			x: this.x ,
-			y: root.invertY ? - this.y - this.height : this.y ,
-			width: this.width ,
-			height: this.height ,
-			preserveAspectRatio: 'none' ,
-			href: this.url
-		} ) ;
-		elementList.push( $image ) ;
+		let coords = this.getAspectCoords( imageSize ) ;
+		this.renderSvgDomClipImage( imageSize , coords , elementList , root ) ;
 	}
 
 	return elementList ;
@@ -2960,38 +2919,45 @@ VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this 
 
 
 
-VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementList , root , n = 0 ) {
+VGImage.prototype.renderSvgDomClipImage = function( imageSize , coords , elementList , root , n = 0 ) {
 	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
-		scaleX = coord.dw / coord.sw ,
-		scaleY = coord.dh / coord.sh ;
+		scaleX = coords.dw / coords.sw ,
+		scaleY = coords.dh / coords.sh ;
 
-	// Nothing inside the <clipPath> is displayed
-	var $clipPath = document.createElementNS( 'http://www.w3.org/2000/svg' , 'clipPath' ) ;
-	var clipPathId = this._id + '_clipPath_' + n ;
-	dom.attr( $clipPath , { id: clipPathId } ) ;
-	elementList.push( $clipPath ) ;
+	if ( ! coords.noClip ) {
+		// Nothing inside the <clipPath> is displayed
+		var $clipPath = document.createElementNS( 'http://www.w3.org/2000/svg' , 'clipPath' ) ;
+		var clipPathId = this._id + '_clipPath_' + n ;
+		dom.attr( $clipPath , { id: clipPathId } ) ;
+		elementList.push( $clipPath ) ;
 
-	var $rect = document.createElementNS( 'http://www.w3.org/2000/svg' , 'rect' ) ;
-	dom.attr( $rect , {
-		x: coord.dx ,
-		y: coord.dy + yOffset ,
-		// Clip have some issues when multiple clip are supposed to touch themselves,
-		// so we add an extra width/height to avoid white lines in-between
-		width: coord.dw + CLIP_EXTRA_SIZE ,
-		height: coord.dh + CLIP_EXTRA_SIZE
-	} ) ;
-	$clipPath.appendChild( $rect ) ;
+		var $rect = document.createElementNS( 'http://www.w3.org/2000/svg' , 'rect' ) ;
+		dom.attr( $rect , {
+			x: coords.dx ,
+			y: coords.dy + yOffset ,
+			// Clip have some issues when multiple clip are supposed to touch themselves,
+			// so we add an extra width/height to avoid white lines in-between
+			width: coords.dw + CLIP_EXTRA_SIZE ,
+			height: coords.dh + CLIP_EXTRA_SIZE
+		} ) ;
+		$clipPath.appendChild( $rect ) ;
+	}
 
 	var $image = document.createElementNS( 'http://www.w3.org/2000/svg' , 'image' ) ;
 	dom.attr( $image , {
-		x: coord.dx - coord.sx * scaleX ,
-		y: coord.dy - coord.sy * scaleY + yOffset ,
+		x: coords.dx - coords.sx * scaleX ,
+		y: coords.dy - coords.sy * scaleY + yOffset ,
 		width: imageSize.width * scaleX ,
 		height: imageSize.height * scaleY ,
-		preserveAspectRatio: SVG_PRESERVE_ASPECT_RATIO[ this.aspect ] ,
-		'clip-path': 'url(#' + clipPathId + ')' ,
+		preserveAspectRatio: 'none' ,
+		//'clip-path': 'url(#' + clipPathId + ')' ,
 		href: this.url
 	} ) ;
+
+	if ( ! coords.noClip ) {
+		dom.attr( $image , { 'clip-path': 'url(#' + clipPathId + ')' } ) ;
+	}
+
 	elementList.push( $image ) ;
 } ;
 
@@ -2999,10 +2965,10 @@ VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementL
 
 VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList , root ) {
 	var n = 0 ,
-		coords = this.getNinePatchCoords( imageSize ) ;
+		coordsList = this.getNinePatchCoordsList( imageSize ) ;
 
-	for ( let coord of coords ) {
-		this.renderSvgDomClipImage( imageSize , coord , elementList , root , n ++ ) ;
+	for ( let coords of coordsList ) {
+		this.renderSvgDomClipImage( imageSize , coords , elementList , root , n ++ ) ;
 	}
 } ;
 
@@ -3024,8 +2990,7 @@ VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {}
 				this.renderCanvasClipImage( canvasCtx , image , root ) ;
 			}
 			else {
-				let yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
-				canvasCtx.drawImage( image , this.x , this.y + yOffset , this.width , this.height ) ;
+				this.renderCanvasAspectImage( canvasCtx , image , root ) ;
 			}
 
 			resolve() ;
@@ -3033,6 +2998,19 @@ VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {}
 	} ) ;
 
 	canvasCtx.restore() ;
+} ;
+
+
+
+VGImage.prototype.renderCanvasAspectImage = function( canvasCtx , image , root ) {
+	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
+		coords = this.getAspectCoords( { width: image.naturalWidth , height: image.naturalHeight } ) ;
+
+	canvasCtx.drawImage(
+		image ,
+		coords.sx , coords.sy , coords.sw , coords.sh ,
+		coords.dx , coords.dy + yOffset , coords.dw , coords.dh
+	) ;
 } ;
 
 
@@ -3051,22 +3029,72 @@ VGImage.prototype.renderCanvasClipImage = function( canvasCtx , image , root ) {
 
 VGImage.prototype.renderCanvasNinePatchImage = function( canvasCtx , image , root ) {
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
-		coords = this.getNinePatchCoords( { width: image.naturalWidth , height: image.naturalHeight } ) ;
+		coordsList = this.getNinePatchCoordsList( { width: image.naturalWidth , height: image.naturalHeight } ) ;
 
-	for ( let coord of coords ) {
+	for ( let coords of coordsList ) {
 		canvasCtx.drawImage(
 			image ,
-			coord.sx , coord.sy , coord.sw , coord.sh ,
-			coord.dx , coord.dy + yOffset , coord.dw , coord.dh
+			coords.sx , coords.sy , coords.sw , coords.sh ,
+			coords.dx , coords.dy + yOffset , coords.dw , coords.dh
 		) ;
 	}
 } ;
 
 
 
-VGImage.prototype.getNinePatchCoords = function( imageSize ) {
+VGImage.prototype.getAspectCoords = function( imageSize ) {
+	var sx = 0 ,
+		sy = 0 ,
+		sw = imageSize.width ,
+		sh = imageSize.height ,
+		dx = this.x ,
+		dy = this.y ,
+		dw = this.width ,
+		dh = this.height ,
+		noClip = true ,
+		ratio = this.width / this.height ,
+		sourceRatio = sw / sh ;
+
+	if ( ratio !== sourceRatio ) {
+		if ( this.aspect === 'contain' ) {
+			if ( ratio > sourceRatio ) {
+				// The wanted viewport is wider than the source
+				let newDw = dh * sourceRatio ;
+				dx += Math.round( ( dw - newDw ) / 2 ) ;
+				dw = newDw ;
+			}
+			else {
+				// The wanted viewport is taller than the source
+				let newDh = dw / sourceRatio ;
+				dy += Math.round( ( dh - newDh ) / 2 ) ;
+				dh = newDh ;
+			}
+		}
+		else if ( this.aspect === 'cover' ) {
+			noClip = false ;
+			if ( ratio > sourceRatio ) {
+				// The wanted viewport is wider than the source
+				let newSh = sw / ratio ;
+				sy += Math.round( ( sh - newSh ) / 2 ) ;
+				sh = newSh ;
+			}
+			else {
+				// The wanted viewport is taller than the source
+				let newSw = sh * ratio ;
+				sx += Math.round( ( sw - newSw ) / 2 ) ;
+				sw = newSw ;
+			}
+		}
+	}
+
+	return { sx , sy , sw , sh , dx , dy , dw , dh , noClip } ;	// eslint-disable-line object-curly-newline
+} ;
+
+
+
+VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 	var sourceX , sourceY , sourceWidth , sourceHeight ,
-		coords = [] ;
+		coordsList = [] ;
 
 	if ( this.clip ) {
 		sourceX = this.sourceX ;
@@ -3093,7 +3121,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 
 	// The 4 corners
 
-	coords.push( {
+	coordsList.push( {
 		// top-left
 		sx: sourceX ,
 		sy: sourceY ,
@@ -3105,7 +3133,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: topHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// top-right
 		sx: sourceX + leftWidth + centerWidth ,
 		sy: sourceY ,
@@ -3117,7 +3145,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: topHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// bottom-left
 		sx: sourceX ,
 		sy: sourceY + topHeight + centerHeight ,
@@ -3129,7 +3157,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: bottomHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// bottom-right
 		sx: sourceX + leftWidth + centerWidth ,
 		sy: sourceY + topHeight + centerHeight ,
@@ -3144,7 +3172,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 
 	// The 4 sides
 
-	coords.push( {
+	coordsList.push( {
 		// left
 		sx: sourceX ,
 		sy: sourceY + topHeight ,
@@ -3156,7 +3184,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: destCenterHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// right
 		sx: sourceX + leftWidth + centerWidth ,
 		sy: sourceY + topHeight ,
@@ -3168,7 +3196,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: destCenterHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// top
 		sx: sourceX + leftWidth ,
 		sy: sourceY ,
@@ -3180,7 +3208,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: topHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// bottom
 		sx: sourceX + leftWidth ,
 		sy: sourceY + topHeight + centerHeight ,
@@ -3192,7 +3220,7 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: bottomHeight
 	} ) ;
 
-	coords.push( {
+	coordsList.push( {
 		// center
 		sx: sourceX + leftWidth ,
 		sy: sourceY + topHeight ,
@@ -3204,8 +3232,8 @@ VGImage.prototype.getNinePatchCoords = function( imageSize ) {
 		dh: destCenterHeight
 	} ) ;
 
-	console.warn( "coords:" , coords ) ;
-	return coords ;
+	console.warn( "coordsList:" , coordsList ) ;
+	return coordsList ;
 } ;
 
 
