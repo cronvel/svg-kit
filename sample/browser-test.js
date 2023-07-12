@@ -39,6 +39,32 @@ async function test() {
 	} ) ;
 	vg.addEntity( vgImage ) ;
 
+	var vgImage2 = new svgKit.VGImage( {
+		x: 350 ,
+		y: 10 ,
+		width: 200 ,
+		height: 50 ,
+		aspect: 'cover' ,
+		//aspect: 'contain' ,
+		url: './smiley.png'
+	} ) ;
+	vg.addEntity( vgImage2 ) ;
+
+	//*
+	var vgImage2Rect = new svgKit.VGRect( {
+		x: 350 ,
+		y: 10 ,
+		width: 200 ,
+		height: 50 ,
+		style: {
+			fill: 'none' ,
+			stroke: '#000' ,
+			strokeWidth: 0.5
+		}
+	} ) ;
+	vg.addEntity( vgImage2Rect ) ;
+	//*/
+
 	var vg9pImage = new svgKit.VGImage( {
 		x: 200 ,
 		y: 120 ,

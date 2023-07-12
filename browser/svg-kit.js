@@ -2703,6 +2703,9 @@ function VGImage( params ) {
 	this.height = 0 ;
 	this.url = null ;
 
+	// Only for non-clip/non-9-patch
+	this.aspect = 'stretch' ;
+
 	// Clip
 	this.sourceX = null ;
 	this.sourceY = null ;
@@ -2729,6 +2732,25 @@ VGImage.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
 
 
 
+const ASPECT = {
+	stretch: 'stretch' ,
+	preserve: 'contain' ,
+	contain: 'contain' ,
+	meet: 'contain' ,	// SVG uses "meet" while CSS uses "contain"
+	// Doesn't seem to works for images
+	cover: 'cover' ,
+	slice: 'cover'		// SVG uses "slice" while CSS uses "cover"
+} ;
+
+const SVG_PRESERVE_ASPECT_RATIO = {
+	stretch: 'none' ,
+	contain: 'xMidYmid meet' ,
+	// Doesn't seem to works for images
+	cover: 'xMidYmid slice'
+} ;
+
+
+
 VGImage.prototype.set = function( params ) {
 	VGEntity.prototype.set.call( this , params ) ;
 
@@ -2737,6 +2759,8 @@ VGImage.prototype.set = function( params ) {
 	if ( params.width !== undefined ) { this.width = params.width ; }
 	if ( params.height !== undefined ) { this.height = params.height ; }
 	if ( params.url && typeof params.url === 'string' ) { this.url = params.url ; }
+
+	if ( params.aspect !== undefined ) { this.aspect = ASPECT[ params.aspect ] || 'stretch' ; }
 
 	let clipParams = false ;
 	if ( params.sourceX !== undefined ) { this.sourceX = params.sourceX ; clipParams = true ; }
@@ -2792,7 +2816,7 @@ VGImage.prototype.svgAttributes = function( root = this ) {
 		y: root.invertY ? - this.y - this.height : this.y ,
 		width: this.width ,
 		height: this.height ,
-		preserveAspectRatio: "none" ,
+		preserveAspectRatio: SVG_PRESERVE_ASPECT_RATIO[ this.aspect ] ,
 		href: this.url
 	} ;
 
@@ -2830,7 +2854,7 @@ VGImage.prototype.renderingContainerHookForSvgText = async function( root = this
 		str += ' y="' + ( root.invertY ? - this.y - this.height : this.y ) + '"' ;
 		str += ' width="' + this.width + '"' ;
 		str += ' height="' + this.height + '"' ;
-		str += ' preserveAspectRatio="none"' ;
+		str += ' preserveAspectRatio="' + SVG_PRESERVE_ASPECT_RATIO[ this.aspect ] + '"' ;
 		str += ' href="' + this.url + '"' ;
 		str += ' />' ;
 
@@ -2964,7 +2988,7 @@ VGImage.prototype.renderSvgDomClipImage = function( imageSize , coord , elementL
 		y: coord.dy - coord.sy * scaleY + yOffset ,
 		width: imageSize.width * scaleX ,
 		height: imageSize.height * scaleY ,
-		preserveAspectRatio: 'none' ,
+		preserveAspectRatio: SVG_PRESERVE_ASPECT_RATIO[ this.aspect ] ,
 		'clip-path': 'url(#' + clipPathId + ')' ,
 		href: this.url
 	} ) ;
