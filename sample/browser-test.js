@@ -65,6 +65,20 @@ async function test() {
 	vg.addEntity( vgImage2 ) ;
 	vg.addEntity( vgImage2Rect ) ;
 
+	const addClip = true ;
+	if ( addClip ) {
+		var vgClip = new svgKit.VGClip() ;
+		vg.addEntity( vgClip ) ;
+
+		let vgClipper = new svgKit.VGRect( {
+			x: 180 ,
+			y: 180 ,
+			width: 160 ,
+			height: 40
+		} ) ;
+		vgClip.addClippingEntity( vgClipper ) ;
+	}
+
 	var vg9pImage = new svgKit.VGImage( {
 		x: 200 ,
 		y: 120 ,
@@ -76,7 +90,12 @@ async function test() {
 		sourceBottomHeight: 70 ,
 		url: './9p.png'
 	} ) ;
-	vg.addEntity( vg9pImage ) ;
+	if ( addClip ) {
+		vgClip.addEntity( vg9pImage ) ;
+	}
+	else {
+		vg.addEntity( vg9pImage ) ;
+	}
 
 	var vgText = new svgKit.VGText( {
 		text: 'Text!' ,
