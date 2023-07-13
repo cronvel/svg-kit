@@ -29,6 +29,18 @@ async function test() {
 	} ) ;
 	vg.addEntity( vgRect ) ;
 
+	var vgEllipse = new svgKit.VGEllipse( {
+		x: 600 ,
+		y: 420 ,
+		rx: 80 ,
+		ry: 60 ,
+		style: {
+			fill: '#7d9' ,
+			stroke: '#000'
+		}
+	} ) ;
+	vg.addEntity( vgEllipse ) ;
+
 	var vgImage = new svgKit.VGImage( {
 		x: 200 ,
 		y: 10 ,
@@ -70,13 +82,21 @@ async function test() {
 		var vgClip = new svgKit.VGClip() ;
 		vg.addEntity( vgClip ) ;
 
-		let vgClipper = new svgKit.VGRect( {
-			x: 180 ,
-			y: 180 ,
-			width: 160 ,
-			height: 40
+		let vgClipper = new svgKit.VGEllipse( {
+			x: 375 ,
+			y: 245 ,
+			//rx: 175 , ry: 125
+			rx: 160 , ry: 110
 		} ) ;
 		vgClip.addClippingEntity( vgClipper ) ;
+
+		let vgClipper2 = new svgKit.VGRect( {
+			x: 200 ,
+			y: 300 ,
+			width: 350 ,
+			height: 80 ,
+		} ) ;
+		vgClip.addClippingEntity( vgClipper2 ) ;
 	}
 
 	var vg9pImage = new svgKit.VGImage( {

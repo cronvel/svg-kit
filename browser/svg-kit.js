@@ -629,11 +629,17 @@ VGEllipse.prototype.svgAttributes = function( root = this ) {
 VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 
-	canvasCtx.save() ;
-	canvasCtx.beginPath() ;
-	canvasCtx.ellipse( this.x , this.y + yOffset , this.rx , this.ry ) ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
-	canvasCtx.restore() ;
+	if ( ! options.clipMode ) {
+		canvasCtx.save() ;
+		canvasCtx.beginPath() ;
+	}
+
+	canvasCtx.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
+
+	if ( ! options.clipMode ) {
+		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+		canvasCtx.restore() ;
+	}
 } ;
 
 
@@ -813,6 +819,8 @@ VGEntity.prototype.importMorphLog = function( log ) {
 // Use the preserveUpperCase option, cause the value can be in camelCased already
 VGEntity.prototype.toCamelCase = value => camel.toCamelCase( value , true ) ;
 
+
+
 VGEntity.prototype.escape = function( value ) {
 	if ( typeof value === 'object' ) { return null ; }
 	if ( typeof value !== 'string' ) { return value ; }
@@ -821,11 +829,60 @@ VGEntity.prototype.escape = function( value ) {
 
 
 
+VGEntity.prototype.attrToString = function( attr , prefix = '' , addInitialSpace = false ) {
+	var str = '' ;
+
+	for ( let key in attr ) {
+		if ( addInitialSpace || str ) { str += ' ' ; }
+		str += prefix + this.escape( key ) + '="' + this.escape( attr[ key ] ) + '"' ;
+	}
+
+	return str ;
+} ;
+
+
+
+const STYLE_PROPERTY_UNIT = {
+	fontSize: 'px'
+} ;
+
+
+
+VGEntity.prototype.styleToString = function( style , addInitialSpace = false ) {
+	var str = '' ;
+
+	for ( let key in style ) {
+		// Key is in camelCase, but should use dash
+		let v = style[ key ] === null ? '' : style[ key ] ;
+		if ( typeof v === 'number' && STYLE_PROPERTY_UNIT[ key ] ) { v = '' + v + STYLE_PROPERTY_UNIT[ key ] ; }
+		str += this.escape( camel.camelCaseToDash( key ) ) + ':' + this.escape( v ) + ';' ;
+	}
+
+	if ( str ) {
+		str = ( addInitialSpace ? ' ' : '' ) + 'style="' + str + '"' ;
+	}
+
+	return str ;
+} ;
+
+
+
+VGEntity.prototype.domStyle = function( $element , style ) {
+	for ( let key in this.style ) {
+		// Key is already in camelCase
+		let v = style[ key ] === null ? '' : style[ key ] ;
+		if ( typeof v === 'number' && STYLE_PROPERTY_UNIT[ key ] ) { v = '' + v + STYLE_PROPERTY_UNIT[ key ] ; }
+		$element.style[ key ] = v ;
+	}
+} ;
+
+
+
 // Render the Vector Graphic as a text SVG
 VGEntity.prototype.renderSvgText = async function( root = this ) {
-	var key , rule , attr , str = '' , textNodeStr = '' , styleStr = '' ;
-
-	attr = this.svgAttributes( root ) ;
+	var str = '' ,
+		textNodeStr = '' ,
+		attr = this.svgAttributes( root ) ;
 
 	str += '<' + this.svgTag ;
 
@@ -845,24 +902,9 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 		str += '"' ;
 	}
 
-	for ( key in attr ) {
-		str += ' ' + key + '="' + this.escape( attr[ key ] ) + '"' ;
-	}
-
-	if ( this.data ) {
-		for ( key in this.data ) {
-			str += ' data-' + this.escape( key ) + '="' + this.escape( this.data[ key ] ) + '"' ;
-		}
-	}
-
-	for ( key in this.style ) {
-		// Key is in camelCase, but should use dash
-		let v = this.style[ key ] === null ? '' : this.style[ key ] ;
-		if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
-		styleStr += this.escape( camel.camelCaseToDash( key ) ) + ':' + this.escape( v ) + ';' ;
-	}
-
-	if ( styleStr ) { str += ' style="' + styleStr + '"' ; }
+	str += this.attrToString( attr , undefined , true ) ;
+	if ( this.data ) { str += this.attrToString( this.data , 'data-' , true ) ; }
+	str += this.styleToString( this.style , true ) ;
 
 	if ( this.svgTextNode ) { textNodeStr = this.svgTextNode() ; }
 
@@ -879,9 +921,9 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 	if ( this.css && this.css.length ) {
 		str += '<style>\n' ;
 
-		for ( rule of this.css ) {
+		for ( let rule of this.css ) {
 			str += rule.select + ' {\n' ;
-			for ( key in rule.style ) {
+			for ( let key in rule.style ) {
 				let v = rule.style[ key ] === null ? '' : rule.style[ key ] ;
 				if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
 				str += '    ' + this.escape( camel.camelCaseToDash( key ) ) + ': ' + this.escape( v ) + ';\n' ;
@@ -898,7 +940,32 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 		str += await this.renderingContainerHookForSvgText( root ) ;
 	}
 
-	if ( this.isContainer && this.entities ) {
+	if ( this.supportClippingEntities ) {
+		str += '<' + this.svgClippingGroupTag ;
+		str += this.attrToString( this.svgClippingGroupAttributes( root ) , undefined , true ) ;
+		str += '>' ;
+
+		if ( this.clippingEntities?.length ) {
+			for ( let clippingEntity of this.clippingEntities ) {
+				str += await clippingEntity.renderSvgText( root ) ;
+			}
+		}
+
+		str += '</' + this.svgClippingGroupTag + '>' ;
+
+		str += '<' + this.svgContentGroupTag ;
+		str += this.attrToString( this.svgContentGroupAttributes( root ) , undefined , true ) ;
+		str += '>' ;
+
+		if ( this.isContainer && this.entities?.length ) {
+			for ( let entity of this.entities ) {
+				str += await entity.renderSvgText( root ) ;
+			}
+		}
+
+		str += '</' + this.svgContentGroupTag + '>' ;
+	}
+	else if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
 			str += await entity.renderSvgText( root ) ;
 		}
@@ -914,8 +981,7 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 
 // Render the Vector Graphic inside a browser, as DOM SVG
 VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
-	var key , rule , cssStr ,
-		attr = this.svgAttributes( root ) ;
+	var attr = this.svgAttributes( root ) ;
 
 	this.$element = document.createElementNS( this.NS , options.overrideTag || this.svgTag ) ;
 
@@ -930,13 +996,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 
 	dom.attr( this.$element , attr ) ;
 	if ( this.data ) { dom.attr( this.$element , this.data , 'data-' ) ; }
-
-	for ( key in this.style ) {
-		// Key is already in camelCase
-		let v = this.style[ key ] === null ? '' : this.style[ key ] ;
-		if ( key === 'fontSize' && typeof v === 'number' ) { v = '' + v + 'px' ; }
-		this.$element.style[ key ] = v ;
-	}
+	this.domStyle( this.$element , this.style ) ;
 
 	if ( this.svgTextNode ) {
 		this.$element.appendChild( document.createTextNode( this.svgTextNode() ) ) ;
@@ -949,12 +1009,12 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 		this.$style = document.createElementNS( this.NS , 'style' ) ;
 		//this.$style = document.createElement( 'style' ) ;
 
-		cssStr = '' ;
+		let cssStr = '' ;
 
-		for ( rule of this.css ) {
+		for ( let rule of this.css ) {
 			cssStr += rule.select + ' {\n' ;
 
-			for ( key in rule.style ) {
+			for ( let key in rule.style ) {
 				// Key is in camelCase, but should use dash
 				cssStr += this.escape( camel.camelCaseToDash( key ) ) + ': ' + this.escape( rule.style[ key ] ) + ';\n' ;
 			}
@@ -1007,7 +1067,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 			this.$element.appendChild( await entity.renderSvgDom( undefined , root ) ) ;
 		}
 	}
-	
+
 	return this.$element ;
 } ;
 
@@ -1021,11 +1081,28 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , roo
 		await this.renderHookForCanvas( canvasCtx , options , root ) ;
 	}
 
-	if ( ! this.isContainer ) { return ; }
+	if ( this.isContainer && this.entities?.length ) {
+		if ( this.supportClippingEntities && this.clippingEntities?.length ) {
+			// We have to save context because canvasCtx.clip() is not reversible
+			canvasCtx.save() ;
+			canvasCtx.beginPath() ;
 
-	if ( this.isContainer && this.entities ) {
-		for ( let entity of this.entities ) {
-			await entity.renderCanvas( canvasCtx , options , root ) ;
+			for ( let clippingEntity of this.clippingEntities ) {
+				await clippingEntity.renderCanvas( canvasCtx , { clipMode: true } , root ) ;
+			}
+
+			canvasCtx.clip() ;
+
+			for ( let entity of this.entities ) {
+				await entity.renderCanvas( canvasCtx , options , root ) ;
+			}
+
+			canvasCtx.restore() ;
+		}
+		else {
+			for ( let entity of this.entities ) {
+				await entity.renderCanvas( canvasCtx , options , root ) ;
+			}
 		}
 	}
 } ;
@@ -3495,10 +3572,17 @@ VGPath.prototype.toD = function( root = this ) {
 
 
 VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
-	canvasCtx.save() ;
-	canvasCtx.beginPath() ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD() ) ) ;
-	canvasCtx.restore() ;
+	if ( options.clipMode ) {
+		// /!\ This does not stack, instead of creating a union-clip, it will create an intersect-clip
+		// But there is no way to add a path to the canvas state ATM...
+		canvasCtx.clip( new Path2D( this.toD() ) ) ;
+	}
+	else {
+		canvasCtx.save() ;
+		canvasCtx.beginPath() ;
+		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD() ) ) ;
+		canvasCtx.restore() ;
+	}
 } ;
 
 
@@ -4191,11 +4275,17 @@ VGRect.prototype.svgAttributes = function( root = this ) {
 VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
-	canvasCtx.save() ;
-	canvasCtx.beginPath() ;
+	if ( ! options.clipMode ) {
+		canvasCtx.save() ;
+		canvasCtx.beginPath() ;
+	}
+
 	canvasCtx.rect( this.x , this.y + yOffset , this.width , this.height ) ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
-	canvasCtx.restore() ;
+	
+	if ( ! options.clipMode ) {
+		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+		canvasCtx.restore() ;
+	}
 } ;
 
 
