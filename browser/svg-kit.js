@@ -629,17 +629,18 @@ VGEllipse.prototype.svgAttributes = function( root = this ) {
 VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 
-	if ( ! options.clipMode ) {
-		canvasCtx.save() ;
-		canvasCtx.beginPath() ;
-	}
-
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
 	canvasCtx.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+	canvasCtx.restore() ;
+} ;
 
-	if ( ! options.clipMode ) {
-		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
-		canvasCtx.restore() ;
-	}
+
+
+VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , root = this ) {
+	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
+	path2D.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
 } ;
 
 
@@ -879,9 +880,15 @@ VGEntity.prototype.domStyle = function( $element , style ) {
 
 
 // Render the Vector Graphic as a text SVG
-VGEntity.prototype.renderSvgText = async function( root = this ) {
-	var str = '' ,
-		textNodeStr = '' ,
+VGEntity.prototype.renderSvgText = async function( options = {} , root = this ) {
+	var str = '' ;
+
+	if ( options.insideClipPath && this.isRenderingContainer && this.renderingContainerHookForSvgText ) {
+		str += await this.renderingContainerHookForSvgText( root ) ;
+		return str ;
+	}
+
+	var textNodeStr = '' ,
 		attr = this.svgAttributes( root ) ;
 
 	str += '<' + this.svgTag ;
@@ -947,7 +954,7 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 
 		if ( this.clippingEntities?.length ) {
 			for ( let clippingEntity of this.clippingEntities ) {
-				str += await clippingEntity.renderSvgText( root ) ;
+				str += await clippingEntity.renderSvgText( { insideClipPath: true } , root ) ;
 			}
 		}
 
@@ -959,7 +966,7 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 
 		if ( this.isContainer && this.entities?.length ) {
 			for ( let entity of this.entities ) {
-				str += await entity.renderSvgText( root ) ;
+				str += await entity.renderSvgText( options , root ) ;
 			}
 		}
 
@@ -967,7 +974,7 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 	}
 	else if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
-			str += await entity.renderSvgText( root ) ;
+			str += await entity.renderSvgText( options , root ) ;
 		}
 	}
 
@@ -981,7 +988,7 @@ VGEntity.prototype.renderSvgText = async function( root = this ) {
 
 // Render the Vector Graphic inside a browser, as DOM SVG
 VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
-	var attr = this.svgAttributes( root ) ;
+	let attr = this.svgAttributes( root ) ;
 
 	this.$element = document.createElementNS( this.NS , options.overrideTag || this.svgTag ) ;
 
@@ -1049,13 +1056,21 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 
 		if ( this.clippingEntities?.length ) {
 			for ( let clippingEntity of this.clippingEntities ) {
-				$clippingGroup.appendChild( await clippingEntity.renderSvgDom( undefined , root ) ) ;
+				let $child = await clippingEntity.renderSvgDom( options , root ) ;
+				// There is a bug in browser, they do not accept <g> inside <clipPath> (but Inkscape supports it),
+				// so we will append children of that group directly
+				if ( $child.tagName === 'g' ) {
+					while ( $child.firstChild ) { $clippingGroup.appendChild( $child.firstChild ) ; }
+				}
+				else {
+					$clippingGroup.appendChild( $child ) ;
+				}
 			}
 		}
 
 		if ( this.isContainer && this.entities?.length ) {
 			for ( let entity of this.entities ) {
-				$contentGroup.appendChild( await entity.renderSvgDom( undefined , root ) ) ;
+				$contentGroup.appendChild( await entity.renderSvgDom( options , root ) ) ;
 			}
 		}
 
@@ -1064,7 +1079,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 	}
 	else if ( this.isContainer && this.entities?.length ) {
 		for ( let entity of this.entities ) {
-			this.$element.appendChild( await entity.renderSvgDom( undefined , root ) ) ;
+			this.$element.appendChild( await entity.renderSvgDom( options , root ) ) ;
 		}
 	}
 
@@ -1085,13 +1100,13 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , roo
 		if ( this.supportClippingEntities && this.clippingEntities?.length ) {
 			// We have to save context because canvasCtx.clip() is not reversible
 			canvasCtx.save() ;
-			canvasCtx.beginPath() ;
+			let clipPath2D = new Path2D() ;
 
 			for ( let clippingEntity of this.clippingEntities ) {
-				await clippingEntity.renderCanvas( canvasCtx , { clipMode: true } , root ) ;
+				await clippingEntity.renderPath2D( clipPath2D , canvasCtx , options , root ) ;
 			}
 
-			canvasCtx.clip() ;
+			canvasCtx.clip( clipPath2D ) ;
 
 			for ( let entity of this.entities ) {
 				await entity.renderCanvas( canvasCtx , options , root ) ;
@@ -1103,6 +1118,20 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , roo
 			for ( let entity of this.entities ) {
 				await entity.renderCanvas( canvasCtx , options , root ) ;
 			}
+		}
+	}
+} ;
+
+
+
+VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options = {} , root = this ) {
+	if ( this.renderHookForPath2D ) {
+		await this.renderHookForPath2D( path2D , canvasCtx , options , root ) ;
+	}
+
+	if ( this.isContainer && this.entities?.length ) {
+		for ( let entity of this.entities ) {
+			await entity.renderPath2D( path2D , canvasCtx , options , root ) ;
 		}
 	}
 } ;
@@ -2513,7 +2542,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root 
 					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
 
-				console.error( "frameStyleStr:" , frameStyleStr , part.attr ) ;
+				//console.error( "frameStyleStr:" , frameStyleStr , part.attr ) ;
 				str += '<rect' ;
 				str += ' x="' + part.metrics.x + '"' ;
 				str += ' y="' + frameY + '"' ;
@@ -2618,7 +2647,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root =
 					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
 
-				console.error( "frameStyleStr:" , frameStyleStr , part.attr ) ;
+				//console.error( "frameStyleStr:" , frameStyleStr , part.attr ) ;
 				let $frame = document.createElementNS( this.NS , 'rect' ) ;
 				$frame.setAttribute( 'x' , part.metrics.x ) ;
 				$frame.setAttribute( 'y' , frameY ) ;
@@ -2745,8 +2774,8 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 
 			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
 			let pathData = path.toPathData() ;
-			let path2d = new Path2D( pathData ) ;
-			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2d ) ;
+			let path2D = new Path2D( pathData ) ;
+			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
@@ -2764,6 +2793,49 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 	}
 
 	canvasCtx.restore() ;
+} ;
+
+
+
+/*
+	This renderer does not support clipping the text, debugContainer, and frame.
+*/
+VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} , root = this ) {
+	if ( ! this.areLinesComputed ) { this.computeLines() ; }
+
+	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+
+	for ( let structuredTextLine of this.structuredTextLines ) {
+		for ( let part of structuredTextLine.parts ) {
+			let fontFamily = part.attr.getFontFamily( this.attr ) ,
+				fontSize = part.attr.getFontSize( this.attr ) ,
+				lineThickness ,
+				underline = part.attr.getUnderline( this.attr ) ,
+				lineThrough = part.attr.getLineThrough( this.attr ) ;
+
+			//console.error( "???" , fontFamily , fontSize , textStyle ) ;
+			let font = await fontLib.getFontAsync( fontFamily ) ;
+			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
+
+			if ( underline || lineThrough ) {
+				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
+			}
+
+			if ( underline ) {
+				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness + yOffset ;
+				path2D.rect( part.metrics.x , underlineY , part.metrics.width , lineThickness ) ;
+			}
+
+			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
+			let pathData = path.toPathData() ;
+			path2D.addPath( new Path2D( pathData ) ) ;
+
+			if ( lineThrough ) {
+				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
+				path2D.rect( part.metrics.x , lineThroughY , part.metrics.width , lineThickness ) ;
+			}
+		}
+	}
 } ;
 
 
@@ -3462,7 +3534,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 		dh: destCenterHeight
 	} ) ;
 
-	console.warn( "coordsList:" , coordsList ) ;
+	//console.warn( "coordsList:" , coordsList ) ;
 	return coordsList ;
 } ;
 
@@ -3572,17 +3644,16 @@ VGPath.prototype.toD = function( root = this ) {
 
 
 VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
-	if ( options.clipMode ) {
-		// /!\ This does not stack, instead of creating a union-clip, it will create an intersect-clip
-		// But there is no way to add a path to the canvas state ATM...
-		canvasCtx.clip( new Path2D( this.toD() ) ) ;
-	}
-	else {
-		canvasCtx.save() ;
-		canvasCtx.beginPath() ;
-		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD() ) ) ;
-		canvasCtx.restore() ;
-	}
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD( root ) ) ) ;
+	canvasCtx.restore() ;
+} ;
+
+
+
+VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , root = this ) {
+	path2D.addPath( new Path2D( this.toD( root ) ) ) ;
 } ;
 
 
@@ -4275,17 +4346,18 @@ VGRect.prototype.svgAttributes = function( root = this ) {
 VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
-	if ( ! options.clipMode ) {
-		canvasCtx.save() ;
-		canvasCtx.beginPath() ;
-	}
-
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
 	canvasCtx.rect( this.x , this.y + yOffset , this.width , this.height ) ;
-	
-	if ( ! options.clipMode ) {
-		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
-		canvasCtx.restore() ;
-	}
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+	canvasCtx.restore() ;
+} ;
+
+
+
+VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , root = this ) {
+	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+	path2D.rect( this.x , this.y + yOffset , this.width , this.height ) ;
 } ;
 
 

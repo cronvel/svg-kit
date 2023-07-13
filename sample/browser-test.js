@@ -29,6 +29,25 @@ async function test() {
 	} ) ;
 	vg.addEntity( vgRect ) ;
 
+	const addClipToEllipse = true ;
+	if ( addClipToEllipse ) {
+		var vgEllipseClipper = new svgKit.VGClip() ;
+		vg.addEntity( vgEllipseClipper ) ;
+
+		let vgClipper = new svgKit.VGFlowingText( {
+			x: 550 ,
+			y: 380 ,
+			width: 140 , height: 100 ,
+			clip: false ,
+			textWrapping: 'wordWrap' ,
+			attr: { fontSize: 30 } ,
+			structuredText: [
+				{ text: "Hello world!" }
+			]
+		} ) ;
+
+		vgEllipseClipper.addClippingEntity( vgClipper ) ;
+	}
 	var vgEllipse = new svgKit.VGEllipse( {
 		x: 600 ,
 		y: 420 ,
@@ -39,7 +58,12 @@ async function test() {
 			stroke: '#000'
 		}
 	} ) ;
-	vg.addEntity( vgEllipse ) ;
+	if ( addClipToEllipse ) {
+		vgEllipseClipper.addEntity( vgEllipse ) ;
+	}
+	else {
+		vg.addEntity( vgEllipse ) ;
+	}
 
 	var vgImage = new svgKit.VGImage( {
 		x: 200 ,
@@ -77,10 +101,10 @@ async function test() {
 	vg.addEntity( vgImage2 ) ;
 	vg.addEntity( vgImage2Rect ) ;
 
-	const addClip = true ;
-	if ( addClip ) {
-		var vgClip = new svgKit.VGClip() ;
-		vg.addEntity( vgClip ) ;
+	const addClipTo9p = true ;
+	if ( addClipTo9p ) {
+		var vg9pClipper = new svgKit.VGClip() ;
+		vg.addEntity( vg9pClipper ) ;
 
 		let vgClipper = new svgKit.VGEllipse( {
 			x: 375 ,
@@ -88,7 +112,6 @@ async function test() {
 			//rx: 175 , ry: 125
 			rx: 160 , ry: 110
 		} ) ;
-		vgClip.addClippingEntity( vgClipper ) ;
 
 		let vgClipper2 = new svgKit.VGRect( {
 			x: 200 ,
@@ -96,7 +119,31 @@ async function test() {
 			width: 350 ,
 			height: 80 ,
 		} ) ;
-		vgClip.addClippingEntity( vgClipper2 ) ;
+
+		let vgClipper3 = new svgKit.VGPath() ;
+		vgClipper3.moveTo( { x: 200 , y: 120 } ) ;
+		vgClipper3.lineTo( { x: 550 , y: 200 } ) ;
+		vgClipper3.lineTo( { x: 350 , y: 370 } ) ;
+		vgClipper3.close() ;
+
+		let vgClipper4 = new svgKit.VGFlowingText( {
+			x: 220 ,
+			y: 140 ,
+			width: 140 , height: 100 ,
+			clip: false ,
+			textWrapping: 'wordWrap' ,
+			attr: { fontSize: 30 } ,
+			structuredText: [
+				{ text: "Hello world!" }
+			]
+		} ) ;
+
+		/*
+		vg9pClipper.addClippingEntity( vgClipper ) ;
+		vg9pClipper.addClippingEntity( vgClipper2 ) ;
+		vg9pClipper.addClippingEntity( vgClipper3 ) ;
+		*/
+		vg9pClipper.addClippingEntity( vgClipper4 ) ;
 	}
 
 	var vg9pImage = new svgKit.VGImage( {
@@ -110,8 +157,8 @@ async function test() {
 		sourceBottomHeight: 70 ,
 		url: './9p.png'
 	} ) ;
-	if ( addClip ) {
-		vgClip.addEntity( vg9pImage ) ;
+	if ( addClipTo9p ) {
+		vg9pClipper.addEntity( vg9pImage ) ;
 	}
 	else {
 		vg.addEntity( vg9pImage ) ;
