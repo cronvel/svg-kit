@@ -187,12 +187,14 @@ async function test() {
 		attr: {
 			fontSize: 30 , color: '#777' ,
 			outline: true ,
+			frameCornerRadius: '0.2em'  ,
 			//outlineColor: '#afa' ,
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
-		//structuredText: [ { text: 'Hello ' } , { text: 'world!' } ]
-		structuredText: [
+		_text: "Hello my friend, stay awhile and listen..." ,
+		markupText: "^YHello^ my friend, stay ^[bgBlue]awhile^ and listen..." ,
+		_structuredText: [
 			{ text: "Hello\nworld!\nWhat " } ,
 			{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,
 			{ text: "world!" , attr: { outline: true , outlineWidth: '0.05em' , outlineColor: '#b55' } } ,
