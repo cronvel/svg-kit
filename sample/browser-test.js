@@ -9,6 +9,10 @@ async function test() {
 	var ctx = $canvas.getContext( '2d' ) ;
 
 	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+
 	var font = await svgKit.fontLib.getFontAsync( 'serif' ) ;
 	console.log( "Font:" , font ) ;
 
@@ -194,7 +198,7 @@ async function test() {
 			//lineColor: '#559'
 		} ,
 		_text: "Hello my friend, stay awhile and listen..." ,
-		markupText: "^YHello^ my friend, stay ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: "^YHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
 		_structuredText: [
 			{ text: "Hello\nworld!\nWhat " } ,
 			{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,

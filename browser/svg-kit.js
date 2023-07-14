@@ -1423,6 +1423,8 @@ const Metric = require( '../Metric.js' ) ;
 
 const DEFAULT_ATTR = {
 	fontFamily: 'serif' ,
+	fontStyle: 'regular' ,
+	fontWeight: 'regular' ,
 	fontSize: new Metric( 16 ) ,
 	color: '#000' ,
 	outline: false ,
@@ -1448,9 +1450,9 @@ const DEFAULT_ATTR = {
 function TextAttribute( params ) {
 	// Font
 	this.fontFamily = null ;
+	this.fontStyle = null ;
+	this.fontWeight = null ;
 	this.fontSize = null ;
-	//fontStyle?: string;
-	//fontWeight?: string;
 
 	// Styles
 	this.color = null ;
@@ -1501,6 +1503,8 @@ TextAttribute.prototype.set = function( params ) {
 	if ( ! params || typeof params !== 'object' ) { return ; }
 
 	if ( params.fontFamily ) { this.setFontFamily( params.fontFamily ) ; }
+	if ( params.fontStyle ) { this.setFontStyle( params.fontStyle ) ; }
+	if ( params.fontWeight ) { this.setFontWeight( params.fontWeight ) ; }
 	if ( params.fontSize ) { this.setFontSize( params.fontSize ) ; }
 
 	if ( params.color ) { this.setColor( params.color ) ; }
@@ -1543,9 +1547,9 @@ TextAttribute.prototype.export = function( data = {} , nullIfDefault = false ) {
 TextAttribute.prototype.isEqual = function( to ) {
 	return (
 		this.fontFamily === to.fontFamily
+		&& this.fontStyle === to.fontStyle
+		&& this.fontWeight === to.fontWeight
 		&& Metric.isEqual( this.fontSize , to.fontSize )
-		//&& this.fontStyle === to.fontStyle
-		//&& this.fontWeight === to.fontWeight
 
 		&& this.color === to.color
 		&& this.outline === to.outline
@@ -1584,6 +1588,26 @@ TextAttribute.prototype.setFontFamily = function( v ) {
 
 TextAttribute.prototype.getFontFamily = function( inherit = null ) {
 	return this.fontFamily ?? inherit?.fontFamily ?? DEFAULT_ATTR.fontFamily ;
+} ;
+
+
+
+TextAttribute.prototype.setFontStyle = function( v ) {
+	this.fontStyle = v && typeof v === 'string' ? v : null ;
+} ;
+
+TextAttribute.prototype.getFontStyle = function( inherit = null ) {
+	return this.fontStyle ?? inherit?.fontStyle ?? DEFAULT_ATTR.fontStyle ;
+} ;
+
+
+
+TextAttribute.prototype.setFontWeight = function( v ) {
+	this.fontWeight = v && typeof v === 'string' ? v : null ;
+} ;
+
+TextAttribute.prototype.getFontWeight = function( inherit = null ) {
+	return this.fontWeight ?? inherit?.fontWeight ?? DEFAULT_ATTR.fontWeight ;
 } ;
 
 
@@ -2543,6 +2567,8 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root 
 	for ( let structuredTextLine of this.structuredTextLines ) {
 		for ( let part of structuredTextLine.parts ) {
 			let fontFamily = part.attr.getFontFamily( this.attr ) ,
+				fontStyle = part.attr.getFontStyle( this.attr ) ,
+				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
 				textStyleStr = part.attr.getTextSvgStyleString( this.attr , fontSize ) ,
 				lineStyleStr , lineThickness ,
@@ -2550,8 +2576,8 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root 
 				lineThrough = part.attr.getLineThrough( this.attr ) ,
 				frame = part.attr.getFrame( this.attr ) ;
 
-			let font = await fontLib.getFontAsync( fontFamily ) ;
-			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
+			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( frame ) {
 				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
@@ -2647,6 +2673,8 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root =
 	for ( let structuredTextLine of this.structuredTextLines ) {
 		for ( let part of structuredTextLine.parts ) {
 			let fontFamily = part.attr.getFontFamily( this.attr ) ,
+				fontStyle = part.attr.getFontStyle( this.attr ) ,
+				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
 				textStyleStr = part.attr.getTextSvgStyleString( this.attr , fontSize ) ,
 				lineStyleStr , lineThickness ,
@@ -2655,8 +2683,8 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root =
 				frame = part.attr.getFrame( this.attr ) ;
 
 			//console.error( "???" , fontFamily , fontSize , textStyleStr ) ;
-			let font = await fontLib.getFontAsync( fontFamily ) ;
-			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
+			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( frame ) {
 				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
@@ -2748,6 +2776,8 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 	for ( let structuredTextLine of this.structuredTextLines ) {
 		for ( let part of structuredTextLine.parts ) {
 			let fontFamily = part.attr.getFontFamily( this.attr ) ,
+				fontStyle = part.attr.getFontStyle( this.attr ) ,
+				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
 				textStyle = part.attr.getTextSvgStyle( this.attr , fontSize ) ,
 				lineStyle , lineThickness ,
@@ -2756,8 +2786,8 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				frame = part.attr.getFrame( this.attr ) ;
 
 			//console.error( "???" , fontFamily , fontSize , textStyle ) ;
-			let font = await fontLib.getFontAsync( fontFamily ) ;
-			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
+			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( frame ) {
 				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
@@ -2825,14 +2855,16 @@ VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx
 	for ( let structuredTextLine of this.structuredTextLines ) {
 		for ( let part of structuredTextLine.parts ) {
 			let fontFamily = part.attr.getFontFamily( this.attr ) ,
+				fontStyle = part.attr.getFontStyle( this.attr ) ,
+				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
 				lineThickness ,
 				underline = part.attr.getUnderline( this.attr ) ,
 				lineThrough = part.attr.getLineThrough( this.attr ) ;
 
 			//console.error( "???" , fontFamily , fontSize , textStyle ) ;
-			let font = await fontLib.getFontAsync( fontFamily ) ;
-			if ( ! font ) { throw new Error( "Font not found: " + fontFamily ) ; }
+			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( underline || lineThrough ) {
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
@@ -4667,6 +4699,7 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 */
 
 const path = require( 'path' ) ;
+const fs = require( 'fs' ) ;
 const opentype = require( 'opentype.js' ) ;
 
 
@@ -4676,20 +4709,177 @@ module.exports = fontLib ;
 
 
 
-const fontUrl = {} ;
+function FontUrl( family , ... variantsUrl ) {
+	this.family = family ;
+	this.variantsUrl = {} ;
+	if ( variantsUrl ) { this.setUrls( ... variantsUrl ) ; }
+}
+
+fontLib.FontUrl = FontUrl ;
+
+
+
+FontUrl.getCode = function( style = 'regular' , weight = 'regular' , stretch = 'regular' ) {
+	var styleCode = STYLE_MAP[ style ] ,
+		weightCode = WEIGHT_MAP[ weight ] ,
+		stretchCode = STRETCH_MAP[ stretch ] ;
+
+	if ( styleCode === undefined || weightCode === undefined || stretchCode === undefined ) {
+		throw new Error( "FontUrl: bad font variant (" + style + ',' + weight + ',' + stretch + ')' ) ;
+	}
+
+	return styleCode * 81 + weightCode * 9 + stretchCode ;
+} ;
+
+
+
+FontUrl.prototype.setUrls = function( ... variantsUrl ) {
+	if ( ! Array.isArray( variantsUrl[ 0 ] ) ) {
+		this.setUrl( ... variantsUrl ) ;
+	}
+	else {
+		for ( let variantUrl of variantsUrl ) {
+			this.setUrl( ... variantUrl ) ;
+		}
+	}
+} ;
+
+
+
+FontUrl.prototype.setUrl = function( ... variantUrl ) {
+	var style , weight , stretch ,
+		url = variantUrl[ variantUrl.length - 1 ] ;
+
+	style = weight = stretch = 'regular' ;
+
+	for ( let index = 0 ; index < variantUrl.length - 1 ; index ++ ) {
+		let property = variantUrl[ index ] ;
+		if ( ! NEUTRAL_MAP[ property ] ) {
+			if ( STYLE_MAP[ property ] !== undefined ) { style = property ; }
+			else if ( WEIGHT_MAP[ property ] !== undefined ) { weight = property ; }
+			else if ( STRETCH_MAP[ property ] !== undefined ) { stretch = property ; }
+		}
+	}
+
+	var code = FontUrl.getCode( style , weight , stretch ) ;
+
+	this.variantsUrl[ code ] = url ;
+} ;
+
+
+
+FontUrl.prototype.getUrl = function( ... variant ) {
+	var style , weight , stretch ;
+
+	style = weight = stretch = 'regular' ;
+
+	for ( let property of variant ) {
+		if ( ! NEUTRAL_MAP[ property ] ) {
+			if ( STYLE_MAP[ property ] !== undefined ) { style = property ; }
+			else if ( WEIGHT_MAP[ property ] !== undefined ) { weight = property ; }
+			else if ( STRETCH_MAP[ property ] !== undefined ) { stretch = property ; }
+		}
+	}
+
+	var code = FontUrl.getCode( style , weight , stretch ) ;
+
+	return this.variantsUrl[ code ] ;
+} ;
+
+
+
+const fontUrlByFamily = {} ;
+fontLib.fontUrlByFamily = fontUrlByFamily ;
 const fontCache = {} ;
 
-fontLib.setFontUrl = ( fontName , url ) => fontUrl[ fontName ] = url ;
-fontLib.getFontUrl = fontName => fontUrl[ fontName ] ;
+fontLib.setFontUrl = ( fontFamily , ... variantsUrl ) => {
+	var fontUrl = fontUrlByFamily[ fontFamily ] ;
+
+	if ( fontUrl ) {
+		fontUrl.setUrls( ... variantsUrl ) ;
+	}
+	else {
+		fontUrlByFamily[ fontFamily ] = new FontUrl( fontFamily , ... variantsUrl ) ;
+	}
+} ;
+
+fontLib.getFontUrl = ( fontFamily , ... variant ) => {
+	var fontUrl = fontUrlByFamily[ fontFamily ] ;
+	if ( ! fontUrl ) { return ; }
+	return fontUrl.getUrl( ... variant ) ;
+} ;
+
+
+
+// Neutral and common property names
+const NEUTRAL_MAP = {
+	normal: true ,
+	regular: true ,
+	medium: true
+} ;
+
+// Font style
+const STYLE_MAP = {
+	normal: 0 ,
+	regular: 0 ,
+	oblique: 1 ,
+	italic: 2
+} ;
+
+// Font weight
+const WEIGHT_MAP = {
+	thin: 0 ,		// 100
+	hairline: 0 ,
+	extraLight: 1 ,	// 200
+	'extra-light': 1 ,
+	ultraLight: 1 ,
+	'ultra-light': 1 ,
+	light: 2 ,		// 300
+	normal: 3 ,		// 400
+	regular: 3 ,
+	medium: 4 ,		// 500
+	semiBold: 5 ,	// 600
+	'semi-bold': 5 ,
+	demiBold: 5 ,
+	'demi-bold': 5 ,
+	bold: 6 ,		// 700
+	extraBold: 7 ,	// 800
+	'extra-bold': 7 ,
+	ultraBold: 7 ,
+	'ultra-bold': 7 ,
+	heavy: 8 ,		// 900
+	black: 8
+} ;
+
+// Font stretch/font width
+const STRETCH_MAP = {
+	ultraCondensed: 0 ,		// 50%
+	'ultra-condensed': 0 ,
+	extraCondensed: 1 ,		// 62.5%
+	'extra-condensed': 1 ,
+	condensed: 2 ,			// 75%
+	semiCondensed: 3 , 		// 87.5%
+	'semi-condensed': 3 ,
+	medium: 4 ,				// 100%
+	normal: 4 ,
+	regular: 4 ,
+	semiExpanded: 5 ,		// 112.5%
+	'semi-expanded': 5 ,
+	expanded: 6 ,			// 125%
+	extraExpanded: 7 ,		// 150%
+	'extra-expanded': 7 ,
+	ultraExpanded: 8 ,		// 200%
+	'ultra-expanded': 8
+} ;
 
 
 
 if ( process?.browser ) {
-	fontLib.getFontAsync = async ( fontName ) => {
-		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
-
-		var url = fontLib.getFontUrl( fontName ) ;
+	fontLib.getFontAsync = async ( fontFamily , ... variant ) => {
+		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
 		if ( ! url ) { return null ; }
+
+		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		var response = await fetch( url ) ;
 
@@ -4700,15 +4890,18 @@ if ( process?.browser ) {
 		var blob = await response.blob() ;
 		var arrayBuffer = await blob.arrayBuffer() ;
 		var font = await opentype.parse( arrayBuffer ) ;
-		fontCache[ fontName ] = font ;
-		console.log( "Loaded font: " , fontName , font ) ;
+		fontCache[ url ] = font ;
+		console.log( "Loaded font: " , fontFamily , ... variant , font ) ;
 
 		return font ;
 	} ;
 
-	fontLib.getFont = fontName => {
-		var font = fontCache[ fontName ] ;
-		if ( font ) { return font ; }
+	fontLib.getFont = ( fontFamily , ... variant ) => {
+		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
+		if ( ! url ) { return null ; }
+
+		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
+
 		//console.error( "Font not found:" , fontName , fontCache ) ;
 		throw new Error( "Font '" + fontName + "' was not preloaded and we can't load synchronously inside a web browser..." ) ;
 	} ;
@@ -4716,30 +4909,34 @@ if ( process?.browser ) {
 else {
 	const builtinPath = path.join( __dirname , '..' , 'fonts' ) ;
 
-	fontUrl['serif'] = builtinPath + '/serif.ttf' ;
+	fontLib.setFontUrl( 'serif' , builtinPath + '/serif.ttf' ) ;
+	fontLib.setFontUrl( 'serif' , 'italic' , builtinPath + '/serif-italic.ttf' ) ;
+	fontLib.setFontUrl( 'serif' , 'bold' , builtinPath + '/serif-bold.ttf' ) ;
+	fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , builtinPath + '/serif-bold+italic.ttf' ) ;
 
-	fontLib.getFontAsync = async ( fontName ) => {
-		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
-
-		var url = fontLib.getFontUrl( fontName ) ;
+	fontLib.getFontAsync = async ( fontFamily , ... variant ) => {
+		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
 		if ( ! url ) { return null ; }
+
+		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		var buffer = await fs.promises.readFile( url ) ;
 		var font = await opentype.parse( buffer ) ;
-		fontCache[ fontName ] = font ;
-		console.log( "Loaded font: " , fontName , font ) ;
+		fontCache[ url ] = font ;
+		console.log( "Loaded (async) font: " , fontFamily , ... variant , font ) ;
 
 		return font ;
 	} ;
 
-	fontLib.getFont = fontName => {
-		if ( fontCache[ fontName ] ) { return fontCache[ fontName ] ; }
-
-		var url = fontLib.getFontUrl( fontName ) ;
+	fontLib.getFont = ( fontFamily , ... variant ) => {
+		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
 		if ( ! url ) { return null ; }
 
+		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
+
 		var font = opentype.loadSync( url ) ;
-		fontCache[ fontName ] = font ;
+		fontCache[ url ] = font ;
+		console.log( "Loaded (sync) font: " , fontFamily , ... variant , font ) ;
 
 		return font ;
 	} ;
@@ -4747,7 +4944,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":55,"opentype.js":30,"path":54}],19:[function(require,module,exports){
+},{"_process":55,"fs":49,"opentype.js":30,"path":54}],19:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -5010,7 +5207,7 @@ module.exports = structuredText ;
 
 const MARKUP_COLOR_CODE = {
 	black: '#000000' ,
-	brightBlack: '#555753' , //grey: '#555753',
+	brightBlack: '#555753' ,
 	red: '#cc0000' ,
 	brightRed: '#ef2929' ,
 	green: '#4e9a06' ,
@@ -5039,8 +5236,8 @@ structuredText.parseMarkup = function( text ) {
 			part.color = input.color[ 0 ] === '#' ? input.color : MARKUP_COLOR_CODE[ input.color ] ;
 		}
 
-		//if ( input.italic ) { part.fontStyle = 'italic' ; }
-		//if ( input.bold ) { part.fontWeight = 'bold' ; }
+		if ( input.italic ) { part.fontStyle = 'italic' ; }
+		if ( input.bold ) { part.fontWeight = 'bold' ; }
 		if ( input.underline ) { part.underline = true ; }
 		if ( input.strike ) { part.lineThrough = true ; }
 
