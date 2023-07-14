@@ -13,8 +13,14 @@ async function test() {
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
 
-	var font = await svgKit.fontLib.getFontAsync( 'serif' ) ;
-	console.log( "Font:" , font ) ;
+	// Preload everything...
+	await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
+	/*
+	await svgKit.fontLib.getFontAsync( 'serif' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' , 'italic' ) ;
+	//*/
 
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -189,7 +195,7 @@ async function test() {
 		//textWrapping: 'ellipsis' ,
 		textWrapping: 'wordWrap' ,
 		attr: {
-			fontSize: 30 , color: '#777' ,
+			fontSize: 28 , color: '#777' ,
 			outline: true ,
 			frameCornerRadius: '0.2em' ,
 			frameOutlineWidth: '0.1em' ,
@@ -198,7 +204,7 @@ async function test() {
 			//lineColor: '#559'
 		} ,
 		_text: "Hello my friend, stay awhile and listen..." ,
-		markupText: "^YHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: "^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
 		_structuredText: [
 			{ text: "Hello\nworld!\nWhat " } ,
 			{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,

@@ -2064,9 +2064,11 @@ TextMetrics.measureFontText = function( font , fontSize , text ) {
 TextMetrics.measureStructuredTextPart = function( part , inheritedAttr ) {
 	var fontOptions = null ,
 		fontFamily = part.attr.getFontFamily( inheritedAttr ) ,
+		fontStyle = part.attr.getFontStyle( inheritedAttr ) ,
+		fontWeight = part.attr.getFontWeight( inheritedAttr ) ,
 		fontSize = part.attr.getFontSize( inheritedAttr ) ;
 
-	var font = fontLib.getFont( fontFamily ) ;
+	var font = fontLib.getFont( fontFamily , fontStyle , fontWeight ) ;
 
 	var metrics = TextMetrics.measureFontText( font , fontSize , part.text ) ;
 
@@ -4875,10 +4877,13 @@ const STRETCH_MAP = {
 
 
 if ( process?.browser ) {
-	fontLib.getFontAsync = async ( fontFamily , ... variant ) => {
+	fontLib.getFontAsync = ( fontFamily , ... variant ) => {
 		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
 		if ( ! url ) { return null ; }
+		return fontLib.getFontByUrlAsync( url ) ;
+	} ;
 
+	fontLib.getFontByUrlAsync = async ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		var response = await fetch( url ) ;
@@ -4891,7 +4896,7 @@ if ( process?.browser ) {
 		var arrayBuffer = await blob.arrayBuffer() ;
 		var font = await opentype.parse( arrayBuffer ) ;
 		fontCache[ url ] = font ;
-		console.log( "Loaded font: " , fontFamily , ... variant , font ) ;
+		console.log( "Loaded font: " , url , font ) ;
 
 		return font ;
 	} ;
@@ -4903,7 +4908,7 @@ if ( process?.browser ) {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		//console.error( "Font not found:" , fontName , fontCache ) ;
-		throw new Error( "Font '" + fontName + "' was not preloaded and we can't load synchronously inside a web browser..." ) ;
+		throw new Error( "Font " + [ fontFamily , ... variant ].join( ', ' ) + " was not preloaded and we can't load synchronously inside a web browser..." ) ;
 	} ;
 }
 else {
@@ -4914,16 +4919,19 @@ else {
 	fontLib.setFontUrl( 'serif' , 'bold' , builtinPath + '/serif-bold.ttf' ) ;
 	fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , builtinPath + '/serif-bold+italic.ttf' ) ;
 
-	fontLib.getFontAsync = async ( fontFamily , ... variant ) => {
+	fontLib.getFontAsync = ( fontFamily , ... variant ) => {
 		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
 		if ( ! url ) { return null ; }
+		return fontLib.getFontByUrlAsync( url ) ;
+	} ;
 
+	fontLib.getFontByUrlAsync = async ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		var buffer = await fs.promises.readFile( url ) ;
 		var font = await opentype.parse( buffer ) ;
 		fontCache[ url ] = font ;
-		console.log( "Loaded (async) font: " , fontFamily , ... variant , font ) ;
+		console.log( "Loaded (async) font: " , url , font ) ;
 
 		return font ;
 	} ;
@@ -4941,6 +4949,14 @@ else {
 		return font ;
 	} ;
 }
+
+
+
+fontLib.preloadFontFamily = async ( fontFamily ) => {
+	var fontUrl = fontUrlByFamily[ fontFamily ] ;
+	if ( ! fontUrl ) { throw new Error( "Font family not found: " + fontFamily ) ; }
+	return Promise.all( Object.values( fontUrl.variantsUrl ).map( url => fontLib.getFontByUrlAsync( url ) ) ) ;
+} ;
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
