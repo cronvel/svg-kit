@@ -1381,8 +1381,8 @@ StructuredTextPart.prototype.export = function( data = {} ) {
 
 
 
-StructuredTextPart.prototype.computeSizeMetrics = function( inheritedAttr ) {
-	this.metrics = TextMetrics.measureStructuredTextPart( this , inheritedAttr ) ;
+StructuredTextPart.prototype.computeSizeMetrics = async function( inheritedAttr ) {
+	this.metrics = await TextMetrics.measureStructuredTextPart( this , inheritedAttr ) ;
 } ;
 
 
@@ -2061,14 +2061,14 @@ TextMetrics.measureFontText = function( font , fontSize , text ) {
 
 
 
-TextMetrics.measureStructuredTextPart = function( part , inheritedAttr ) {
+TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 	var fontOptions = null ,
 		fontFamily = part.attr.getFontFamily( inheritedAttr ) ,
 		fontStyle = part.attr.getFontStyle( inheritedAttr ) ,
 		fontWeight = part.attr.getFontWeight( inheritedAttr ) ,
 		fontSize = part.attr.getFontSize( inheritedAttr ) ;
 
-	var font = fontLib.getFont( fontFamily , fontStyle , fontWeight ) ;
+	var font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
 
 	var metrics = TextMetrics.measureFontText( font , fontSize , part.text ) ;
 
@@ -2161,24 +2161,6 @@ VGFlowingText.prototype.svgTag = 'g' ;
 
 
 
-// Those properties requires computed lines...
-Object.defineProperties( VGFlowingText.prototype , {
-	contentWidth: { get: function() {
-		if ( ! this.areLinesComputed ) { this.computeLines() ; }
-		return this._contentWidth ;
-	} } ,
-	contentHeight: { get: function() {
-		if ( ! this.areLinesComputed ) { this.computeLines() ; }
-		return this._contentHeight ;
-	} } ,
-	characterCount: { get: function() {
-		if ( ! this.areLinesComputed ) { this.computeLines() ; }
-		return this._characterCount ;
-	} }
-} ) ;
-
-
-
 const TEXT_WRAPPING = {
 	wordWrap: 'wordWrap' ,
 	wordwrap: 'wordWrap' ,
@@ -2268,8 +2250,29 @@ VGFlowingText.prototype.setText = function( text ) {
 
 
 
-VGFlowingText.prototype.computeLines = function() {
-	this.structuredTextLines = this.breakLines( this.width ) ;
+VGFlowingText.prototype.getContentWidth = async function() {
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
+	return this._contentWidth ;
+} ;
+
+
+
+VGFlowingText.prototype.getContentHeight = async function() {
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
+	return this._contentHeight ;
+} ;
+
+
+
+VGFlowingText.prototype.getCharacterCount = async function() {
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
+	return this._characterCount ;
+} ;
+
+
+
+VGFlowingText.prototype.computeLines = async function() {
+	this.structuredTextLines = await this.breakLines( this.width ) ;
 	this.computePartsPosition() ;
 	this.structuredTextLines.forEach( line => line.fuseEqualAttr() ) ;
 	this.areLinesComputed = true ;
@@ -2277,24 +2280,24 @@ VGFlowingText.prototype.computeLines = function() {
 
 
 
-VGFlowingText.prototype.breakLines = function( width = this.width ) {
+VGFlowingText.prototype.breakLines = async function( width = this.width ) {
 	var outputLines = [] , // Array of StructuredTextLine
 		lines = VGFlowingText.parseNewLine( this.structuredText ) ;
 
 	// Finally split/apply text-wrapping
 	if ( this.textWrapping === 'ellipsis' ) {
 		for ( let line of lines ) {
-			outputLines.push( this.parseStructuredTextLineEllipsis( line ) ) ;
+			outputLines.push( await this.parseStructuredTextLineEllipsis( line ) ) ;
 		}
 	}
 	else if ( this.textWrapping === 'wordWrap' ) {
 		for ( let line of lines ) {
-			outputLines.push( ... this.parseStructuredTextLineWordWrap( line ) ) ;
+			outputLines.push( ... await this.parseStructuredTextLineWordWrap( line ) ) ;
 		}
 	}
 	else {
 		for ( let line of lines ) {
-			outputLines.push( this.parseStructuredTextLine( line ) ) ;
+			outputLines.push( await this.parseStructuredTextLine( line ) ) ;
 		}
 	}
 
@@ -2303,15 +2306,15 @@ VGFlowingText.prototype.breakLines = function( width = this.width ) {
 
 
 
-VGFlowingText.prototype.parseStructuredTextLine = function( line ) {
-	var metrics = this.computePartsSizeMetrics( line ) ;
+VGFlowingText.prototype.parseStructuredTextLine = async function( line ) {
+	var metrics = await this.computePartsSizeMetrics( line ) ;
 	return new StructuredTextLine( line , metrics ) ;
 } ;
 
 
 
-VGFlowingText.prototype.parseStructuredTextLineEllipsis = function( line ) {
-	var metrics = this.computePartsSizeMetrics( line ) ;
+VGFlowingText.prototype.parseStructuredTextLineEllipsis = async function( line ) {
+	var metrics = await this.computePartsSizeMetrics( line ) ;
 
 	while ( line.length && metrics.width > this.width ) {
 		const part = line[ line.length - 1 ] ;
@@ -2321,7 +2324,7 @@ VGFlowingText.prototype.parseStructuredTextLineEllipsis = function( line ) {
 			characters.pop() ;
 			part.text = characters.join( '' ) + "…" ;
 			delete part.metrics ;    // delete .metrics, so .computePartsSizeMetrics() will re-compute it instead of using the existing one
-			metrics = this.computePartsSizeMetrics( line ) ;
+			metrics = await this.computePartsSizeMetrics( line ) ;
 		}
 
 		if ( metrics.width > this.width ) {
@@ -2334,7 +2337,7 @@ VGFlowingText.prototype.parseStructuredTextLineEllipsis = function( line ) {
 
 
 
-VGFlowingText.prototype.parseStructuredTextLineWordWrap = function( line ) {
+VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line ) {
 	const outputLines = [] ; // Array of Array of StructuredTextPart
 	const outputParts = [] ; // Array of StructuredTextPart
 
@@ -2355,7 +2358,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = function( line ) {
 	for ( let part of outputParts ) {
 		testLine.push( part ) ;
 
-		if ( ! part.metrics ) { part.computeSizeMetrics( this.attr ) ; }
+		if ( ! part.metrics ) { await part.computeSizeMetrics( this.attr ) ; }
 		testLineMetrics.fuseWithRightPart( part.metrics ) ;
 
 		if ( testLineMetrics.width > this.width && testLine.length > 1 ) {
@@ -2369,7 +2372,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = function( line ) {
 
 			if ( trimmedText !== part.text ) {
 				part.text = trimmedText ;
-				part.computeSizeMetrics( this.attr ) ;
+				await part.computeSizeMetrics( this.attr ) ;
 			}
 
 			testLine = [ part ] ;
@@ -2388,11 +2391,11 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = function( line ) {
 
 
 // Set the size of each parts and return the total size
-VGFlowingText.prototype.computePartsSizeMetrics = function( structuredTextParts ) {
+VGFlowingText.prototype.computePartsSizeMetrics = async function( structuredTextParts ) {
 	var groupMetrics = new TextMetrics() ;
 
 	for ( let part of structuredTextParts ) {
-		if ( ! part.metrics ) { part.computeSizeMetrics( this.attr ) ; }
+		if ( ! part.metrics ) { await part.computeSizeMetrics( this.attr ) ; }
 		groupMetrics.fuseWithRightPart( part.metrics ) ;
 	}
 
@@ -2549,7 +2552,7 @@ VGFlowingText.prototype.getUsedFontNames = function() {
 
 // Render the Vector Graphic as a text SVG
 VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root = this ) {
-	if ( ! this.areLinesComputed ) { this.computeLines() ; }
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
 		str = '' ;
@@ -2653,7 +2656,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root 
 
 
 VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root = this ) {
-	if ( ! this.areLinesComputed ) { this.computeLines() ; }
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
 		elementList = [] ;
@@ -2761,7 +2764,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root =
 
 
 VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , root = this ) {
-	if ( ! this.areLinesComputed ) { this.computeLines() ; }
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
@@ -2850,7 +2853,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 	This renderer does not support clipping the text, debugContainer, and frame.
 */
 VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} , root = this ) {
-	if ( ! this.areLinesComputed ) { this.computeLines() ; }
+	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 

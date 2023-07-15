@@ -1,6 +1,62 @@
 
 "use strict" ;
 
+async function test_() {
+	var $canvas = document.getElementById( 'canvas' ) ,
+		$svgDom = document.getElementById( 'svgDom' ) ,
+		$svgText = document.getElementById( 'svgText' ) ;
+
+	var ctx = $canvas.getContext( '2d' ) ;
+
+	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+
+	// Preload everything...
+	//await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
+	//*
+	await svgKit.fontLib.getFontAsync( 'serif' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' , 'italic' ) ;
+	//*/
+
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
+
+	var vgFlowingText = new svgKit.VGFlowingText( {
+		x: 20 ,
+		y: 50 ,
+		//width: 400 , height: 200 ,
+		width: 200 , height: 400 ,
+		//clip: false ,
+		debugContainer: true ,
+		//textWrapping: 'ellipsis' ,
+		//textWrapping: 'wordWrap' ,
+		attr: {
+			fontSize: 28 , color: '#777' ,
+			//outline: true ,
+			//frameCornerRadius: '0.2em' ,
+			//frameOutlineWidth: '0.1em' ,
+			//outlineColor: '#afa' ,
+			//lineOutline: true ,
+			//lineColor: '#559'
+		} ,
+		//structuredText: { text: "Bob?" } ,
+		markupText: "^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+	} ) ;
+	vg.addEntity( vgFlowingText ) ;
+
+	// Display using the Canvas renderer
+	$canvas.classList.remove( 'hidden' ) ;
+	await vg.renderCanvas( ctx ) ;
+}
+
+
+
 async function test() {
 	var $canvas = document.getElementById( 'canvas' ) ,
 		$svgDom = document.getElementById( 'svgDom' ) ,
@@ -14,7 +70,7 @@ async function test() {
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
 
 	// Preload everything...
-	await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
+	//await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
 	/*
 	await svgKit.fontLib.getFontAsync( 'serif' ) ;
 	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
