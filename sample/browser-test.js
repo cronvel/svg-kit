@@ -251,7 +251,7 @@ async function test() {
 		//textWrapping: 'ellipsis' ,
 		textWrapping: 'wordWrap' ,
 		attr: {
-			fontSize: 28 , color: '#777' ,
+			fontSize: 30 , color: '#777' ,
 			outline: true ,
 			frameCornerRadius: '0.2em' ,
 			frameOutlineWidth: '0.1em' ,
