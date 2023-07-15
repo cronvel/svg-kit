@@ -1,7 +1,7 @@
 
 "use strict" ;
 
-async function test_() {
+async function flowTest() {
 	var $canvas = document.getElementById( 'canvas' ) ,
 		$svgDom = document.getElementById( 'svgDom' ) ,
 		$svgText = document.getElementById( 'svgText' ) ;
@@ -35,7 +35,7 @@ async function test_() {
 		//clip: false ,
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
-		//textWrapping: 'wordWrap' ,
+		textWrapping: 'wordWrap' ,
 		attr: {
 			fontSize: 28 , color: '#777' ,
 			//outline: true ,
@@ -46,7 +46,7 @@ async function test_() {
 			//lineColor: '#559'
 		} ,
 		//structuredText: { text: "Bob?" } ,
-		markupText: "^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: "Hum: Grigrigredin-menufretin! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
@@ -311,5 +311,6 @@ async function test() {
 	$svgText.appendChild( anchor ) ;
 }
 
-svgKit.domKit.ready( test ) ;
+//svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( flowTest ) ;
 
