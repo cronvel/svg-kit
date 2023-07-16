@@ -13,15 +13,6 @@ async function flowTest() {
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
 
-	// Preload everything...
-	//await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
-	//*
-	await svgKit.fontLib.getFontAsync( 'serif' ) ;
-	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
-	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' ) ;
-	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' , 'italic' ) ;
-	//*/
-
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
 		//invertY: true
@@ -46,7 +37,8 @@ async function flowTest() {
 			//lineColor: '#559'
 		} ,
 		//structuredText: { text: "Bob?" } ,
-		markupText: "Hum: Grigrigredin-menufretin! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: "Hum : Grigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		//markupText: "Hum:   Grigrigredin-menufretin !   Hello   my  friend,   stay   awhile   and   listen..." ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 

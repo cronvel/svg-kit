@@ -1343,8 +1343,9 @@ function StructuredTextPart( params = {} ) {
 	this.text = params.text || '' ;
 
 	// Word-wrapping data
-	this.canSplitBefore = true ;
-	this.canSplitAfter = true ;
+	this.canLineSplitBefore = true ;
+	this.forceNoLineSplitBefore = false ;
+	this.canLineSplitAfter = true ;
 
 	this.attr = ! params.attr ? new TextAttribute( params ) :
 		params.attr instanceof TextAttribute ? params.attr :
@@ -1387,6 +1388,56 @@ StructuredTextPart.prototype.export = function( data = {} ) {
 
 StructuredTextPart.prototype.computeSizeMetrics = async function( inheritedAttr ) {
 	this.metrics = await TextMetrics.measureStructuredTextPart( this , inheritedAttr ) ;
+} ;
+
+
+
+// Split the into words, suitable to compute word-wrapping
+// Note: This splitting function does not exclude the splitter,
+// it keeps it on the left of the right-side of the split
+StructuredTextPart.prototype.splitIntoWords = function( intoList = [] ) {
+	let match ;
+	let lastIndex = 0 ;
+	const regexp = / +/g ;
+
+	while ( ( match = regexp.exec( this.text ) ) ) {
+		if ( lastIndex < match.index ) {
+			let newPart = new StructuredTextPart( this ) ;
+			let dbg = newPart.text = this.text.slice( lastIndex , match.index ) ;
+			newPart.metrics = null ;
+			newPart.checkLineSplit() ;
+			intoList.push( newPart ) ;
+		}
+
+		lastIndex = match.index ;
+	}
+
+	if ( lastIndex < this.text.length ) {
+		let newPart = new StructuredTextPart( this ) ;
+		newPart.text = this.text.slice( lastIndex ) ;
+		newPart.metrics = null ;
+		newPart.checkLineSplit() ;
+		intoList.push( newPart ) ;
+	}
+
+	return intoList ;
+} ;
+
+
+
+const NO_SPLIT_BEFORE = new Set( [ '!' , '?' , ':' ] ) ;
+
+StructuredTextPart.prototype.checkLineSplit = function() {
+	if ( this.text[ 0 ] === ' ' ) {
+		this.canLineSplitBefore = ! NO_SPLIT_BEFORE.has( this.text[ 1 ] ) ;
+		this.forceNoLineSplitBefore = false ;
+	}
+	else {
+		this.canLineSplitBefore = false ;
+		this.forceNoLineSplitBefore = NO_SPLIT_BEFORE.has( this.text[ 0 ] ) ;
+	}
+	
+	this.canLineSplitAfter = this.text[ this.text.length - 1 ] === ' ' ;
 } ;
 
 
@@ -2348,16 +2399,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 
 	// Split each part of the line
 	for ( let part of line ) {
-		for ( let newTextPart of this.splitLine( part.text ) ) {
-			let newPart = new StructuredTextPart( part ) ;
-			newPart.text = newTextPart ;
-			newPart.metrics = null ;
-
-			if ( newTextPart[ 0 ] !== ' ' ) { newPart.canSplitBefore = false ; }
-			if ( newTextPart[ newTextPart.length - 1 ] !== ' ' ) { newPart.canSplitAfter = false ; }
-
-			outputParts.push( newPart ) ;
-		}
+		part.splitIntoWords( outputParts ) ;
 	}
 
 	let lastTestLineMetrics = new TextMetrics() ;
@@ -2374,9 +2416,15 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 		if ( ! part.metrics ) { await part.computeSizeMetrics( this.attr ) ; }
 		testLineMetrics.fuseWithRightPart( part.metrics ) ;
 
-		if ( index < outputParts.length - 1 && ( ! part.canSplitAfter && ! outputParts[ index + 1 ].canSplitBefore ) ) {
+		if (
+			index < outputParts.length - 1
+			&& (
+				outputParts[ index + 1 ].forceNoLineSplitBefore
+				|| ( ! part.canLineSplitAfter && ! outputParts[ index + 1 ].canLineSplitBefore )
+			)
+		) {
 			// It is not splittable after, so we test immediately with more content.
-			console.log( "not splittable after:" , part.text ) ;
+			console.log( "not splittable after: '" , part.text + "'" ) ;
 			continue ;
 		}
 
@@ -2389,31 +2437,38 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 
 			// Create a new line with the current part as the first part.
 			// We have to left-trim it because it mays contain spaces.
-			let nextStartingPart = outputParts[ index - removed + 1 ] ;
-			console.log( "nextStartingPart: '" + nextStartingPart.text + "'" ) ; 
-			let trimmedText = nextStartingPart.text.trimStart() ;
+			let indexOfNextLine = index - removed + 1 ;
+			for ( ; indexOfNextLine <= index ; indexOfNextLine ++ ) {
+				let nextLinePart = outputParts[ indexOfNextLine ] ;
+				console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ; 
+				let trimmedText = nextLinePart.text.trimStart() ;
 
-			if ( trimmedText !== nextStartingPart.text ) {
-				console.log( "Left-trim: '" + nextStartingPart.text + "'" ) ; 
-				nextStartingPart.text = trimmedText ;
-				await nextStartingPart.computeSizeMetrics( this.attr ) ;
+				if ( trimmedText ) {
+					if ( trimmedText !== nextLinePart.text ) {
+						console.log( "Left-trim: '" + nextLinePart.text + "'" ) ; 
+						nextLinePart.text = trimmedText ;
+						await nextLinePart.computeSizeMetrics( this.attr ) ;
+					}
+
+					break ;
+				}
 			}
 
 			testLine = [] ;
 			testLineMetrics.clear() ;
 			blockAdded = 0 ;
-			index = lastIndex = index - removed ;
+			lastIndex = index = indexOfNextLine - 1 ;
 			continue ;
 		}
 
 		blockAdded ++ ;
 		let dbg = '' ;
-		for ( let index_ = lastIndex + 1 ; index_ <= index ; index_ ++ ) {
-			//console.log( "index_" , index_ ) ;
-			lastTestLineMetrics.fuseWithRightPart( outputParts[ index_ ].metrics ) ;
-			dbg += outputParts[ index_ ].text ;
+		for ( let indexOfPartToAdd = lastIndex + 1 ; indexOfPartToAdd <= index ; indexOfPartToAdd ++ ) {
+			//console.log( "indexOfPartToAdd" , indexOfPartToAdd ) ;
+			lastTestLineMetrics.fuseWithRightPart( outputParts[ indexOfPartToAdd ].metrics ) ;
+			dbg += outputParts[ indexOfPartToAdd ].text ;
 		}
-		console.log( "added:" , lastIndex + 1 , index , dbg ) ;
+		console.log( "added:" , lastIndex + 1 , index , "'" + dbg + "'" ) ;
 
 		lastIndex = index ;
 	}
@@ -2526,31 +2581,6 @@ VGFlowingText.parseNewLine = function( structuredText ) {
 	//console.error( "lines:" , lines ) ;
 
 	return lines ;
-} ;
-
-
-
-// Split the line into words, suitable to compute word-wrapping
-// Note: This splitting function does not exlude the splitter, it keeps it on the right-side of the split.
-VGFlowingText.prototype.splitLine = function( str ) {
-	let match ;
-	let lastIndex = 0 ;
-	const splitted = [] ;
-	const regexp = / +/g ;
-
-	while ( ( match = regexp.exec( str ) ) ) {
-		if ( lastIndex < match.index ) {
-			splitted.push( str.slice( lastIndex , match.index ) ) ;
-		}
-
-		lastIndex = match.index ;
-	}
-
-	if ( lastIndex < str.length ) {
-		splitted.push( str.slice( lastIndex ) ) ;
-	}
-
-	return splitted ;
 } ;
 
 
