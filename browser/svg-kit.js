@@ -2123,7 +2123,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 		fontWeight = part.attr.getFontWeight( inheritedAttr ) ,
 		fontSize = part.attr.getFontSize( inheritedAttr ) ;
 
-	var font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+	var font = await fontLib.getFallbackFontAsync( fontFamily , fontStyle , fontWeight ) ;
 
 	var metrics = TextMetrics.measureFontText( font , fontSize , part.text ) ;
 
@@ -2646,7 +2646,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root 
 				lineThrough = part.attr.getLineThrough( this.attr ) ,
 				frame = part.attr.getFrame( this.attr ) ;
 
-			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			let font = await fontLib.getFallbackFontAsync( fontFamily , fontStyle , fontWeight ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( frame ) {
@@ -2753,7 +2753,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root =
 				frame = part.attr.getFrame( this.attr ) ;
 
 			//console.error( "???" , fontFamily , fontSize , textStyleStr ) ;
-			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			let font = await fontLib.getFallbackFontAsync( fontFamily , fontStyle , fontWeight ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( frame ) {
@@ -2856,7 +2856,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				frame = part.attr.getFrame( this.attr ) ;
 
 			//console.error( "???" , fontFamily , fontSize , textStyle ) ;
-			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			let font = await fontLib.getFallbackFontAsync( fontFamily , fontStyle , fontWeight ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( frame ) {
@@ -2933,7 +2933,7 @@ VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx
 				lineThrough = part.attr.getLineThrough( this.attr ) ;
 
 			//console.error( "???" , fontFamily , fontSize , textStyle ) ;
-			let font = await fontLib.getFontAsync( fontFamily , fontStyle , fontWeight ) ;
+			let font = await fontLib.getFallbackFontAsync( fontFamily , fontStyle , fontWeight ) ;
 			if ( ! font ) { throw new Error( "Font not found: " + fontFamily + ' ' + fontStyle + ' ' + fontWeight ) ; }
 
 			if ( underline || lineThrough ) {
@@ -4838,7 +4838,7 @@ FontUrl.prototype.setUrl = function( ... variantUrl ) {
 
 
 
-FontUrl.prototype.getUrl = function( ... variant ) {
+FontUrl.getCodeByUnorderedList = function( ... variant ) {
 	var style , weight , stretch ;
 
 	style = weight = stretch = 'regular' ;
@@ -4851,9 +4851,42 @@ FontUrl.prototype.getUrl = function( ... variant ) {
 		}
 	}
 
-	var code = FontUrl.getCode( style , weight , stretch ) ;
+	return FontUrl.getCode( style , weight , stretch ) ;
+} ;
 
+
+
+FontUrl.prototype.getUrl = function( ... variant ) {
+	var code = FontUrl.getCodeByUnorderedList( ... variant ) ;
 	return this.variantsUrl[ code ] ;
+} ;
+
+
+
+FontUrl.prototype.getFallbackUrl = function( ... variant ) {
+	var code = FontUrl.getCodeByUnorderedList( ... variant ) ;
+	if ( this.variantsUrl[ code ] ) { return this.variantsUrl[ code ] ; }
+
+	var closestDistance = Infinity ,
+		bestUrl = null ,
+		reference = REVERSE_MAP[ code ] ;
+
+	for ( let testCode in this.variantsUrl ) {
+		let testReference = REVERSE_MAP[ testCode ] ;
+		let distance =
+			Math.abs( reference.stylePosition - testReference.stylePosition )
+			+ Math.abs( reference.weightPosition - testReference.weightPosition )
+			+ Math.abs( reference.stretchPosition - testReference.stretchPosition ) ;
+
+		if ( distance < closestDistance ) {
+			closestDistance = distance ;
+			bestUrl = this.variantsUrl[ testCode ] ;
+		}
+	}
+
+	console.log( "Fallback url:" , bestUrl ) ;
+
+	return bestUrl ;
 } ;
 
 
@@ -4879,13 +4912,18 @@ fontLib.getFontUrl = ( fontFamily , ... variant ) => {
 	return fontUrl.getUrl( ... variant ) ;
 } ;
 
+fontLib.getFallbackFontUrl = ( fontFamily , ... variant ) => {
+	var fontUrl = fontUrlByFamily[ fontFamily ] ;
+	if ( ! fontUrl ) { return ; }
+	return fontUrl.getFallbackUrl( ... variant ) ;
+} ;
+
 
 
 // Neutral and common property names
 const NEUTRAL_MAP = {
 	normal: true ,
-	regular: true ,
-	medium: true
+	regular: true
 } ;
 
 // Font style
@@ -4895,6 +4933,8 @@ const STYLE_MAP = {
 	oblique: 1 ,
 	italic: 2
 } ;
+
+const STYLE_SCORE = [ 0 , 10 , 12 ] ;
 
 // Font weight
 const WEIGHT_MAP = {
@@ -4921,6 +4961,12 @@ const WEIGHT_MAP = {
 	black: 8
 } ;
 
+const WEIGHT_SCORE = [
+	- 12 , - 10 , - 8 ,
+	0 ,
+	6 , 8 , 10 , 12 , 14
+] ;
+
 // Font stretch/font width
 const STRETCH_MAP = {
 	ultraCondensed: 0 ,		// 50%
@@ -4942,15 +4988,64 @@ const STRETCH_MAP = {
 	'ultra-expanded': 8
 } ;
 
+const STRETCH_SCORE = [
+	- 14 , - 11 , - 8 , - 6 ,
+	0 ,
+	6 , 8 , 11 , 14
+] ;
+
+const REVERSE_MAP = [] ;
+
+for ( let styleCode = 0 ; styleCode <= 2 ; styleCode ++ ) {
+	for ( let weightCode = 0 ; weightCode <= 8 ; weightCode ++ ) {
+		for ( let stretchCode = 0 ; stretchCode <= 8 ; stretchCode ++ ) {
+			let code = styleCode * 81 + weightCode * 9 + stretchCode ;
+			REVERSE_MAP[ code ] = {
+				stylePosition: STYLE_SCORE[ styleCode ] ,
+				weightPosition: WEIGHT_SCORE[ weightCode ] ,
+				stretchPosition: STRETCH_SCORE[ stretchCode ]
+			} ;
+		}
+	}
+}
+
+
+
+fontLib.preloadFontFamily = async ( fontFamily ) => {
+	var fontUrl = fontUrlByFamily[ fontFamily ] ;
+	if ( ! fontUrl ) { throw new Error( "Font family not found: " + fontFamily ) ; }
+	return Promise.all( Object.values( fontUrl.variantsUrl ).map( url => fontLib.getFontByUrlAsync( url ) ) ) ;
+} ;
+
+
+
+fontLib.getFallbackFontAsync = ( fontFamily , ... variant ) => {
+	var url = fontLib.getFallbackFontUrl( fontFamily , ... variant ) ;
+	if ( ! url ) { return null ; }
+	return fontLib.getFontByUrlAsync( url ) ;
+} ;
+
+fontLib.getFontAsync = ( fontFamily , ... variant ) => {
+	var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
+	if ( ! url ) { return null ; }
+	return fontLib.getFontByUrlAsync( url ) ;
+} ;
+
+fontLib.getFallbackFont = ( fontFamily , ... variant ) => {
+	var url = fontLib.getFallbackFontUrl( fontFamily , ... variant ) ;
+	if ( ! url ) { return null ; }
+	return fontLib.getFontByUrl( url ) ;
+} ;
+
+fontLib.getFont = ( fontFamily , ... variant ) => {
+	var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
+	if ( ! url ) { return null ; }
+	return fontLib.getFontByUrl( url ) ;
+} ;
+
 
 
 if ( process?.browser ) {
-	fontLib.getFontAsync = ( fontFamily , ... variant ) => {
-		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
-		if ( ! url ) { return null ; }
-		return fontLib.getFontByUrlAsync( url ) ;
-	} ;
-
 	fontLib.getFontByUrlAsync = async ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
@@ -4969,12 +5064,8 @@ if ( process?.browser ) {
 		return font ;
 	} ;
 
-	fontLib.getFont = ( fontFamily , ... variant ) => {
-		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
-		if ( ! url ) { return null ; }
-
+	fontLib.getFontByUrl = ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
-
 		//console.error( "Font not found:" , fontName , fontCache ) ;
 		throw new Error( "Font " + [ fontFamily , ... variant ].join( ', ' ) + " was not preloaded and we can't load synchronously inside a web browser..." ) ;
 	} ;
@@ -4987,44 +5078,27 @@ else {
 	fontLib.setFontUrl( 'serif' , 'bold' , builtinPath + '/serif-bold.ttf' ) ;
 	fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , builtinPath + '/serif-bold+italic.ttf' ) ;
 
-	fontLib.getFontAsync = ( fontFamily , ... variant ) => {
-		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
-		if ( ! url ) { return null ; }
-		return fontLib.getFontByUrlAsync( url ) ;
-	} ;
-
 	fontLib.getFontByUrlAsync = async ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		var buffer = await fs.promises.readFile( url ) ;
-		var font = await opentype.parse( buffer ) ;
+		var font = await opentype.parse( buffer.buffer ) ;
 		fontCache[ url ] = font ;
 		console.log( "Loaded (async) font: " , url , font ) ;
 
 		return font ;
 	} ;
 
-	fontLib.getFont = ( fontFamily , ... variant ) => {
-		var url = fontLib.getFontUrl( fontFamily , ... variant ) ;
-		if ( ! url ) { return null ; }
-
+	fontLib.getFontByUrl = ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 
 		var font = opentype.loadSync( url ) ;
 		fontCache[ url ] = font ;
-		console.log( "Loaded (sync) font: " , fontFamily , ... variant , font ) ;
+		console.log( "Loaded (sync) font: " , url ) ;
 
 		return font ;
 	} ;
 }
-
-
-
-fontLib.preloadFontFamily = async ( fontFamily ) => {
-	var fontUrl = fontUrlByFamily[ fontFamily ] ;
-	if ( ! fontUrl ) { throw new Error( "Font family not found: " + fontFamily ) ; }
-	return Promise.all( Object.values( fontUrl.variantsUrl ).map( url => fontLib.getFontByUrlAsync( url ) ) ) ;
-} ;
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
