@@ -1377,6 +1377,8 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 const TextAttribute = require( './TextAttribute.js' ) ;
 const TextMetrics = require( './TextMetrics.js' ) ;
 
+const escape = require( 'string-kit/lib/escape.js' ) ;
+
 
 
 function StructuredTextPart( params = {} ) {
@@ -1432,24 +1434,51 @@ StructuredTextPart.prototype.computeSizeMetrics = async function( inheritedAttr 
 
 
 
+const CAN_SPLIT_BEFORE = new Set( [ ' ' ] ) ;
+const CAN_SPLIT_AFTER = new Set( [ ' ' , '-' ] ) ;
+const FORCE_NO_SPLIT_BEFORE = new Set( [ '!' , '?' , ':' , ';' ] ) ;
+
+// Create the word-splitting regex, with 2 captures: the first move the splitter
+// to the right (split-before), the second to the left (split-after).
+const WORD_SPLIT_REGEXP = new RegExp(
+	'(' + [ ... CAN_SPLIT_BEFORE ].map( e => escape.regExpPattern( e ) + '+' ).join( '|' ) + ')'
+	+ '|(' + [ ... CAN_SPLIT_AFTER ].filter( e => ! CAN_SPLIT_BEFORE.has( e ) ).map( e => escape.regExpPattern( e ) + '+' ).join( '|' ) + ')' ,
+	'g'
+) ;
+//console.warn( "WORD_SPLIT_REGEXP:" , WORD_SPLIT_REGEXP ) ;
+
+
+
 // Split the into words, suitable to compute word-wrapping
 // Note: This splitting function does not exclude the splitter,
 // it keeps it on the left of the right-side of the split
 StructuredTextPart.prototype.splitIntoWords = function( intoList = [] ) {
 	let match ;
 	let lastIndex = 0 ;
-	const regexp = / +/g ;
+	WORD_SPLIT_REGEXP.lastIndex = 0 ;
 
-	while ( ( match = regexp.exec( this.text ) ) ) {
+	while ( ( match = WORD_SPLIT_REGEXP.exec( this.text ) ) ) {
 		if ( lastIndex < match.index ) {
 			let newPart = new StructuredTextPart( this ) ;
-			let dbg = newPart.text = this.text.slice( lastIndex , match.index ) ;
+
+			if ( match[ 1 ] ) {
+				// It's a split-before
+				newPart.text = this.text.slice( lastIndex , match.index ) ;
+				lastIndex = match.index ;
+			}
+			else {
+				// It's a split-after
+				newPart.text = this.text.slice( lastIndex , match.index + match[ 0 ].length ) ;
+				lastIndex = match.index + match[ 0 ].length ;
+			}
+
 			newPart.metrics = null ;
 			newPart.checkLineSplit() ;
 			intoList.push( newPart ) ;
 		}
-
-		lastIndex = match.index ;
+		else {
+			lastIndex = match.index ;
+		}
 	}
 
 	if ( lastIndex < this.text.length ) {
@@ -1460,28 +1489,27 @@ StructuredTextPart.prototype.splitIntoWords = function( intoList = [] ) {
 		intoList.push( newPart ) ;
 	}
 
+	//console.warn( "Word split:" , intoList.map( e => e.text ) ) ;
 	return intoList ;
 } ;
 
 
 
-const NO_SPLIT_BEFORE = new Set( [ '!' , '?' , ':' ] ) ;
-
 StructuredTextPart.prototype.checkLineSplit = function() {
-	if ( this.text[ 0 ] === ' ' ) {
-		this.canLineSplitBefore = ! NO_SPLIT_BEFORE.has( this.text[ 1 ] ) ;
+	if ( CAN_SPLIT_BEFORE.has( this.text[ 0 ] ) ) {
+		this.canLineSplitBefore = ! FORCE_NO_SPLIT_BEFORE.has( this.text[ 1 ] ) ;
 		this.forceNoLineSplitBefore = false ;
 	}
 	else {
 		this.canLineSplitBefore = false ;
-		this.forceNoLineSplitBefore = NO_SPLIT_BEFORE.has( this.text[ 0 ] ) ;
+		this.forceNoLineSplitBefore = FORCE_NO_SPLIT_BEFORE.has( this.text[ 0 ] ) ;
 	}
-	
-	this.canLineSplitAfter = this.text[ this.text.length - 1 ] === ' ' ;
+
+	this.canLineSplitAfter = CAN_SPLIT_AFTER.has( this.text[ this.text.length - 1 ] ) ;
 } ;
 
 
-},{"./TextAttribute.js":9,"./TextMetrics.js":10}],9:[function(require,module,exports){
+},{"./TextAttribute.js":9,"./TextMetrics.js":10,"string-kit/lib/escape.js":40}],9:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2434,7 +2462,7 @@ VGFlowingText.prototype.parseStructuredTextLineEllipsis = async function( line )
 
 
 VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line ) {
-	console.log( "Start with:" , line ) ;
+	//console.log( "Start with:" , line ) ;
 	const outputLines = [] ; // Array of Array of StructuredTextPart
 	const outputParts = [] ; // Array of StructuredTextPart
 
@@ -2450,7 +2478,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 	let blockAdded = 0 ;
 
 	for ( let index = 0 ; index < outputParts.length ; index ++ ) {
-		console.log( "index" , index , lastIndex ) ;
+		//console.log( "index" , index , lastIndex ) ;
 		let part = outputParts[ index ] ;
 		testLine.push( part ) ;
 
@@ -2465,13 +2493,13 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 			)
 		) {
 			// It is not splittable after, so we test immediately with more content.
-			console.log( "not splittable after: '" , part.text + "'" ) ;
+			//console.log( "not splittable after: '" , part.text + "'" ) ;
 			continue ;
 		}
 
 		if ( testLineMetrics.width > this.width && blockAdded >= 1 ) {
 			let removed = index - lastIndex ;
-			console.log( "width overflow for '" + part.text + "': " , testLineMetrics.width , ">" , this.width , "removed:" , removed ) ;
+			//console.log( "width overflow for '" + part.text + "': " , testLineMetrics.width , ">" , this.width , "removed:" , removed ) ;
 			testLine.length -= removed ;
 			outputLines.push( new StructuredTextLine( testLine , lastTestLineMetrics ) ) ;
 			lastTestLineMetrics = new TextMetrics() ;
@@ -2481,12 +2509,12 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 			let indexOfNextLine = index - removed + 1 ;
 			for ( ; indexOfNextLine <= index ; indexOfNextLine ++ ) {
 				let nextLinePart = outputParts[ indexOfNextLine ] ;
-				console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ;
+				//console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ;
 				let trimmedText = nextLinePart.text.trimStart() ;
 
 				if ( trimmedText ) {
 					if ( trimmedText !== nextLinePart.text ) {
-						console.log( "Left-trim: '" + nextLinePart.text + "'" ) ;
+						//console.log( "Left-trim: '" + nextLinePart.text + "'" ) ;
 						nextLinePart.text = trimmedText ;
 						await nextLinePart.computeSizeMetrics( this.attr ) ;
 					}
@@ -2509,7 +2537,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 			lastTestLineMetrics.fuseWithRightPart( outputParts[ indexOfPartToAdd ].metrics ) ;
 			dbg += outputParts[ indexOfPartToAdd ].text ;
 		}
-		console.log( "added:" , lastIndex + 1 , index , "'" + dbg + "'" ) ;
+		//console.log( "added:" , lastIndex + 1 , index , "'" + dbg + "'" ) ;
 
 		lastIndex = index ;
 	}
