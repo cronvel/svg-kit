@@ -27,6 +27,8 @@ async function flowTest() {
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
 		textWrapping: 'wordWrap' ,
+		textVerticalAlignment: 'bottom' ,
+		textHorizontalAlignment: 'center' ,
 		attr: {
 			fontSize: 28 , color: '#777' ,
 			//outline: true ,

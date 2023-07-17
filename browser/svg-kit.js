@@ -162,6 +162,8 @@ var autoId = 0 ;
 function VG( options ) {
 	VGContainer.call( this , options ) ;
 
+	this.root = this ;	// This is the root element
+
 	this.id = ( options && options.id ) || 'vg_' + ( autoId ++ ) ;
 	this.viewBox = {
 		x: 0 , y: 0 , width: 100 , height: 100
@@ -189,12 +191,12 @@ VG.prototype.svgTag = 'svg' ;
 
 
 
-VG.prototype.svgAttributes = function( root = this ) {
+VG.prototype.svgAttributes = function() {
 	var attr = {
 		xmlns: this.NS ,
 		// xlink is required for image, since href works only on the browser, everywhere else we need xlink:href instead
 		'xmlns:xlink': "http://www.w3.org/1999/xlink" ,
-		viewBox: this.viewBox.x + ' ' + ( root.invertY ? - this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
+		viewBox: this.viewBox.x + ' ' + ( this.root.invertY ? - this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
 	} ;
 
 	return attr ;
@@ -322,7 +324,13 @@ VGClip.prototype.set = function( params ) {
 
 VGClip.prototype.addClippingEntity = function( clippingEntity , clone = false ) {
 	clippingEntity = svgKit.objectToVG( clippingEntity , clone ) ;
-	if ( clippingEntity ) { this.clippingEntities.push( clippingEntity ) ; }
+
+	if ( clippingEntity ) {
+		if ( clippingEntity.parent ) { clippingEntity.parent.removeEntity( clippingEntity ) ; }
+		clippingEntity.parent = this ;
+		clippingEntity.root = this.root ;
+		this.clippingEntities.push( clippingEntity ) ;
+	}
 } ;
 
 
@@ -336,7 +344,7 @@ VGClip.prototype.removeClippingEntity = function( clippingEntity ) {
 
 
 
-VGClip.prototype.svgClippingGroupAttributes = function( root = this ) {
+VGClip.prototype.svgClippingGroupAttributes = function() {
 	var attr = {
 		id: this._id + '_clipPath'
 	} ;
@@ -346,7 +354,7 @@ VGClip.prototype.svgClippingGroupAttributes = function( root = this ) {
 
 
 
-VGClip.prototype.svgContentGroupAttributes = function( root = this ) {
+VGClip.prototype.svgContentGroupAttributes = function() {
 	var attr = {
 		'clip-path': 'url(#' + ( this._id + '_clipPath' ) + ')'
 	} ;
@@ -452,6 +460,8 @@ VGContainer.prototype.addEntity = function( entity , clone = false ) {
 
 	if ( entity ) {
 		if ( entity.parent ) { entity.parent.removeEntity( entity ) ; }
+		entity.parent = this ;
+		entity.root = this.root ;
 		this.entities.push( entity ) ;
 	}
 } ;
@@ -535,14 +545,14 @@ VGContainer.prototype.importMorphLog = function( log ) {
 
 
 // Update the DOM, based upon the morphLog
-VGContainer.prototype.morphSvgDom = function( root = this ) {
-	this.entities.forEach( entity => entity.morphSvgDom( root ) ) ;
+VGContainer.prototype.morphSvgDom = function() {
+	this.entities.forEach( entity => entity.morphSvgDom() ) ;
 
 	if ( this.supportClippingEntities ) {
-		this.clippingEntities.forEach( clippingEntity => clippingEntity.morphSvgDom( root ) ) ;
+		this.clippingEntities.forEach( clippingEntity => clippingEntity.morphSvgDom() ) ;
 	}
 
-	this.morphLog.forEach( entry => this.morphOneSvgDomEntry( entry , root ) ) ;
+	this.morphLog.forEach( entry => this.morphOneSvgDomEntry( entry ) ) ;
 	this.morphLog.length = 0 ;
 	return this.$element ;
 } ;
@@ -637,10 +647,10 @@ VGEllipse.prototype.export = function( data = {} ) {
 
 
 
-VGEllipse.prototype.svgAttributes = function( root = this ) {
+VGEllipse.prototype.svgAttributes = function() {
 	var attr = {
 		cx: this.x ,
-		cy: root.invertY ? - this.y : this.y ,
+		cy: this.root.invertY ? - this.y : this.y ,
 		rx: this.rx ,
 		ry: this.ry
 	} ;
@@ -650,8 +660,8 @@ VGEllipse.prototype.svgAttributes = function( root = this ) {
 
 
 
-VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
+VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
@@ -662,8 +672,8 @@ VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , r
 
 
 
-VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , root = this ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
+VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 	path2D.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
 } ;
 
@@ -910,16 +920,16 @@ VGEntity.prototype.domStyle = function( $element , style ) {
 
 
 // Render the Vector Graphic as a text SVG
-VGEntity.prototype.renderSvgText = async function( options = {} , root = this ) {
+VGEntity.prototype.renderSvgText = async function( options = {} ) {
 	var str = '' ;
 
 	if ( options.insideClipPath && this.isRenderingContainer && this.renderingContainerHookForSvgText ) {
-		str += await this.renderingContainerHookForSvgText( root ) ;
+		str += await this.renderingContainerHookForSvgText() ;
 		return str ;
 	}
 
 	var textNodeStr = '' ,
-		attr = this.svgAttributes( root ) ;
+		attr = this.svgAttributes() ;
 
 	str += '<' + this.svgTag ;
 
@@ -974,29 +984,29 @@ VGEntity.prototype.renderSvgText = async function( options = {} , root = this ) 
 	// Inner content
 
 	if ( this.isRenderingContainer && this.renderingContainerHookForSvgText ) {
-		str += await this.renderingContainerHookForSvgText( root ) ;
+		str += await this.renderingContainerHookForSvgText() ;
 	}
 
 	if ( this.supportClippingEntities ) {
 		str += '<' + this.svgClippingGroupTag ;
-		str += this.attrToString( this.svgClippingGroupAttributes( root ) , undefined , true ) ;
+		str += this.attrToString( this.svgClippingGroupAttributes() , undefined , true ) ;
 		str += '>' ;
 
 		if ( this.clippingEntities?.length ) {
 			for ( let clippingEntity of this.clippingEntities ) {
-				str += await clippingEntity.renderSvgText( { insideClipPath: true } , root ) ;
+				str += await clippingEntity.renderSvgText( { insideClipPath: true } ) ;
 			}
 		}
 
 		str += '</' + this.svgClippingGroupTag + '>' ;
 
 		str += '<' + this.svgContentGroupTag ;
-		str += this.attrToString( this.svgContentGroupAttributes( root ) , undefined , true ) ;
+		str += this.attrToString( this.svgContentGroupAttributes() , undefined , true ) ;
 		str += '>' ;
 
 		if ( this.isContainer && this.entities?.length ) {
 			for ( let entity of this.entities ) {
-				str += await entity.renderSvgText( options , root ) ;
+				str += await entity.renderSvgText( options ) ;
 			}
 		}
 
@@ -1004,7 +1014,7 @@ VGEntity.prototype.renderSvgText = async function( options = {} , root = this ) 
 	}
 	else if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
-			str += await entity.renderSvgText( options , root ) ;
+			str += await entity.renderSvgText( options ) ;
 		}
 	}
 
@@ -1017,8 +1027,8 @@ VGEntity.prototype.renderSvgText = async function( options = {} , root = this ) 
 
 
 // Render the Vector Graphic inside a browser, as DOM SVG
-VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
-	let attr = this.svgAttributes( root ) ;
+VGEntity.prototype.renderSvgDom = async function( options = {} ) {
+	let attr = this.svgAttributes() ;
 
 	this.$element = document.createElementNS( this.NS , options.overrideTag || this.svgTag ) ;
 
@@ -1070,23 +1080,23 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 	// Inner content
 
 	if ( this.isRenderingContainer && this.renderingContainerHookForSvgDom ) {
-		let subElements = await this.renderingContainerHookForSvgDom( root ) ;
+		let subElements = await this.renderingContainerHookForSvgDom() ;
 		subElements.forEach( $subElement => this.$element.appendChild( $subElement ) ) ;
 	}
 
 	if ( this.supportClippingEntities ) {
 		let $clippingGroup = document.createElementNS( this.NS , this.svgClippingGroupTag ) ,
-			clippingGroupAttr = this.svgClippingGroupAttributes( root ) ;
+			clippingGroupAttr = this.svgClippingGroupAttributes() ;
 
 		let $contentGroup = document.createElementNS( this.NS , this.svgContentGroupTag ) ,
-			contentGroupAttr = this.svgContentGroupAttributes( root ) ;
+			contentGroupAttr = this.svgContentGroupAttributes() ;
 
 		dom.attr( $clippingGroup , clippingGroupAttr ) ;
 		dom.attr( $contentGroup , contentGroupAttr ) ;
 
 		if ( this.clippingEntities?.length ) {
 			for ( let clippingEntity of this.clippingEntities ) {
-				let $child = await clippingEntity.renderSvgDom( options , root ) ;
+				let $child = await clippingEntity.renderSvgDom( options ) ;
 				// There is a bug in browser, they do not accept <g> inside <clipPath> (but Inkscape supports it),
 				// so we will append children of that group directly
 				if ( $child.tagName === 'g' ) {
@@ -1100,7 +1110,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 
 		if ( this.isContainer && this.entities?.length ) {
 			for ( let entity of this.entities ) {
-				$contentGroup.appendChild( await entity.renderSvgDom( options , root ) ) ;
+				$contentGroup.appendChild( await entity.renderSvgDom( options ) ) ;
 			}
 		}
 
@@ -1109,7 +1119,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 	}
 	else if ( this.isContainer && this.entities?.length ) {
 		for ( let entity of this.entities ) {
-			this.$element.appendChild( await entity.renderSvgDom( options , root ) ) ;
+			this.$element.appendChild( await entity.renderSvgDom( options ) ) ;
 		}
 	}
 
@@ -1119,11 +1129,11 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , root = this ) {
 
 
 // Render the Vector Graphic inside a browser's canvas
-VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , root = this ) {
+VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} ) {
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
 
 	if ( this.renderHookForCanvas ) {
-		await this.renderHookForCanvas( canvasCtx , options , root ) ;
+		await this.renderHookForCanvas( canvasCtx , options ) ;
 	}
 
 	if ( this.isContainer && this.entities?.length ) {
@@ -1133,20 +1143,20 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , roo
 			let clipPath2D = new Path2D() ;
 
 			for ( let clippingEntity of this.clippingEntities ) {
-				await clippingEntity.renderPath2D( clipPath2D , canvasCtx , options , root ) ;
+				await clippingEntity.renderPath2D( clipPath2D , canvasCtx , options ) ;
 			}
 
 			canvasCtx.clip( clipPath2D ) ;
 
 			for ( let entity of this.entities ) {
-				await entity.renderCanvas( canvasCtx , options , root ) ;
+				await entity.renderCanvas( canvasCtx , options ) ;
 			}
 
 			canvasCtx.restore() ;
 		}
 		else {
 			for ( let entity of this.entities ) {
-				await entity.renderCanvas( canvasCtx , options , root ) ;
+				await entity.renderCanvas( canvasCtx , options ) ;
 			}
 		}
 	}
@@ -1154,14 +1164,14 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , roo
 
 
 
-VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options = {} , root = this ) {
+VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options = {} ) {
 	if ( this.renderHookForPath2D ) {
-		await this.renderHookForPath2D( path2D , canvasCtx , options , root ) ;
+		await this.renderHookForPath2D( path2D , canvasCtx , options ) ;
 	}
 
 	if ( this.isContainer && this.entities?.length ) {
 		for ( let entity of this.entities ) {
-			await entity.renderPath2D( path2D , canvasCtx , options , root ) ;
+			await entity.renderPath2D( path2D , canvasCtx , options ) ;
 		}
 	}
 } ;
@@ -1169,15 +1179,15 @@ VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options =
 
 
 // Update the DOM, based upon the morphLog
-VGEntity.prototype.morphSvgDom = function( root = this ) {
-	this.morphLog.forEach( entry => this.morphOneSvgDomEntry( entry , root ) ) ;
+VGEntity.prototype.morphSvgDom = function() {
+	this.morphLog.forEach( entry => this.morphOneSvgDomEntry( entry ) ) ;
 	this.morphLog.length = 0 ;
 	return this.$element ;
 } ;
 
 
 
-VGEntity.prototype.morphOneSvgDomEntry = function( data , root = this ) {
+VGEntity.prototype.morphOneSvgDomEntry = function( data ) {
 	var key ;
 
 	// Disallow id changes?
@@ -2217,8 +2227,8 @@ function VGFlowingText( params ) {
 	this.attr = params?.attr ? null : new TextAttribute() ;	// if it's defined, it will be created by this.set()
 	this.lineSpacing = 0 ;
 	this.textWrapping = null ;	// null/ellipsis/wordWrap
+	this.textVerticalAlignment = null ;	// null/top/bottom/center
 	this.textHorizontalAlignment = null ;	// null/left/right/center
-	//this.textVerticalAlignment = null ;	// null/top/bottom/center
 
 	this.debugContainer = !! params.debugContainer ;
 
@@ -2271,6 +2281,7 @@ VGFlowingText.prototype.set = function( params ) {
 
 	if ( params.attr ) { this.attr = new TextAttribute( params.attr ) ; this.areLinesComputed = false ; }
 	if ( params.lineSpacing !== undefined ) { this.lineSpacing = + params.lineSpacing || 0 ; this.areLinesComputed = false ; }
+	if ( params.textVerticalAlignment !== undefined ) { this.textVerticalAlignment = params.textVerticalAlignment ; this.areLinesComputed = false ; }
 	if ( params.textHorizontalAlignment !== undefined ) { this.textHorizontalAlignment = params.textHorizontalAlignment ; this.areLinesComputed = false ; }
 
 	if ( params.textWrapping !== undefined ) {
@@ -2299,8 +2310,8 @@ VGFlowingText.prototype.export = function( data = {} ) {
 
 	if ( this.lineSpacing ) { data.lineSpacing = this.lineSpacing ; }
 	if ( this.textWrapping ) { data.textWrapping = this.textWrapping ; }
+	if ( this.textVerticalAlignment ) { data.textVerticalAlignment = this.textVerticalAlignment ; }
 	if ( this.textHorizontalAlignment ) { data.textHorizontalAlignment = this.textHorizontalAlignment ; }
-	//if ( this.textVerticalAlignment ) { data.textVerticalAlignment = this.textVerticalAlignment ; }
 
 	return data ;
 } ;
@@ -2365,7 +2376,7 @@ VGFlowingText.prototype.computeLines = async function() {
 
 
 
-VGFlowingText.prototype.breakLines = async function( width = this.width ) {
+VGFlowingText.prototype.breakLines = async function() {
 	var outputLines = [] , // Array of StructuredTextLine
 		lines = VGFlowingText.parseNewLine( this.structuredText ) ;
 
@@ -2470,12 +2481,12 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 			let indexOfNextLine = index - removed + 1 ;
 			for ( ; indexOfNextLine <= index ; indexOfNextLine ++ ) {
 				let nextLinePart = outputParts[ indexOfNextLine ] ;
-				console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ; 
+				console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ;
 				let trimmedText = nextLinePart.text.trimStart() ;
 
 				if ( trimmedText ) {
 					if ( trimmedText !== nextLinePart.text ) {
-						console.log( "Left-trim: '" + nextLinePart.text + "'" ) ; 
+						console.log( "Left-trim: '" + nextLinePart.text + "'" ) ;
 						nextLinePart.text = trimmedText ;
 						await nextLinePart.computeSizeMetrics( this.attr ) ;
 					}
@@ -2524,32 +2535,58 @@ VGFlowingText.prototype.computePartsSizeMetrics = async function( structuredText
 
 
 
-// Set the position of each part and each line
-VGFlowingText.prototype.computePartsPosition = function() {
+VGFlowingText.prototype.computeContentSize = function() {
 	this._contentWidth = 0 ;
 	this._contentHeight = 0 ;
+
+	var lastStructuredTextLine = null ;
+
+	for ( let structuredTextLine of this.structuredTextLines ) {
+		if ( lastStructuredTextLine ) { this._contentHeight += this.lineSpacing ; }
+		this._contentHeight += structuredTextLine.metrics.ascender - structuredTextLine.metrics.descender + structuredTextLine.metrics.lineGap ;
+		if ( structuredTextLine.metrics.width > this._contentWidth ) { this._contentWidth = structuredTextLine.metrics.width ; }
+	}
+} ;
+
+
+
+// Set the position of each part and each line
+VGFlowingText.prototype.computePartsPosition = function() {
+	this.computeContentSize() ;
+
 	this._characterCount = 0 ;
 
-	var x , y = this.y ,
+	var x , y ,
 		lastStructuredTextLine = null ;
+
+	switch ( this.textVerticalAlignment ) {
+		case 'bottom' :
+			y = this.y + this.height - this._contentHeight ;
+			break ;
+		case 'center' :
+		case 'middle' :
+			y = this.y + ( this.height - this._contentHeight ) / 2 ;
+			break ;
+		case 'top' :
+		default :
+			y = this.y ;
+			break ;
+	}
 
 	for ( let structuredTextLine of this.structuredTextLines ) {
 		if ( lastStructuredTextLine ) {
 			// It is a new line, offset it depending on the previous one
 			y += - lastStructuredTextLine.metrics.descender + lastStructuredTextLine.metrics.lineGap + this.lineSpacing ;
-			this._contentHeight += lastStructuredTextLine.metrics.lineGap + this.lineSpacing ;
 		}
 
 		y += structuredTextLine.metrics.ascender ;
-		this._contentHeight += structuredTextLine.metrics.ascender - structuredTextLine.metrics.descender ;
-
-		if ( structuredTextLine.metrics.width > this._contentWidth ) { this._contentWidth = structuredTextLine.metrics.width ; }
 
 		switch ( this.textHorizontalAlignment ) {
 			case 'right' :
 				x = this.x + this.width - structuredTextLine.metrics.width ;
 				break ;
 			case 'center' :
+			case 'middle' :
 				x = this.x + ( this.width - structuredTextLine.metrics.width ) / 2 ;
 				break ;
 			case 'left' :
@@ -2578,12 +2615,12 @@ VGFlowingText.prototype.computePartsPosition = function() {
 
 
 
-VGFlowingText.parseNewLine = function( structuredText ) {
+VGFlowingText.parseNewLine = function( structuredText_ ) {
 	var currentLine = [] , // Array of StructuredText
 		lines = [ currentLine ] ; // Array of Array of StructuredText
 
 	// First split lines on \n
-	for ( let part of structuredText ) {
+	for ( let part of structuredText_ ) {
 		if ( part.text.includes( '\n' ) || part.text.includes( '\r' ) ) {
 			let splitParts = part.text.split( /\r\n|\r|\n/ ) ;
 
@@ -2619,7 +2656,7 @@ VGFlowingText.parseNewLine = function( structuredText ) {
 
 
 
-VGFlowingText.prototype.svgAttributes = function( root = this ) {
+VGFlowingText.prototype.svgAttributes = function() {
 	var attr = {} ;
 
 	if ( this.clip ) {
@@ -2646,10 +2683,10 @@ VGFlowingText.prototype.getUsedFontNames = function() {
 
 
 // Render the Vector Graphic as a text SVG
-VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root = this ) {
+VGFlowingText.prototype.renderingContainerHookForSvgText = async function() {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
-	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
 		str = '' ;
 
 	if ( this.clip ) {
@@ -2750,10 +2787,10 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( root 
 
 
 
-VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root = this ) {
+VGFlowingText.prototype.renderingContainerHookForSvgDom = async function() {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
-	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
 		elementList = [] ;
 
 	if ( this.clip ) {
@@ -2858,10 +2895,10 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( root =
 
 
 
-VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , root = this ) {
+VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	// We have to save context because canvasCtx.clip() is not reversible
 	canvasCtx.save() ;
@@ -2947,10 +2984,10 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 /*
 	This renderer does not support clipping the text, debugContainer, and frame.
 */
-VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} , root = this ) {
+VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	for ( let structuredTextLine of this.structuredTextLines ) {
 		for ( let part of structuredTextLine.parts ) {
@@ -3251,12 +3288,12 @@ VGImage.prototype.isRenderingContainer = true ;
 
 
 
-VGImage.prototype.renderingContainerHookForSvgText = async function( root = this ) {
+VGImage.prototype.renderingContainerHookForSvgText = async function() {
 	var imageSize = await getImageSize( this.url ) ;
 
 	if ( this.ninePatch ) {
 		// Also support clip
-		return this.renderSvgTextNinePatchImage( imageSize , root ) ;
+		return this.renderSvgTextNinePatchImage( imageSize ) ;
 	}
 
 	if ( this.clip ) {
@@ -3270,23 +3307,22 @@ VGImage.prototype.renderingContainerHookForSvgText = async function( root = this
 				dy: this.y ,
 				dw: this.width ,
 				dh: this.height
-			} ,
-			root
+			}
 		) ;
 	}
 
 	// Regular image (not clipped, not 9-patch) never reach this place right now
 	let coords = this.getAspectCoords( imageSize ) ;
-	return this.renderSvgTextClipImage( imageSize , coords , root ) ;
+	return this.renderSvgTextClipImage( imageSize , coords ) ;
 } ;
 
 
 
 const CLIP_EXTRA_SIZE = 0.5 ;
 
-VGImage.prototype.renderSvgTextClipImage = function( imageSize , coords , root , n = 0 ) {
+VGImage.prototype.renderSvgTextClipImage = function( imageSize , coords , n = 0 ) {
 	var str = '' ,
-		yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+		yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
 		scaleX = coords.dw / coords.sw ,
 		scaleY = coords.dh / coords.sh ;
 
@@ -3322,13 +3358,13 @@ VGImage.prototype.renderSvgTextClipImage = function( imageSize , coords , root ,
 
 
 
-VGImage.prototype.renderSvgTextNinePatchImage = function( imageSize , root ) {
+VGImage.prototype.renderSvgTextNinePatchImage = function( imageSize ) {
 	var str = '' ,
 		n = 0 ,
 		coordsList = this.getNinePatchCoordsList( imageSize ) ;
 
 	for ( let coords of coordsList ) {
-		str += this.renderSvgTextClipImage( imageSize , coords , root , n ++ ) ;
+		str += this.renderSvgTextClipImage( imageSize , coords , n ++ ) ;
 	}
 
 	return str ;
@@ -3336,14 +3372,14 @@ VGImage.prototype.renderSvgTextNinePatchImage = function( imageSize , root ) {
 
 
 
-VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this ) {
+VGImage.prototype.renderingContainerHookForSvgDom = async function() {
 	var elementList = [] ;
 
 	var imageSize = await getImageSize( this.url ) ;
 
 	if ( this.ninePatch ) {
 		// Also support clip
-		this.renderSvgDomNinePatchImage( imageSize , elementList , root ) ;
+		this.renderSvgDomNinePatchImage( imageSize , elementList ) ;
 	}
 	else if ( this.clip ) {
 		this.renderSvgDomClipImage(
@@ -3357,12 +3393,12 @@ VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this 
 				dw: this.width ,
 				dh: this.height
 			} ,
-			elementList , root
+			elementList
 		) ;
 	}
 	else {
 		let coords = this.getAspectCoords( imageSize ) ;
-		this.renderSvgDomClipImage( imageSize , coords , elementList , root ) ;
+		this.renderSvgDomClipImage( imageSize , coords , elementList ) ;
 	}
 
 	return elementList ;
@@ -3370,8 +3406,8 @@ VGImage.prototype.renderingContainerHookForSvgDom = async function( root = this 
 
 
 
-VGImage.prototype.renderSvgDomClipImage = function( imageSize , coords , elementList , root , n = 0 ) {
-	var yOffset = root.invertY ? - 2 * this.y - this.height : 0 ,
+VGImage.prototype.renderSvgDomClipImage = function( imageSize , coords , elementList , n = 0 ) {
+	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
 		scaleX = coords.dw / coords.sw ,
 		scaleY = coords.dh / coords.sh ;
 
@@ -3414,18 +3450,18 @@ VGImage.prototype.renderSvgDomClipImage = function( imageSize , coords , element
 
 
 
-VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList , root ) {
+VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList ) {
 	var n = 0 ,
 		coordsList = this.getNinePatchCoordsList( imageSize ) ;
 
 	for ( let coords of coordsList ) {
-		this.renderSvgDomClipImage( imageSize , coords , elementList , root , n ++ ) ;
+		this.renderSvgDomClipImage( imageSize , coords , elementList , n ++ ) ;
 	}
 } ;
 
 
 
-VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , root = this ) {
+VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} ) {
 	canvasCtx.save() ;
 
 	var image = new Image() ;
@@ -3435,13 +3471,13 @@ VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {}
 		image.onload = () => {
 			if ( this.ninePatch ) {
 				// Also support clip
-				this.renderCanvasNinePatchImage( canvasCtx , image , root ) ;
+				this.renderCanvasNinePatchImage( canvasCtx , image ) ;
 			}
 			else if ( this.clip ) {
-				this.renderCanvasClipImage( canvasCtx , image , root ) ;
+				this.renderCanvasClipImage( canvasCtx , image ) ;
 			}
 			else {
-				this.renderCanvasAspectImage( canvasCtx , image , root ) ;
+				this.renderCanvasAspectImage( canvasCtx , image ) ;
 			}
 
 			resolve() ;
@@ -3453,8 +3489,8 @@ VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {}
 
 
 
-VGImage.prototype.renderCanvasAspectImage = function( canvasCtx , image , root ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
+VGImage.prototype.renderCanvasAspectImage = function( canvasCtx , image ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
 		coords = this.getAspectCoords( { width: image.naturalWidth , height: image.naturalHeight } ) ;
 
 	canvasCtx.drawImage(
@@ -3466,8 +3502,8 @@ VGImage.prototype.renderCanvasAspectImage = function( canvasCtx , image , root )
 
 
 
-VGImage.prototype.renderCanvasClipImage = function( canvasCtx , image , root ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+VGImage.prototype.renderCanvasClipImage = function( canvasCtx , image ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	canvasCtx.drawImage(
 		image ,
@@ -3478,8 +3514,8 @@ VGImage.prototype.renderCanvasClipImage = function( canvasCtx , image , root ) {
 
 
 
-VGImage.prototype.renderCanvasNinePatchImage = function( canvasCtx , image , root ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
+VGImage.prototype.renderCanvasNinePatchImage = function( canvasCtx , image ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
 		coordsList = this.getNinePatchCoordsList( { width: image.naturalWidth , height: image.naturalHeight } ) ;
 
 	for ( let coords of coordsList ) {
@@ -3760,10 +3796,10 @@ VGPath.prototype.export = function( data = {} ) {
 
 
 
-VGPath.prototype.svgAttributes = function( root = this ) {
+VGPath.prototype.svgAttributes = function() {
 	var attr = {
 		// That enigmatic SVG attribute 'd' probably means 'data' or 'draw'
-		d: this.toD( root )
+		d: this.toD()
 	} ;
 
 	return attr ;
@@ -3772,14 +3808,14 @@ VGPath.prototype.svgAttributes = function( root = this ) {
 
 
 // Build the SVG 'd' attribute
-VGPath.prototype.toD = function( root = this ) {
+VGPath.prototype.toD = function() {
 	var build = {
-		root: root ,
+		root: this.root ,
 		d: '' ,
 		pu: false ,	// Pen Up, when true, turtle-like commands move without tracing anything
 		cx: 0 ,		// cursor position x
 		cy: 0 ,		// cursor position y
-		ca: root.invertY ? - Math.PI / 2 : Math.PI / 2		// cursor angle, default to positive Y-axis
+		ca: this.root.invertY ? - Math.PI / 2 : Math.PI / 2		// cursor angle, default to positive Y-axis
 	} ;
 
 	this.commands.forEach( ( command , index ) => {
@@ -3792,17 +3828,17 @@ VGPath.prototype.toD = function( root = this ) {
 
 
 
-VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
+VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD( root ) ) ) ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD() ) ) ;
 	canvasCtx.restore() ;
 } ;
 
 
 
-VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , root = this ) {
-	path2D.addPath( new Path2D( this.toD( root ) ) ) ;
+VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} ) {
+	path2D.addPath( new Path2D( this.toD() ) ) ;
 } ;
 
 
@@ -4477,10 +4513,10 @@ VGRect.prototype.svgTag = 'rect' ;
 
 
 
-VGRect.prototype.svgAttributes = function( root = this ) {
+VGRect.prototype.svgAttributes = function() {
 	var attr = {
 		x: this.x ,
-		y: root.invertY ? - this.y - this.height : this.y ,
+		y: this.root.invertY ? - this.y - this.height : this.y ,
 		width: this.width ,
 		height: this.height ,
 		rx: this.rx ,
@@ -4492,8 +4528,8 @@ VGRect.prototype.svgAttributes = function( root = this ) {
 
 
 
-VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
@@ -4504,8 +4540,8 @@ VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root
 
 
 
-VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , root = this ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 	path2D.rect( this.x , this.y + yOffset , this.width , this.height ) ;
 } ;
 
@@ -4626,10 +4662,10 @@ VGText.prototype.svgTextNode = function() {
 
 
 
-VGText.prototype.svgAttributes = function( root = this ) {
+VGText.prototype.svgAttributes = function() {
 	var attr = {
 		x: this.x ,
-		y: root.invertY ? - this.y : this.y ,
+		y: this.root.invertY ? - this.y : this.y ,
 		'text-anchor': this.anchor || 'middle'
 	} ;
 
@@ -4641,8 +4677,8 @@ VGText.prototype.svgAttributes = function( root = this ) {
 
 
 
-VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , root = this ) {
-	var yOffset = root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ,
+VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ,
 		style = this.style ,
 		fill = false ,
 		stroke = false ,
