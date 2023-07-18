@@ -5492,6 +5492,8 @@ structuredText.parseMarkup = function( text ) {
 		if ( input.bold ) { part.fontWeight = 'bold' ; }
 		if ( input.underline ) { part.underline = true ; }
 		if ( input.strike ) { part.lineThrough = true ; }
+		if ( input.big ) { part.fontSize = '1.4em' ; }
+		if ( input.small ) { part.fontSize = '0.7em' ; }
 
 		if ( input.bgColor ) {
 			part.frame = true ;
@@ -5579,6 +5581,8 @@ const parseStringKitMarkupConfig = {
 		"/": { italic: true } ,
 		"!": { inverse: true } ,
 		"~": { strike: true } ,
+		"=": { big: true } ,
+		".": { small: true } ,
 
 		"b": { color: "blue" } ,
 		"B": { color: "brightBlue" } ,
