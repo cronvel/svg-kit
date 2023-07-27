@@ -1,11 +1,11 @@
 {
 	"prepare": {
-		"prereleaseCount": 2,
+		"prereleaseCount": 1,
 		"fromVersion": "0.4.0",
 		"forceVersionGte": "0.4.0",
-		"statusType": "alpha",
+		"statusType": "release",
 		"releaseType": "breaking",
-		"nextVersion": "0.5.0-alpha.2",
+		"nextVersion": "0.5.0",
 		"entries": [
 			{
 				"type": "breaking",
@@ -14,6 +14,10 @@
 			{
 				"type": "breaking",
 				"message": "All .render*() are now async, so external resources like images and fonts are easier to manage, since it often require async loading"
+			},
+			{
+				"type": "patch",
+				"message": "V0.5.x release, featuring VGFlowingText with structured text, canvas renderer, path2D renderer, 9-patch image, VGClip and more..."
 			}
 		]
 	}
