@@ -290,6 +290,9 @@ VG.prototype.addCssRule = function( rule ) {
 
 const svgKit = require( './svg-kit.js' ) ;
 const VGContainer = require( './VGContainer.js' ) ;
+const VGEntity = require( './VGEntity.js' ) ;
+
+const arrayKit = require( 'array-kit' ) ;
 
 
 
@@ -363,7 +366,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":54,"./VGContainer.js":4,"./svg-kit.js":23}],4:[function(require,module,exports){
+},{"../package.json":54,"./VGContainer.js":4,"./VGEntity.js":6,"./svg-kit.js":23,"array-kit":28}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2474,7 +2477,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 	let lastTestLineMetrics = new TextMetrics() ;
 	let testLineMetrics = new TextMetrics() ;
 	let testLine = [] ; // Array of StructuredTextPart
-	let lastIndex = -1 ;
+	let lastIndex = - 1 ;
 	let blockAdded = 0 ;
 
 	for ( let index = 0 ; index < outputParts.length ; index ++ ) {
@@ -5161,7 +5164,7 @@ if ( process?.browser ) {
 	fontLib.getFontByUrl = ( url ) => {
 		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
 		//console.error( "Font not found:" , fontName , fontCache ) ;
-		throw new Error( "Font " + [ fontFamily , ... variant ].join( ', ' ) + " was not preloaded and we can't load synchronously inside a web browser..." ) ;
+		throw new Error( "Font " + url + " was not preloaded and we can't load synchronously inside a web browser..." ) ;
 	} ;
 }
 else {
@@ -30124,7 +30127,7 @@ module.exports = function wordwrap( str , options ) {
 },{"./unicode.js":52}],54:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.5.0-alpha.2",
+  "version": "0.5.0",
   "description": "A small SVG toolkit.",
   "main": "lib/svg-kit.js",
   "directories": {
