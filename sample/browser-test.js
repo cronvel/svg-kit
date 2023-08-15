@@ -15,7 +15,7 @@ async function flowTest() {
 
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
-		//invertY: true
+		//invertY: false
 	} ) ;
 
 	var vgFlowingText = new svgKit.VGFlowingText( {
@@ -47,6 +47,8 @@ async function flowTest() {
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
 	await vg.renderCanvas( ctx ) ;
+	console.warn( "BoundingBox:" , vgFlowingText.getBoundingBox() ) ;
+	console.warn( "Content BoundingBox:" , await vgFlowingText.getContentBoundingBox() ) ;
 }
 
 
