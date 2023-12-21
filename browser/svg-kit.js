@@ -240,6 +240,8 @@ Metric.isEqual = function( a , b ) {
 
 
 const VGContainer = require( './VGContainer.js' ) ;
+const Palette = require( 'palette-shade' ).Palette ;
+const DEFAULT_PALETTE = new Palette() ;
 
 var autoId = 0 ;
 
@@ -255,8 +257,9 @@ function VG( params ) {
 		x: 0 , y: 0 , width: 100 , height: 100
 	} ;
 
-	this.css = [] ;
+	this.palette = DEFAULT_PALETTE ;
 	this.invertY = false ;
+	this.css = [] ;
 
 	if ( params ) { this.set( params ) ; }
 }
@@ -277,7 +280,7 @@ VG.prototype.svgTag = 'svg' ;
 
 
 
-VG.prototype.svgAttributes = function() {
+VG.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		xmlns: this.NS ,
 		// xlink is required for image, since href works only on the browser, everywhere else we need xlink:href instead
@@ -300,14 +303,23 @@ VG.prototype.set = function( params ) {
 		if ( params.viewBox.height !== undefined ) { this.viewBox.height = params.viewBox.height ; }
 	}
 
+	if ( params.palette && typeof params.palette === 'object' ) {
+		if ( params.palette instanceof Palette ) {
+			this.palette = params.palette ;
+		}
+		else {
+			this.palette = new Palette( params.palette ) ;
+		}
+	}
+
+	if ( params.invertY !== undefined ) { this.invertY = !! params.invertY ; }
+
 	if ( params.css && Array.isArray( params.css ) ) {
 		this.css.length = 0 ;
 		for ( let rule of params.css ) {
 			this.addCssRule( rule ) ;
 		}
 	}
-
-	if ( params.invertY !== undefined ) { this.invertY = !! params.invertY ; }
 } ;
 
 
@@ -343,7 +355,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":70,"./VGContainer.js":5}],4:[function(require,module,exports){
+},{"../package.json":70,"./VGContainer.js":5,"palette-shade":52}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -736,7 +748,7 @@ VGEllipse.prototype.export = function( data = {} ) {
 
 
 
-VGEllipse.prototype.svgAttributes = function() {
+VGEllipse.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		cx: this.x ,
 		cy: this.root.invertY ? - this.y : this.y ,
@@ -749,19 +761,19 @@ VGEllipse.prototype.svgAttributes = function() {
 
 
 
-VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
 	canvasCtx.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , master?.palette ) ;
 	canvasCtx.restore() ;
 } ;
 
 
 
-VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} ) {
+VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 	path2D.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
 } ;
@@ -800,6 +812,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 
 
 const fontLib = require( './fontLib.js' ) ;
+const misc = require( './misc.js' ) ;
 
 const dom = require( 'dom-kit' ) ;
 const camel = require( 'string-kit/lib/camel' ) ;
@@ -845,7 +858,7 @@ VGEntity.prototype.NS = VGEntity.NS = 'http://www.w3.org/2000/svg' ;
 VGEntity.prototype.isContainer = false ;
 VGEntity.prototype.isRenderingContainer = false ;	// If set, it's not a high-level container but it's rendered as a container
 VGEntity.prototype.svgTag = 'none' ;
-VGEntity.prototype.svgAttributes = () => ( {} ) ;
+VGEntity.prototype.svgAttributes = ( master = this ) => ( {} ) ;
 
 
 
@@ -976,15 +989,25 @@ const STYLE_PROPERTY_UNIT = {
 	fontSize: 'px'
 } ;
 
+const STYLE_PROPERTY_COLOR = {
+	fill: true ,
+	stroke: true
+} ;
 
-
-VGEntity.prototype.styleToString = function( style , addInitialSpace = false ) {
+VGEntity.prototype.styleToString = function( style , palette , addInitialSpace = false ) {
 	var str = '' ;
 
 	for ( let key in style ) {
 		// Key is in camelCase, but should use dash
 		let v = style[ key ] === null ? '' : style[ key ] ;
-		if ( typeof v === 'number' && STYLE_PROPERTY_UNIT[ key ] ) { v = '' + v + STYLE_PROPERTY_UNIT[ key ] ; }
+
+		if ( typeof v === 'number' && STYLE_PROPERTY_UNIT[ key ] ) {
+			v = '' + v + STYLE_PROPERTY_UNIT[ key ] ;
+		}
+		else if ( STYLE_PROPERTY_COLOR[ key ] ) {
+			v = misc.colorToString( v , palette ) ;
+		}
+
 		str += this.escape( camel.camelCaseToDash( key ) ) + ':' + this.escape( v ) + ';' ;
 	}
 
@@ -997,11 +1020,18 @@ VGEntity.prototype.styleToString = function( style , addInitialSpace = false ) {
 
 
 
-VGEntity.prototype.domStyle = function( $element , style ) {
+VGEntity.prototype.domStyle = function( $element , style , palette ) {
 	for ( let key in this.style ) {
 		// Key is already in camelCase
 		let v = style[ key ] === null ? '' : style[ key ] ;
-		if ( typeof v === 'number' && STYLE_PROPERTY_UNIT[ key ] ) { v = '' + v + STYLE_PROPERTY_UNIT[ key ] ; }
+
+		if ( typeof v === 'number' && STYLE_PROPERTY_UNIT[ key ] ) {
+			v = '' + v + STYLE_PROPERTY_UNIT[ key ] ;
+		}
+		else if ( STYLE_PROPERTY_COLOR[ key ] ) {
+			v = misc.colorToString( v , palette ) ;
+		}
+
 		$element.style[ key ] = v ;
 	}
 } ;
@@ -1009,16 +1039,16 @@ VGEntity.prototype.domStyle = function( $element , style ) {
 
 
 // Render the Vector Graphic as a text SVG
-VGEntity.prototype.renderSvgText = async function( options = {} ) {
+VGEntity.prototype.renderSvgText = async function( options = {} , master = this ) {
 	var str = '' ;
 
 	if ( options.insideClipPath && this.isRenderingContainer && this.renderingContainerHookForSvgText ) {
-		str += await this.renderingContainerHookForSvgText() ;
+		str += await this.renderingContainerHookForSvgText( master ) ;
 		return str ;
 	}
 
 	var textNodeStr = '' ,
-		attr = this.svgAttributes() ;
+		attr = this.svgAttributes( master ) ;
 
 	str += '<' + this.svgTag ;
 
@@ -1040,7 +1070,7 @@ VGEntity.prototype.renderSvgText = async function( options = {} ) {
 
 	str += this.attrToString( attr , undefined , true ) ;
 	if ( this.data ) { str += this.attrToString( this.data , 'data-' , true ) ; }
-	str += this.styleToString( this.style , true ) ;
+	str += this.styleToString( this.style , master?.palette , true ) ;
 
 	if ( this.svgTextNode ) { textNodeStr = this.svgTextNode() ; }
 
@@ -1073,7 +1103,7 @@ VGEntity.prototype.renderSvgText = async function( options = {} ) {
 	// Inner content
 
 	if ( this.isRenderingContainer && this.renderingContainerHookForSvgText ) {
-		str += await this.renderingContainerHookForSvgText() ;
+		str += await this.renderingContainerHookForSvgText( master ) ;
 	}
 
 	if ( this.supportClippingEntities ) {
@@ -1083,7 +1113,7 @@ VGEntity.prototype.renderSvgText = async function( options = {} ) {
 
 		if ( this.clippingEntities?.length ) {
 			for ( let clippingEntity of this.clippingEntities ) {
-				str += await clippingEntity.renderSvgText( { insideClipPath: true } ) ;
+				str += await clippingEntity.renderSvgText( { insideClipPath: true } , master ) ;
 			}
 		}
 
@@ -1095,7 +1125,7 @@ VGEntity.prototype.renderSvgText = async function( options = {} ) {
 
 		if ( this.isContainer && this.entities?.length ) {
 			for ( let entity of this.entities ) {
-				str += await entity.renderSvgText( options ) ;
+				str += await entity.renderSvgText( options , master ) ;
 			}
 		}
 
@@ -1103,7 +1133,7 @@ VGEntity.prototype.renderSvgText = async function( options = {} ) {
 	}
 	else if ( this.isContainer && this.entities ) {
 		for ( let entity of this.entities ) {
-			str += await entity.renderSvgText( options ) ;
+			str += await entity.renderSvgText( options , master ) ;
 		}
 	}
 
@@ -1116,8 +1146,9 @@ VGEntity.prototype.renderSvgText = async function( options = {} ) {
 
 
 // Render the Vector Graphic inside a browser, as DOM SVG
-VGEntity.prototype.renderSvgDom = async function( options = {} ) {
-	let attr = this.svgAttributes() ;
+VGEntity.prototype.renderSvgDom = async function( options = {} , master = this ) {
+	console.warn( "entering .renderSvgDom():" , this.constructor.name , master , master?.palette ) ;
+	let attr = this.svgAttributes( master ) ;
 
 	this.$element = document.createElementNS( this.NS , options.overrideTag || this.svgTag ) ;
 
@@ -1132,7 +1163,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} ) {
 
 	dom.attr( this.$element , attr ) ;
 	if ( this.data ) { dom.attr( this.$element , this.data , 'data-' ) ; }
-	this.domStyle( this.$element , this.style ) ;
+	this.domStyle( this.$element , this.style , master?.palette ) ;
 
 	if ( this.svgTextNode ) {
 		this.$element.appendChild( document.createTextNode( this.svgTextNode() ) ) ;
@@ -1185,7 +1216,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} ) {
 
 		if ( this.clippingEntities?.length ) {
 			for ( let clippingEntity of this.clippingEntities ) {
-				let $child = await clippingEntity.renderSvgDom( options ) ;
+				let $child = await clippingEntity.renderSvgDom( options , master ) ;
 				// There is a bug in browser, they do not accept <g> inside <clipPath> (but Inkscape supports it),
 				// so we will append children of that group directly
 				if ( $child.tagName === 'g' ) {
@@ -1199,7 +1230,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} ) {
 
 		if ( this.isContainer && this.entities?.length ) {
 			for ( let entity of this.entities ) {
-				$contentGroup.appendChild( await entity.renderSvgDom( options ) ) ;
+				$contentGroup.appendChild( await entity.renderSvgDom( options , master ) ) ;
 			}
 		}
 
@@ -1208,7 +1239,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} ) {
 	}
 	else if ( this.isContainer && this.entities?.length ) {
 		for ( let entity of this.entities ) {
-			this.$element.appendChild( await entity.renderSvgDom( options ) ) ;
+			this.$element.appendChild( await entity.renderSvgDom( options , master ) ) ;
 		}
 	}
 
@@ -1218,11 +1249,11 @@ VGEntity.prototype.renderSvgDom = async function( options = {} ) {
 
 
 // Render the Vector Graphic inside a browser's canvas
-VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} ) {
+VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , master = this ) {
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
 
 	if ( this.renderHookForCanvas ) {
-		await this.renderHookForCanvas( canvasCtx , options ) ;
+		await this.renderHookForCanvas( canvasCtx , options , master ) ;
 	}
 
 	if ( this.isContainer && this.entities?.length ) {
@@ -1232,20 +1263,20 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} ) {
 			let clipPath2D = new Path2D() ;
 
 			for ( let clippingEntity of this.clippingEntities ) {
-				await clippingEntity.renderPath2D( clipPath2D , canvasCtx , options ) ;
+				await clippingEntity.renderPath2D( clipPath2D , canvasCtx , options , master ) ;
 			}
 
 			canvasCtx.clip( clipPath2D ) ;
 
 			for ( let entity of this.entities ) {
-				await entity.renderCanvas( canvasCtx , options ) ;
+				await entity.renderCanvas( canvasCtx , options , master ) ;
 			}
 
 			canvasCtx.restore() ;
 		}
 		else {
 			for ( let entity of this.entities ) {
-				await entity.renderCanvas( canvasCtx , options ) ;
+				await entity.renderCanvas( canvasCtx , options , master ) ;
 			}
 		}
 	}
@@ -1253,14 +1284,14 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} ) {
 
 
 
-VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options = {} ) {
+VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options = {} , master = this ) {
 	if ( this.renderHookForPath2D ) {
-		await this.renderHookForPath2D( path2D , canvasCtx , options ) ;
+		await this.renderHookForPath2D( path2D , canvasCtx , options , master ) ;
 	}
 
 	if ( this.isContainer && this.entities?.length ) {
 		for ( let entity of this.entities ) {
-			await entity.renderPath2D( path2D , canvasCtx , options ) ;
+			await entity.renderPath2D( path2D , canvasCtx , options , master ) ;
 		}
 	}
 } ;
@@ -1358,7 +1389,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; }
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":70,"./fontLib.js":20,"_process":77,"dom-kit":46,"string-kit/lib/camel":55,"string-kit/lib/escape":56}],8:[function(require,module,exports){
+},{"../package.json":70,"./fontLib.js":20,"./misc.js":22,"_process":77,"dom-kit":46,"string-kit/lib/camel":55,"string-kit/lib/escape":56}],8:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1839,7 +1870,7 @@ TextAttribute.prototype.getFontSize = function( inherit = null ) {
 
 
 TextAttribute.prototype.setColor = function( v ) {
-	this.color = v && typeof v === 'string' ? v : null ;
+	this.color = v && ( typeof v === 'string' || typeof v === 'object' ) ? v : null ;
 } ;
 
 TextAttribute.prototype.getColor = function( inherit = null ) {
@@ -1873,7 +1904,7 @@ TextAttribute.prototype.getOutlineWidth = function( inherit = null , relTo = nul
 
 
 TextAttribute.prototype.setOutlineColor = function( v ) {
-	this.outlineColor = v && typeof v === 'string' ? v : null ;
+	this.outlineColor = v && ( typeof v === 'string' || typeof v === 'object' ) ? v : null ;
 } ;
 
 TextAttribute.prototype.getOutlineColor = function( inherit = null ) {
@@ -1903,7 +1934,7 @@ TextAttribute.prototype.getLineThrough = function( inherit = null ) {
 
 
 TextAttribute.prototype.setLineColor = function( v ) {
-	this.lineColor = v && typeof v === 'string' ? v : null ;
+	this.lineColor = v && ( typeof v === 'string' || typeof v === 'object' ) ? v : null ;
 } ;
 
 TextAttribute.prototype.getLineColor = function( inherit = null ) {
@@ -1959,7 +1990,7 @@ TextAttribute.prototype.getLineOutlineWidth = function( inherit = null , relTo =
 
 
 TextAttribute.prototype.setLineOutlineColor = function( v ) {
-	this.lineOutlineColor = v && typeof v === 'string' ? v : null ;
+	this.lineOutlineColor = v && ( typeof v === 'string' || typeof v === 'object' ) ? v : null ;
 } ;
 
 TextAttribute.prototype.getLineOutlineColor = function( inherit = null ) {
@@ -1982,7 +2013,7 @@ TextAttribute.prototype.getFrame = function( inherit = null ) {
 
 
 TextAttribute.prototype.setFrameColor = function( v ) {
-	this.frameColor = v && typeof v === 'string' ? v : null ;
+	this.frameColor = v && ( typeof v === 'string' || typeof v === 'object' ) ? v : null ;
 } ;
 
 TextAttribute.prototype.getFrameColor = function( inherit = null ) {
@@ -2006,7 +2037,7 @@ TextAttribute.prototype.getFrameOutlineWidth = function( inherit = null , relTo 
 
 
 TextAttribute.prototype.setFrameOutlineColor = function( v ) {
-	this.frameOutlineColor = v && typeof v === 'string' ? v : null ;
+	this.frameOutlineColor = v && ( typeof v === 'string' || typeof v === 'object' ) ? v : null ;
 } ;
 
 TextAttribute.prototype.getFrameOutlineColor = function( inherit = null ) {
@@ -2803,7 +2834,7 @@ VGFlowingText.parseNewLine = function( structuredText_ ) {
 
 
 
-VGFlowingText.prototype.svgAttributes = function() {
+VGFlowingText.prototype.svgAttributes = function( master = this ) {
 	var attr = {} ;
 
 	if ( this.clip ) {
@@ -2830,7 +2861,7 @@ VGFlowingText.prototype.getUsedFontNames = function() {
 
 
 // Render the Vector Graphic as a text SVG
-VGFlowingText.prototype.renderingContainerHookForSvgText = async function() {
+VGFlowingText.prototype.renderingContainerHookForSvgText = async function( master = this ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
@@ -2934,7 +2965,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function() {
 
 
 
-VGFlowingText.prototype.renderingContainerHookForSvgDom = async function() {
+VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( master = this ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
@@ -3042,7 +3073,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function() {
 
 
 
-VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} ) {
+VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , master = this ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
@@ -3088,7 +3119,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 					canvasCtx.rect( part.metrics.x , frameY , part.metrics.width , frameHeight ) ;
 				}
 
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , frameStyle ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , frameStyle , master?.palette ) ;
 			}
 
 			if ( underline || lineThrough ) {
@@ -3100,19 +3131,19 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness + yOffset ;
 				canvasCtx.beginPath() ;
 				canvasCtx.rect( part.metrics.x , underlineY , part.metrics.width , lineThickness ) ;
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle , master?.palette ) ;
 			}
 
 			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
 			let pathData = path.toPathData() ;
 			let path2D = new Path2D( pathData ) ;
-			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
+			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , master?.palette , path2D ) ;
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
 				canvasCtx.beginPath() ;
 				canvasCtx.rect( part.metrics.x , lineThroughY , part.metrics.width , lineThickness ) ;
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle , master?.palette ) ;
 			}
 		}
 	}
@@ -3131,7 +3162,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 /*
 	This renderer does not support clipping the text, debugContainer, and frame.
 */
-VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} ) {
+VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} , master = this ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
@@ -3300,6 +3331,10 @@ structuredText.parseMarkup = function( sourceText ) {
 					outputPart.fontWeight = 'bold' ;
 				}
 			}
+
+			if ( child.type === 'decoratedText' ) {
+				outputPart.underline = true ;
+			}
 			
 			if ( child.style ) {
 				structuredText.populateStyle( child.style , outputPart ) ;
@@ -3318,7 +3353,17 @@ structuredText.populateStyle = function( style , part ) {
 	if ( style.italic ) { part.fontStyle = 'italic' ; }
 	if ( style.bold ) { part.fontWeight = 'bold' ; }
 	if ( style.underline ) { part.underline = true ; }
+
+	if ( style.textColor ) { part.color = style.textColor ; }
+
+	if ( style.backgroundColor ) {
+		part.frame = true ;
+		part.frameColor = style.backgroundColor ;
+		part.frameOutlineColor = "#777" ;	// <-- TEMP
+	}
 } ;
+
+
 
 
 
@@ -3746,7 +3791,7 @@ VGImage.prototype.isRenderingContainer = true ;
 
 
 
-VGImage.prototype.renderingContainerHookForSvgText = async function() {
+VGImage.prototype.renderingContainerHookForSvgText = async function( master = this ) {
 	var imageSize = await getImageSize( this.url ) ;
 
 	if ( this.ninePatch ) {
@@ -3756,7 +3801,8 @@ VGImage.prototype.renderingContainerHookForSvgText = async function() {
 
 	if ( this.clip ) {
 		return this.renderSvgTextClipImage(
-			imageSize , {
+			imageSize ,
+			{
 				sx: this.sourceX ,
 				sy: this.sourceY ,
 				sw: this.sourceWidth ,
@@ -3830,7 +3876,7 @@ VGImage.prototype.renderSvgTextNinePatchImage = function( imageSize ) {
 
 
 
-VGImage.prototype.renderingContainerHookForSvgDom = async function() {
+VGImage.prototype.renderingContainerHookForSvgDom = async function( master = this ) {
 	var elementList = [] ;
 
 	var imageSize = await getImageSize( this.url ) ;
@@ -3919,7 +3965,7 @@ VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList
 
 
 
-VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} ) {
+VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , master = this ) {
 	canvasCtx.save() ;
 
 	var image = new Image() ;
@@ -4254,7 +4300,7 @@ VGPath.prototype.export = function( data = {} ) {
 
 
 
-VGPath.prototype.svgAttributes = function() {
+VGPath.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		// That enigmatic SVG attribute 'd' probably means 'data' or 'draw'
 		d: this.toD()
@@ -4286,16 +4332,16 @@ VGPath.prototype.toD = function() {
 
 
 
-VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , new Path2D( this.toD() ) ) ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
 	canvasCtx.restore() ;
 } ;
 
 
 
-VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} ) {
+VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , master = this ) {
 	path2D.addPath( new Path2D( this.toD() ) ) ;
 } ;
 
@@ -4971,7 +5017,7 @@ VGRect.prototype.svgTag = 'rect' ;
 
 
 
-VGRect.prototype.svgAttributes = function() {
+VGRect.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		x: this.x ,
 		y: this.root.invertY ? - this.y - this.height : this.y ,
@@ -4986,7 +5032,7 @@ VGRect.prototype.svgAttributes = function() {
 
 
 
-VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	canvasCtx.save() ;
@@ -4999,13 +5045,13 @@ VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
 		canvasCtx.rect( this.x , this.y + yOffset , this.width , this.height ) ;
 	}
 
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style ) ;
+	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , master?.palette ) ;
 	canvasCtx.restore() ;
 } ;
 
 
 
-VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} ) {
+VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	if ( this.rx || this.ry ) {
@@ -5133,7 +5179,7 @@ VGText.prototype.svgTextNode = function() {
 
 
 
-VGText.prototype.svgAttributes = function() {
+VGText.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		x: this.x ,
 		y: this.root.invertY ? - this.y : this.y ,
@@ -5148,7 +5194,7 @@ VGText.prototype.svgAttributes = function() {
 
 
 
-VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
+VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ,
 		style = this.style ,
 		fill = false ,
@@ -5223,16 +5269,20 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
 
 
 
+const misc = require( './misc.js' ) ;
+
+
+
 const canvas = {} ;
 module.exports = canvas ;
 
 
 
-canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
+canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , palette , path2d = null ) => {
 	var fill = false ,
 		stroke = false ,
-		fillStyle = style.fill && style.fill !== 'none' ? style.fill : null ,
-		strokeStyle = style.stroke && style.stroke !== 'none' ? style.stroke : null ,
+		fillStyle = style.fill && style.fill !== 'none' ? misc.colorToString( style.fill , palette ) : null ,
+		strokeStyle = style.stroke && style.stroke !== 'none' ? misc.colorToString( style.stroke , palette ) : null ,
 		lineWidth = + ( style.strokeWidth ?? 1 ) || 0 ;
 
 	if ( fillStyle ) {
@@ -5271,7 +5321,7 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 } ;
 
 
-},{}],20:[function(require,module,exports){
+},{"./misc.js":22}],20:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -5739,8 +5789,35 @@ else {
 
 
 
+const Color = require( 'palette-shade' ).Color ;
+
+
+
 const misc = {} ;
 module.exports = misc ;
+
+
+
+misc.colorToString = ( color , palette ) => {
+	if ( ! color ) { return '' ; }
+
+	if ( typeof color === 'string' ) {
+		if ( color[ 0 ] === '%' ) {
+			if ( ! palette ) { return '' ; }
+			let colorObject = Color.parse( color.slice( 1 ) ) ;
+			return palette.getHex( Color.parse( color.slice( 1 ) ) ) ;
+		}
+
+		return color ;
+	}
+
+	if ( typeof color === 'object' ) {
+		if ( ! palette ) { return '' ; }
+		return palette.getHex( color ) ;
+	}
+	
+	return '' ;
+} ;
 
 
 
@@ -5822,7 +5899,7 @@ misc.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 } ;
 
 
-},{}],23:[function(require,module,exports){
+},{"palette-shade":52}],23:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -34720,6 +34797,7 @@ module.exports={
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "opentype.js": "^1.3.4",
+    "palette-shade": "^0.1.2",
     "string-kit": "^0.17.10"
   },
   "scripts": {

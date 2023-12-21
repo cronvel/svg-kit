@@ -82,6 +82,7 @@ async function test() {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
 		//invertY: true
 	} ) ;
+	console.warn( "VG:" , vg ) ;
 
 	var vgRect = new svgKit.VGRect( {
 		x: 10 ,
@@ -89,8 +90,10 @@ async function test() {
 		width: 60 ,
 		height: 40 ,
 		style: {
-			fill: '#779' ,
-			stroke: '#c55'
+			//fill: '#779' ,
+			fill: '%light blue' ,
+			//stroke: '#c55'
+			stroke: '%red-violet'
 		}
 	} ) ;
 	vg.addEntity( vgRect ) ;
