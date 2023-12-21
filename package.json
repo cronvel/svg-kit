@@ -1,7 +1,7 @@
 {
   "name": "svg-kit",
   "version": "0.5.1",
-  "description": "A small SVG toolkit.",
+  "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
     "test": "test"
@@ -9,6 +9,7 @@
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "array-kit": "^0.2.4",
+    "book-source": "^0.2.0",
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "opentype.js": "^1.3.4",
@@ -22,7 +23,11 @@
     "url": "https://github.com/cronvel/svg-kit.git"
   },
   "keywords": [
-    "svg"
+    "svg",
+    "vector",
+    "graphic",
+    "flowing",
+    "text"
   ],
   "author": "Cédric Ronvel",
   "license": "MIT",
@@ -36,5 +41,8 @@
       2023
     ],
     "owner": "Cédric Ronvel"
+  },
+  "engines": {
+    "node": ">=14.15.0"
   }
 }

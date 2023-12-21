@@ -8,6 +8,9 @@ async function flowTest() {
 
 	var ctx = $canvas.getContext( '2d' ) ;
 
+	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
+	console.log( rawDoc ) ;
+
 	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
 	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
@@ -39,8 +42,8 @@ async function flowTest() {
 			//lineColor: '#559'
 		} ,
 		//structuredText: { text: "Bob?" } ,
-		markupText: "^=Title :^:\n^.Sub-title :^:\nGrigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
-		//markupText: "Hum:   Grigrigredin-menufretin !   Hello   my  friend,   stay   awhile   and   listen..." ,
+		quickMarkupText: "^=Title :^:\n^.Sub-title :^:\nGrigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		//quickMarkupText: "Hum:   Grigrigredin-menufretin !   Hello   my  friend,   stay   awhile   and   listen..." ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
@@ -256,7 +259,7 @@ async function test() {
 			//lineColor: '#559'
 		} ,
 		_text: "Hello my friend, stay awhile and listen..." ,
-		markupText: "^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		quickMarkupText: "^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
 		_structuredText: [
 			{ text: "Hello\nworld!\nWhat " } ,
 			{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,

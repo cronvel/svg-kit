@@ -49,6 +49,27 @@ BoundingBox.prototype.set = function( xmin , ymin , xmax , ymax ) {
 
 
 
+Object.defineProperties( BoundingBox.prototype , {
+	x: {
+		get: function() { return this.xmin ; } ,
+		set: function( x ) { this.xmin = x ; }
+	} ,
+	y: {
+		get: function() { return this.ymin ; } ,
+		set: function( y ) { this.ymin = y ; }
+	} ,
+	width: {
+		get: function() { return this.xmax - this.xmin ; } ,
+		set: function( width ) { this.xmax = this.xmin + width ; }
+	} ,
+	height: {
+		get: function() { return this.ymax - this.ymin ; } ,
+		set: function( height ) { this.height = this.ymin + height ; }
+	}
+} ) ;
+
+
+
 BoundingBox.prototype.clone = function() {
 	return new BoundingBox( this.xmin , this.ymin , this.xmax , this.ymax ) ;
 } ;
@@ -224,12 +245,12 @@ var autoId = 0 ;
 
 
 
-function VG( options ) {
-	VGContainer.call( this , options ) ;
+function VG( params ) {
+	VGContainer.call( this , params ) ;
 
 	this.root = this ;	// This is the root element
 
-	this.id = ( options && options.id ) || 'vg_' + ( autoId ++ ) ;
+	this.id = ( params && params.id ) || 'vg_' + ( autoId ++ ) ;
 	this.viewBox = {
 		x: 0 , y: 0 , width: 100 , height: 100
 	} ;
@@ -237,7 +258,7 @@ function VG( options ) {
 	this.css = [] ;
 	this.invertY = false ;
 
-	if ( options ) { this.set( options ) ; }
+	if ( params ) { this.set( params ) ; }
 }
 
 module.exports = VG ;
@@ -322,7 +343,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":55,"./VGContainer.js":5}],4:[function(require,module,exports){
+},{"../package.json":69,"./VGContainer.js":5}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -431,7 +452,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":55,"./VGContainer.js":5,"./VGEntity.js":7,"./svg-kit.js":24,"array-kit":29}],5:[function(require,module,exports){
+},{"../package.json":69,"./VGContainer.js":5,"./VGEntity.js":7,"./svg-kit.js":24,"array-kit":29}],5:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -469,8 +490,8 @@ const arrayKit = require( 'array-kit' ) ;
 
 
 
-function VGContainer( options ) {
-	VGEntity.call( this , options ) ;
+function VGContainer( params ) {
+	VGEntity.call( this , params ) ;
 	this.entities = [] ;
 }
 
@@ -626,7 +647,7 @@ VGContainer.prototype.morphSvgDom = function() {
 } ;
 
 
-},{"../package.json":55,"./VGEntity.js":7,"./svg-kit.js":24,"array-kit":29}],6:[function(require,module,exports){
+},{"../package.json":69,"./VGEntity.js":7,"./svg-kit.js":24,"array-kit":29}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -746,7 +767,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":55,"./VGEntity.js":7,"./canvas.js":18}],7:[function(require,module,exports){
+},{"../package.json":69,"./VGEntity.js":7,"./canvas.js":19}],7:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -1337,7 +1358,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; }
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":55,"./fontLib.js":19,"_process":62,"dom-kit":35,"string-kit/lib/camel":40,"string-kit/lib/escape":41}],8:[function(require,module,exports){
+},{"../package.json":69,"./fontLib.js":20,"_process":76,"dom-kit":45,"string-kit/lib/camel":54,"string-kit/lib/escape":55}],8:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1579,7 +1600,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 } ;
 
 
-},{"./TextAttribute.js":10,"./TextMetrics.js":11,"string-kit/lib/escape.js":41}],10:[function(require,module,exports){
+},{"./TextAttribute.js":10,"./TextMetrics.js":11,"string-kit/lib/escape.js":55}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2269,7 +2290,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 } ;
 
 
-},{"../fontLib.js":19}],12:[function(require,module,exports){
+},{"../fontLib.js":20}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2310,7 +2331,7 @@ const BoundingBox = require( '../BoundingBox.js' ) ;
 
 const fontLib = require( '../fontLib.js' ) ;
 const canvas = require( '../canvas.js' ) ;
-const structuredText = require( '../structuredText.js' ) ;
+const structuredText = require( './structuredText.js' ) ;
 
 
 
@@ -2329,7 +2350,7 @@ function VGFlowingText( params ) {
 	this.textVerticalAlignment = null ;	// null/top/bottom/center
 	this.textHorizontalAlignment = null ;	// null/left/right/center
 
-	this.debugContainer = !! params.debugContainer ;
+	this.debugContainer = false ;
 
 	// Computed
 	this.areLinesComputed = false ;
@@ -2377,7 +2398,7 @@ VGFlowingText.prototype.set = function( params ) {
 	if ( params.clip !== undefined ) { this.clip = !! params.clip ; }
 
 	if ( params.structuredText ) { this.setStructuredText( params.structuredText ) ; }
-	else if ( params.markupText ) { this.setMarkupText( params.markupText ) ; }
+	else if ( params.quickMarkupText ) { this.setQuickMarkupText( params.quickMarkupText ) ; }
 	else if ( params.text ) { this.setText( params.text ) ; }
 
 	if ( params.attr ) { this.attr = new TextAttribute( params.attr ) ; this.areLinesComputed = false ; }
@@ -2434,8 +2455,8 @@ VGFlowingText.prototype.setStructuredText = function( structuredText_ ) {
 
 
 
-VGFlowingText.prototype.setMarkupText = function( markupText ) {
-	var parsed = structuredText.parseMarkup( markupText ) ;
+VGFlowingText.prototype.setQuickMarkupText = function( quickMarkupText ) {
+	var parsed = structuredText.parseQuickMarkup( quickMarkupText ) ;
 	return this.setStructuredText( parsed ) ;
 } ;
 
@@ -3204,7 +3225,298 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":55,"../BoundingBox.js":1,"../VGEntity.js":7,"../canvas.js":18,"../fontLib.js":19,"../structuredText.js":23,"./StructuredTextLine.js":8,"./StructuredTextPart.js":9,"./TextAttribute.js":10,"./TextMetrics.js":11}],13:[function(require,module,exports){
+},{"../../package.json":69,"../BoundingBox.js":1,"../VGEntity.js":7,"../canvas.js":19,"../fontLib.js":20,"./StructuredTextLine.js":8,"./StructuredTextPart.js":9,"./TextAttribute.js":10,"./TextMetrics.js":11,"./structuredText.js":13}],13:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const misc = require( '../misc.js' ) ;
+const format = require( 'string-kit/lib/format.js' ) ;
+const bookSource = require( 'book-source' ) ;
+
+
+
+const structuredText = {} ;
+module.exports = structuredText ;
+
+
+
+structuredText.parseMarkup = function( text ) {
+	return structuredText.parseStringKitMarkup( text ).map( input => {
+		var part = { text: input.text } ;
+
+		if ( input.color ) {
+			part.color = input.color[ 0 ] === '#' ? input.color : MARKUP_COLOR_CODE[ input.color ] ;
+		}
+
+		if ( input.italic ) { part.fontStyle = 'italic' ; }
+		if ( input.bold ) { part.fontWeight = 'bold' ; }
+		if ( input.underline ) { part.underline = true ; }
+		if ( input.strike ) { part.lineThrough = true ; }
+		if ( input.big ) { part.fontSize = '1.4em' ; }
+		if ( input.small ) { part.fontSize = '0.7em' ; }
+
+		if ( input.bgColor ) {
+			part.frame = true ;
+			part.frameColor = input.bgColor[ 0 ] === '#' ? input.bgColor : MARKUP_COLOR_CODE[ input.bgColor ] ;
+			part.frameOutlineColor = misc.getContrastColorCode( part.frameColor , 0.7 ) ;
+		}
+
+		return part ;
+	} ) ;
+} ;
+
+
+
+// Old (deprecated?) Quick-Markup
+
+
+
+const MARKUP_COLOR_CODE = {
+	black: '#000000' ,
+	brightBlack: '#555753' ,
+	red: '#cc0000' ,
+	brightRed: '#ef2929' ,
+	green: '#4e9a06' ,
+	brightGreen: '#8ae234' ,
+	yellow: '#c4a000' ,
+	brightYellow: '#fce94f' ,
+	blue: '#3465a4' ,
+	brightBlue: '#729fcf' ,
+	magenta: '#75507b' ,
+	brightMagenta: '#ad7fa8' ,
+	cyan: '#06989a' ,
+	brightCyan: '#34e2e2' ,
+	white: '#d3d7cf' ,
+	brightWhite: '#eeeeec'
+} ;
+
+MARKUP_COLOR_CODE.grey = MARKUP_COLOR_CODE.gray = MARKUP_COLOR_CODE.brightBlack ;
+
+
+
+structuredText.parseQuickMarkup = function( text ) {
+	return structuredText.parseStringKitMarkup( text ).map( input => {
+		var part = { text: input.text } ;
+
+		if ( input.color ) {
+			part.color = input.color[ 0 ] === '#' ? input.color : MARKUP_COLOR_CODE[ input.color ] ;
+		}
+
+		if ( input.italic ) { part.fontStyle = 'italic' ; }
+		if ( input.bold ) { part.fontWeight = 'bold' ; }
+		if ( input.underline ) { part.underline = true ; }
+		if ( input.strike ) { part.lineThrough = true ; }
+		if ( input.big ) { part.fontSize = '1.4em' ; }
+		if ( input.small ) { part.fontSize = '0.7em' ; }
+
+		if ( input.bgColor ) {
+			part.frame = true ;
+			part.frameColor = input.bgColor[ 0 ] === '#' ? input.bgColor : MARKUP_COLOR_CODE[ input.bgColor ] ;
+			part.frameOutlineColor = misc.getContrastColorCode( part.frameColor , 0.7 ) ;
+		}
+
+		return part ;
+	} ) ;
+} ;
+
+
+
+// Catch-all keywords to key:value
+const CATCH_ALL_KEYWORDS = {
+	// Foreground colors
+	defaultColor: [ 'color' , 'default' ] ,
+	black: [ 'color' , 'black' ] ,
+	red: [ 'color' , 'red' ] ,
+	green: [ 'color' , 'green' ] ,
+	yellow: [ 'color' , 'yellow' ] ,
+	blue: [ 'color' , 'blue' ] ,
+	magenta: [ 'color' , 'magenta' ] ,
+	cyan: [ 'color' , 'cyan' ] ,
+	white: [ 'color' , 'white' ] ,
+	grey: [ 'color' , 'grey' ] ,
+	gray: [ 'color' , 'gray' ] ,
+	brightBlack: [ 'color' , 'brightBlack' ] ,
+	brightRed: [ 'color' , 'brightRed' ] ,
+	brightGreen: [ 'color' , 'brightGreen' ] ,
+	brightYellow: [ 'color' , 'brightYellow' ] ,
+	brightBlue: [ 'color' , 'brightBlue' ] ,
+	brightMagenta: [ 'color' , 'brightMagenta' ] ,
+	brightCyan: [ 'color' , 'brightCyan' ] ,
+	brightWhite: [ 'color' , 'brightWhite' ] ,
+
+	// Background colors
+	defaultBgColor: [ 'bgColor' , 'default' ] ,
+	bgBlack: [ 'bgColor' , 'black' ] ,
+	bgRed: [ 'bgColor' , 'red' ] ,
+	bgGreen: [ 'bgColor' , 'green' ] ,
+	bgYellow: [ 'bgColor' , 'yellow' ] ,
+	bgBlue: [ 'bgColor' , 'blue' ] ,
+	bgMagenta: [ 'bgColor' , 'magenta' ] ,
+	bgCyan: [ 'bgColor' , 'cyan' ] ,
+	bgWhite: [ 'bgColor' , 'white' ] ,
+	bgGrey: [ 'bgColor' , 'grey' ] ,
+	bgGray: [ 'bgColor' , 'gray' ] ,
+	bgBrightBlack: [ 'bgColor' , 'brightBlack' ] ,
+	bgBrightRed: [ 'bgColor' , 'brightRed' ] ,
+	bgBrightGreen: [ 'bgColor' , 'brightGreen' ] ,
+	bgBrightYellow: [ 'bgColor' , 'brightYellow' ] ,
+	bgBrightBlue: [ 'bgColor' , 'brightBlue' ] ,
+	bgBrightMagenta: [ 'bgColor' , 'brightMagenta' ] ,
+	bgBrightCyan: [ 'bgColor' , 'brightCyan' ] ,
+	bgBrightWhite: [ 'bgColor' , 'brightWhite' ] ,
+
+	// Other styles
+	dim: [ 'dim' , true ] ,
+	bold: [ 'bold' , true ] ,
+	underline: [ 'underline' , true ] ,
+	italic: [ 'italic' , true ] ,
+	inverse: [ 'inverse' , true ] ,
+	strike: [ 'strike' , true ]
+} ;
+
+
+
+const parseStringKitMarkupConfig = {
+	parse: true ,
+	markupReset: markupStack => {
+		markupStack.length = 0 ;
+	} ,
+	//shiftMarkup: { '#': 'background' } ,
+	markup: {
+		":": null ,
+		" ": markupStack => {
+			markupStack.length = 0 ;
+			return [ null , ' ' ] ;
+		} ,
+
+		"-": { dim: true } ,
+		"+": { bold: true } ,
+		"_": { underline: true } ,
+		"/": { italic: true } ,
+		"!": { inverse: true } ,
+		"~": { strike: true } ,
+		"=": { big: true } ,
+		".": { small: true } ,
+
+		"b": { color: "blue" } ,
+		"B": { color: "brightBlue" } ,
+		"c": { color: "cyan" } ,
+		"C": { color: "brightCyan" } ,
+		"g": { color: "green" } ,
+		"G": { color: "brightGreen" } ,
+		"k": { color: "black" } ,
+		"K": { color: "grey" } ,
+		"m": { color: "magenta" } ,
+		"M": { color: "brightMagenta" } ,
+		"r": { color: "red" } ,
+		"R": { color: "brightRed" } ,
+		"w": { color: "white" } ,
+		"W": { color: "brightWhite" } ,
+		"y": { color: "yellow" } ,
+		"Y": { color: "brightYellow" }
+	} ,
+	shiftedMarkup: {
+		background: {
+			/*
+			':': [ null , { defaultColor: true , bgDefaultColor: true } ] ,
+			' ': markupStack => {
+				markupStack.length = 0 ;
+				return [ null , { defaultColor: true , bgDefaultColor: true } , ' ' ] ;
+			} ,
+			*/
+			":": null ,
+			" ": markupStack => {
+				markupStack.length = 0 ;
+				return [ null , ' ' ] ;
+			} ,
+
+			"b": { bgColor: "blue" } ,
+			"B": { bgColor: "brightBlue" } ,
+			"c": { bgColor: "cyan" } ,
+			"C": { bgColor: "brightCyan" } ,
+			"g": { bgColor: "green" } ,
+			"G": { bgColor: "brightGreen" } ,
+			"k": { bgColor: "black" } ,
+			"K": { bgColor: "grey" } ,
+			"m": { bgColor: "magenta" } ,
+			"M": { bgColor: "brightMagenta" } ,
+			"r": { bgColor: "red" } ,
+			"R": { bgColor: "brightRed" } ,
+			"w": { bgColor: "white" } ,
+			"W": { bgColor: "brightWhite" } ,
+			"y": { bgColor: "yellow" } ,
+			"Y": { bgColor: "brightYellow" }
+		}
+	} ,
+	dataMarkup: {
+		color: 'color' ,
+		fgColor: 'color' ,
+		fg: 'color' ,
+		c: 'color' ,
+		bgColor: 'bgColor' ,
+		bg: 'bgColor' ,
+		fx: 'fx'
+	} ,
+	markupCatchAll: ( markupStack , key , value ) => {
+		var attr = {} ;
+
+		if ( value === undefined ) {
+			if ( key[ 0 ] === '#' ) {
+				attr.color = key ;
+			}
+			else if ( CATCH_ALL_KEYWORDS[ key ] ) {
+				attr[ CATCH_ALL_KEYWORDS[ key ][ 0 ] ] = CATCH_ALL_KEYWORDS[ key ][ 1 ] ;
+			}
+			else {
+				// Fallback: it's a foreground color
+				attr.color = key ;
+			}
+		}
+
+		markupStack.push( attr ) ;
+		return attr || {} ;
+	}
+} ;
+
+
+
+structuredText.parseStringKitMarkup = ( ... args ) => {
+	return format.markupMethod.apply( parseStringKitMarkupConfig , args ) ;
+} ;
+
+
+
+structuredText.stripMarkup = format.stripMarkup ;
+
+
+},{"../misc.js":22,"book-source":38,"string-kit/lib/format.js":56}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3261,7 +3573,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":55,"./VGContainer.js":5,"./svg-kit.js":24}],14:[function(require,module,exports){
+},{"../package.json":69,"./VGContainer.js":5,"./svg-kit.js":24}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3842,7 +4154,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":55,"./VGEntity.js":7,"./canvas.js":18,"./getImageSize.js":20,"dom-kit":35}],15:[function(require,module,exports){
+},{"../package.json":69,"./VGEntity.js":7,"./canvas.js":19,"./getImageSize.js":21,"dom-kit":45}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4535,7 +4847,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 } ;
 
 
-},{"../package.json":55,"./VGEntity.js":7,"./canvas.js":18}],16:[function(require,module,exports){
+},{"../package.json":69,"./VGEntity.js":7,"./canvas.js":19}],17:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4677,7 +4989,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":55,"./VGEntity.js":7,"./canvas.js":18}],17:[function(require,module,exports){
+},{"../package.json":69,"./VGEntity.js":7,"./canvas.js":19}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4852,7 +5164,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} ) {
 } ;
 
 
-},{"../package.json":55,"./VGEntity.js":7}],18:[function(require,module,exports){
+},{"../package.json":69,"./VGEntity.js":7}],19:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4931,7 +5243,7 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 } ;
 
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -5242,10 +5554,21 @@ fontLib.getFont = ( fontFamily , ... variant ) => {
 
 
 
-if ( process?.browser ) {
-	fontLib.getFontByUrlAsync = async ( url ) => {
-		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
+const fontPromises = {} ;
 
+// Moving asyncness to another function allow us to cache the promise, avoid race condition and avoid wasting computing,
+// because subsequent calls for the same url always return the same promise.
+fontLib.getFontByUrlAsync = url => {
+	if ( fontCache[ url ] ) { return fontCache[ url ] ; }
+	if ( fontPromises[ url ] ) { return fontPromises[ url ] ; }
+	fontPromises[ url ] = fontLib._getFontByUrlAsync( url ) ;
+	return fontPromises[ url ] ;
+}
+
+
+
+if ( process?.browser ) {
+	fontLib._getFontByUrlAsync = async ( url ) => {
 		var response = await fetch( url ) ;
 
 		if ( ! response.ok ) {
@@ -5256,6 +5579,7 @@ if ( process?.browser ) {
 		var arrayBuffer = await blob.arrayBuffer() ;
 		var font = await opentype.parse( arrayBuffer ) ;
 		fontCache[ url ] = font ;
+		delete fontPromises[ url ] ;
 		console.log( "Loaded font: " , url , font ) ;
 
 		return font ;
@@ -5275,12 +5599,11 @@ else {
 	fontLib.setFontUrl( 'serif' , 'bold' , builtinPath + '/serif-bold.ttf' ) ;
 	fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , builtinPath + '/serif-bold+italic.ttf' ) ;
 
-	fontLib.getFontByUrlAsync = async ( url ) => {
-		if ( fontCache[ url ] ) { return fontCache[ url ] ; }
-
+	fontLib._getFontByUrlAsync = async ( url ) => {
 		var buffer = await fs.promises.readFile( url ) ;
 		var font = await opentype.parse( buffer.buffer ) ;
 		fontCache[ url ] = font ;
+		delete fontPromises[ url ] ;
 		console.log( "Loaded (async) font: " , url , font ) ;
 
 		return font ;
@@ -5299,7 +5622,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":62,"fs":56,"opentype.js":37,"path":61}],20:[function(require,module,exports){
+},{"_process":76,"fs":70,"opentype.js":47,"path":75}],21:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -5357,7 +5680,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":62,"image-size":56}],21:[function(require,module,exports){
+},{"_process":76,"image-size":70}],22:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5471,7 +5794,7 @@ misc.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 } ;
 
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5519,266 +5842,7 @@ path.dFromPoints = ( points , invertY ) => {
 } ;
 
 
-},{}],23:[function(require,module,exports){
-/*
-	SVG Kit
-
-	Copyright (c) 2017 - 2023 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-
-
-const misc = require( './misc.js' ) ;
-const format = require( 'string-kit/lib/format.js' ) ;
-
-
-
-const structuredText = {} ;
-module.exports = structuredText ;
-
-
-
-const MARKUP_COLOR_CODE = {
-	black: '#000000' ,
-	brightBlack: '#555753' ,
-	red: '#cc0000' ,
-	brightRed: '#ef2929' ,
-	green: '#4e9a06' ,
-	brightGreen: '#8ae234' ,
-	yellow: '#c4a000' ,
-	brightYellow: '#fce94f' ,
-	blue: '#3465a4' ,
-	brightBlue: '#729fcf' ,
-	magenta: '#75507b' ,
-	brightMagenta: '#ad7fa8' ,
-	cyan: '#06989a' ,
-	brightCyan: '#34e2e2' ,
-	white: '#d3d7cf' ,
-	brightWhite: '#eeeeec'
-} ;
-
-MARKUP_COLOR_CODE.grey = MARKUP_COLOR_CODE.gray = MARKUP_COLOR_CODE.brightBlack ;
-
-
-
-structuredText.parseMarkup = function( text ) {
-	return structuredText.parseStringKitMarkup( text ).map( input => {
-		var part = { text: input.text } ;
-
-		if ( input.color ) {
-			part.color = input.color[ 0 ] === '#' ? input.color : MARKUP_COLOR_CODE[ input.color ] ;
-		}
-
-		if ( input.italic ) { part.fontStyle = 'italic' ; }
-		if ( input.bold ) { part.fontWeight = 'bold' ; }
-		if ( input.underline ) { part.underline = true ; }
-		if ( input.strike ) { part.lineThrough = true ; }
-		if ( input.big ) { part.fontSize = '1.4em' ; }
-		if ( input.small ) { part.fontSize = '0.7em' ; }
-
-		if ( input.bgColor ) {
-			part.frame = true ;
-			part.frameColor = input.bgColor[ 0 ] === '#' ? input.bgColor : MARKUP_COLOR_CODE[ input.bgColor ] ;
-			part.frameOutlineColor = misc.getContrastColorCode( part.frameColor , 0.7 ) ;
-		}
-
-		return part ;
-	} ) ;
-} ;
-
-
-
-// Catch-all keywords to key:value
-const CATCH_ALL_KEYWORDS = {
-	// Foreground colors
-	defaultColor: [ 'color' , 'default' ] ,
-	black: [ 'color' , 'black' ] ,
-	red: [ 'color' , 'red' ] ,
-	green: [ 'color' , 'green' ] ,
-	yellow: [ 'color' , 'yellow' ] ,
-	blue: [ 'color' , 'blue' ] ,
-	magenta: [ 'color' , 'magenta' ] ,
-	cyan: [ 'color' , 'cyan' ] ,
-	white: [ 'color' , 'white' ] ,
-	grey: [ 'color' , 'grey' ] ,
-	gray: [ 'color' , 'gray' ] ,
-	brightBlack: [ 'color' , 'brightBlack' ] ,
-	brightRed: [ 'color' , 'brightRed' ] ,
-	brightGreen: [ 'color' , 'brightGreen' ] ,
-	brightYellow: [ 'color' , 'brightYellow' ] ,
-	brightBlue: [ 'color' , 'brightBlue' ] ,
-	brightMagenta: [ 'color' , 'brightMagenta' ] ,
-	brightCyan: [ 'color' , 'brightCyan' ] ,
-	brightWhite: [ 'color' , 'brightWhite' ] ,
-
-	// Background colors
-	defaultBgColor: [ 'bgColor' , 'default' ] ,
-	bgBlack: [ 'bgColor' , 'black' ] ,
-	bgRed: [ 'bgColor' , 'red' ] ,
-	bgGreen: [ 'bgColor' , 'green' ] ,
-	bgYellow: [ 'bgColor' , 'yellow' ] ,
-	bgBlue: [ 'bgColor' , 'blue' ] ,
-	bgMagenta: [ 'bgColor' , 'magenta' ] ,
-	bgCyan: [ 'bgColor' , 'cyan' ] ,
-	bgWhite: [ 'bgColor' , 'white' ] ,
-	bgGrey: [ 'bgColor' , 'grey' ] ,
-	bgGray: [ 'bgColor' , 'gray' ] ,
-	bgBrightBlack: [ 'bgColor' , 'brightBlack' ] ,
-	bgBrightRed: [ 'bgColor' , 'brightRed' ] ,
-	bgBrightGreen: [ 'bgColor' , 'brightGreen' ] ,
-	bgBrightYellow: [ 'bgColor' , 'brightYellow' ] ,
-	bgBrightBlue: [ 'bgColor' , 'brightBlue' ] ,
-	bgBrightMagenta: [ 'bgColor' , 'brightMagenta' ] ,
-	bgBrightCyan: [ 'bgColor' , 'brightCyan' ] ,
-	bgBrightWhite: [ 'bgColor' , 'brightWhite' ] ,
-
-	// Other styles
-	dim: [ 'dim' , true ] ,
-	bold: [ 'bold' , true ] ,
-	underline: [ 'underline' , true ] ,
-	italic: [ 'italic' , true ] ,
-	inverse: [ 'inverse' , true ] ,
-	strike: [ 'strike' , true ]
-} ;
-
-
-
-const parseStringKitMarkupConfig = {
-	parse: true ,
-	markupReset: markupStack => {
-		markupStack.length = 0 ;
-	} ,
-	//shiftMarkup: { '#': 'background' } ,
-	markup: {
-		":": null ,
-		" ": markupStack => {
-			markupStack.length = 0 ;
-			return [ null , ' ' ] ;
-		} ,
-
-		"-": { dim: true } ,
-		"+": { bold: true } ,
-		"_": { underline: true } ,
-		"/": { italic: true } ,
-		"!": { inverse: true } ,
-		"~": { strike: true } ,
-		"=": { big: true } ,
-		".": { small: true } ,
-
-		"b": { color: "blue" } ,
-		"B": { color: "brightBlue" } ,
-		"c": { color: "cyan" } ,
-		"C": { color: "brightCyan" } ,
-		"g": { color: "green" } ,
-		"G": { color: "brightGreen" } ,
-		"k": { color: "black" } ,
-		"K": { color: "grey" } ,
-		"m": { color: "magenta" } ,
-		"M": { color: "brightMagenta" } ,
-		"r": { color: "red" } ,
-		"R": { color: "brightRed" } ,
-		"w": { color: "white" } ,
-		"W": { color: "brightWhite" } ,
-		"y": { color: "yellow" } ,
-		"Y": { color: "brightYellow" }
-	} ,
-	shiftedMarkup: {
-		background: {
-			/*
-			':': [ null , { defaultColor: true , bgDefaultColor: true } ] ,
-			' ': markupStack => {
-				markupStack.length = 0 ;
-				return [ null , { defaultColor: true , bgDefaultColor: true } , ' ' ] ;
-			} ,
-			*/
-			":": null ,
-			" ": markupStack => {
-				markupStack.length = 0 ;
-				return [ null , ' ' ] ;
-			} ,
-
-			"b": { bgColor: "blue" } ,
-			"B": { bgColor: "brightBlue" } ,
-			"c": { bgColor: "cyan" } ,
-			"C": { bgColor: "brightCyan" } ,
-			"g": { bgColor: "green" } ,
-			"G": { bgColor: "brightGreen" } ,
-			"k": { bgColor: "black" } ,
-			"K": { bgColor: "grey" } ,
-			"m": { bgColor: "magenta" } ,
-			"M": { bgColor: "brightMagenta" } ,
-			"r": { bgColor: "red" } ,
-			"R": { bgColor: "brightRed" } ,
-			"w": { bgColor: "white" } ,
-			"W": { bgColor: "brightWhite" } ,
-			"y": { bgColor: "yellow" } ,
-			"Y": { bgColor: "brightYellow" }
-		}
-	} ,
-	dataMarkup: {
-		color: 'color' ,
-		fgColor: 'color' ,
-		fg: 'color' ,
-		c: 'color' ,
-		bgColor: 'bgColor' ,
-		bg: 'bgColor' ,
-		fx: 'fx'
-	} ,
-	markupCatchAll: ( markupStack , key , value ) => {
-		var attr = {} ;
-
-		if ( value === undefined ) {
-			if ( key[ 0 ] === '#' ) {
-				attr.color = key ;
-			}
-			else if ( CATCH_ALL_KEYWORDS[ key ] ) {
-				attr[ CATCH_ALL_KEYWORDS[ key ][ 0 ] ] = CATCH_ALL_KEYWORDS[ key ][ 1 ] ;
-			}
-			else {
-				// Fallback: it's a foreground color
-				attr.color = key ;
-			}
-		}
-
-		markupStack.push( attr ) ;
-		return attr || {} ;
-	}
-} ;
-
-
-
-structuredText.parseStringKitMarkup = ( ... args ) => {
-	return format.markupMethod.apply( parseStringKitMarkupConfig , args ) ;
-} ;
-
-
-
-structuredText.stripMarkup = format.stripMarkup ;
-
-
-},{"./misc.js":21,"string-kit/lib/format.js":42}],24:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -5822,7 +5886,7 @@ module.exports = svgKit ;
 Object.assign( svgKit , require( './misc.js' ) ) ;
 svgKit.path = require( './path.js' ) ;
 svgKit.canvas = require( './canvas.js' ) ;
-svgKit.structuredText = require( './structuredText.js' ) ;
+svgKit.structuredText = require( './VGFlowingText/structuredText.js' ) ;
 
 svgKit.VG = require( './VG.js' ) ;
 svgKit.VGEntity = require( './VGEntity.js' ) ;
@@ -6277,7 +6341,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"./BoundingBox.js":1,"./VG.js":3,"./VGClip.js":4,"./VGContainer.js":5,"./VGEllipse.js":6,"./VGEntity.js":7,"./VGFlowingText/StructuredTextLine.js":8,"./VGFlowingText/StructuredTextPart.js":9,"./VGFlowingText/TextAttribute.js":10,"./VGFlowingText/TextMetrics.js":11,"./VGFlowingText/VGFlowingText.js":12,"./VGGroup.js":13,"./VGImage.js":14,"./VGPath.js":15,"./VGRect.js":16,"./VGText.js":17,"./canvas.js":18,"./fontLib.js":19,"./misc.js":21,"./path.js":22,"./structuredText.js":23,"_process":62,"dom-kit":35,"fs":56,"opentype.js":37,"string-kit/lib/escape.js":41}],25:[function(require,module,exports){
+},{"./BoundingBox.js":1,"./VG.js":3,"./VGClip.js":4,"./VGContainer.js":5,"./VGEllipse.js":6,"./VGEntity.js":7,"./VGFlowingText/StructuredTextLine.js":8,"./VGFlowingText/StructuredTextPart.js":9,"./VGFlowingText/TextAttribute.js":10,"./VGFlowingText/TextMetrics.js":11,"./VGFlowingText/VGFlowingText.js":12,"./VGFlowingText/structuredText.js":13,"./VGGroup.js":14,"./VGImage.js":15,"./VGPath.js":16,"./VGRect.js":17,"./VGText.js":18,"./canvas.js":19,"./fontLib.js":20,"./misc.js":22,"./path.js":23,"_process":76,"dom-kit":45,"fs":70,"opentype.js":47,"string-kit/lib/escape.js":55}],25:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -7939,7 +8003,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{"nwmatcher":36,"string-kit":50}],27:[function(require,module,exports){
+},{"nwmatcher":46,"string-kit":64}],27:[function(require,module,exports){
 exports.entityMap = {
        lt: '<',
        gt: '>',
@@ -8843,7 +8907,11 @@ const arrayKit = {
 
 module.exports = arrayKit ;
 
+arrayKit.randomInteger = ( min , max ) => min + Math.floor( ( max - min + 1 ) * Math.random() ) ;
+
+arrayKit.random = arrayKit.randomElement = array => array[ Math.floor( array.length * Math.random() ) ] ;
 arrayKit.shuffle = array => arrayKit.sample( array , array.length , true ) ;
+arrayKit.randomSampleSize = ( array , min , max , inPlace ) => arrayKit.sample( array , arrayKit.randomInteger( min , max ) , inPlace ) ;
 
 
 },{"./delete.js":30,"./deleteValue.js":31,"./inPlaceFilter.js":32,"./range.js":33,"./sample.js":34}],30:[function(require,module,exports){
@@ -9152,6 +9220,2535 @@ module.exports = ( array , count = Infinity , inPlace = false ) => {
 
 
 },{}],35:[function(require,module,exports){
+/*
+	Book Source
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Style = require( './Style.js' ) ;
+const Theme = require( './Theme.js' ) ;
+
+const emoji = require( 'string-kit/lib/emoji.js' ) ;
+const inPlaceFilter = require( 'array-kit/lib/inPlaceFilter.js' ) ;
+
+
+
+function StructuredDocument() {
+	this.title = 'Document' ;
+	this.metadata = null ;
+	this.theme = null ;
+	this.parts = [] ;
+}
+
+module.exports = StructuredDocument ;
+
+
+
+StructuredDocument.prototype.render = function( renderer ) {
+	var meta = {
+		title: this.title
+	} ;
+
+	var str = this.renderParts( renderer , this.parts , [] ) ;
+
+	if ( renderer.document ) {
+		str = renderer.document( meta , str ) ;
+	}
+
+	return str ;
+} ;
+
+
+
+StructuredDocument.prototype.renderParts = function( renderer , parts , partStack ) {
+	var str = '' , index = 0 ;
+
+	for ( let part of parts ) {
+		let childrenStr = '' ;
+
+		if ( part.children ) {
+			if ( renderer.group?.[ part.type ] ) {
+				// Some renderer have to group children an apply things to each group,
+				// E.g. HTML groups 'tableHeader' to produce <thead> and 'tableRow' to produce <tbody>
+				let groupList = this.groupByType( part.children , renderer.group[ part.type ] ) ;
+				//console.error( "groupList:" , groupList ) ;
+
+				for ( let group of groupList ) {
+					if ( renderer.group[ part.type ][ group.type ] ) {
+						partStack.push( part ) ;
+						let groupStr = this.renderParts( renderer , group.children , partStack ) ;
+						partStack.pop() ;
+						childrenStr += renderer.group[ part.type ][ group.type ]( part , groupStr , partStack ) ;
+					}
+				}
+			}
+			else {
+				partStack.push( part ) ;
+				childrenStr = this.renderParts( renderer , part.children , [ ... partStack , part ] ) ;
+				partStack.pop() ;
+			}
+		}
+
+		if ( renderer[ part.type ] ) {
+			str += renderer[ part.type ]( part , childrenStr , partStack , index ) ;
+		}
+
+		index ++ ;
+	}
+
+	return str ;
+} ;
+
+
+
+StructuredDocument.prototype.groupByType = function( parts , rendererGroup ) {
+	var group , groupMap = {} , groupList = [] ;
+
+	for ( let part of parts ) {
+		group = groupMap[ part.type ] ;
+		if ( ! group ) {
+			group = groupMap[ part.type ] = {
+				type: part.type ,
+				children: [] ,
+				order: + rendererGroup[ part.type ]?.order || 0
+			} ;
+			groupList.push( group ) ;
+		}
+
+		group.children.push( part ) ;
+	}
+
+	groupList.sort( ( a , b ) => a.order - b.order ) ;
+
+	return groupList ;
+} ;
+
+
+
+StructuredDocument.prototype.autoTitle = function() {
+	var header , str ;
+
+	for ( let part of this.parts ) {
+		if ( part.type === 'header' ) { header = part ; break ; }
+	}
+
+	if ( ! header ) { return ; }
+
+	str = this.getText( header.children ) ;
+	if ( str ) { this.title = str ; }
+} ;
+
+
+
+StructuredDocument.prototype.getText = function( parts ) { //= this.parts ) {
+	var str = '' ;
+
+	for ( let part of parts ) {
+		if ( part.text ) { str += part.text ; }
+		else if ( part.children?.length ) { str += this.getText( part.children ) ; }
+	}
+
+	return str ;
+} ;
+
+
+
+// Parser
+
+StructuredDocument.parse = function( str , options ) {
+	if ( ! options || typeof options !== 'object' ) { options = {} ; }
+
+	if ( typeof str !== 'string' ) {
+		if ( str && typeof str === 'object' ) { str = str.toString() ; }
+		else { throw new TypeError( "Argument #0 should be a string or an object with a .toString() method" ) ; }
+	}
+
+	var ctx = {
+		i: 0 ,
+		iStartOfInlineChunk: 0 ,
+		forceInlineChunkSpace: false ,
+		iEndOfBlock: str.length ,	// For nested things, the parent end here
+		lastLineWasEmpty: false ,
+		lastBlock: null ,
+		rowSpanTables: new Set() ,	// Set of table that needs post-processing to apply row span
+		structuredDocument: new StructuredDocument() ,
+		stack: [] ,
+		parts: null ,
+		parent: null ,
+		rawMetadata: null
+	} ;
+
+	ctx.parts = ctx.structuredDocument.parts ;
+
+	parseBlocks( str , ctx ) ;
+
+	for ( let table of ctx.rowSpanTables ) { postProcessTableRowSpan( table ) ; }
+	ctx.structuredDocument.autoTitle() ;
+
+	if ( ctx.rawMetadata ) {
+		let metadataParser = options.metadataParser || JSON.parse ;
+		for ( let type in ctx.rawMetadata ) {
+			try {
+				let parsed = metadataParser( ctx.rawMetadata[ type ] ) ;
+				if ( type === 'metadata' ) {
+					ctx.structuredDocument.metadata = parsed ;
+				}
+				else if ( type === 'theme' && parsed && typeof parsed === 'object' ) {
+					ctx.structuredDocument.theme = parsed ;
+				}
+			}
+			catch ( error ) {}
+		}
+	}
+
+	// Call depthManagement() one last time, because some instanceOf may still be hanging...
+	//ctx.depth = -1 ;
+	//depthManagement( ctx ) ;
+
+	return ctx.structuredDocument ;
+} ;
+
+
+
+function parseBlocks( str , ctx ) {
+	while ( ctx.i < str.length ) {
+		parseBlock( str , ctx ) ;
+	}
+}
+
+
+
+function parseBlock( str , ctx ) {
+	var { isEmptyLine , endOfEmptyLine , indentCharCount , indentSpaces , indentType } = detectIndent( str , ctx.i , ctx.parent?.indent ) ;
+
+	if ( isEmptyLine ) {
+		ctx.i = endOfEmptyLine + 1 ;
+		ctx.lastLineWasEmpty = true ;
+		ctx.lastBlock = null ;
+		return ;
+	}
+
+	if ( indentType === QUOTE_INDENT ) {
+		ctx.parts.push( { type: 'quote' , indent: indentSpaces } ) ;
+		stack( ctx ) ;
+	}
+	else if ( indentType <= 0 ) {
+		unstackToIndent( ctx , indentSpaces ) ;
+	}
+
+	ctx.i += indentCharCount ;
+	var blockType = detectBlockType( str , ctx.i ) ;
+	//console.error( "=== parseBlock() ===" , { blockType , isEmptyLine , endOfEmptyLine , indentCharCount , indentSpaces , indentType } ) ;
+
+
+	switch ( blockType ) {
+		case BLOCK_PARAGRAPH :
+			parseParagraph( str , ctx ) ;
+			break ;
+		case BLOCK_HEADER :
+			parseHeader( str , ctx ) ;
+			break ;
+		case BLOCK_CITE :
+			parseCite( str , ctx ) ;
+			break ;
+		case BLOCK_LIST_ITEM :
+			parseListItem( str , ctx , indentSpaces ) ;
+			break ;
+		case BLOCK_ORDERED_LIST_ITEM :
+			parseOrderedListItem( str , ctx , indentSpaces ) ;
+			break ;
+		case BLOCK_MEDIA :
+			parseMedia( str , ctx ) ;
+			break ;
+		case BLOCK_FLOAT_LEFT_MEDIA :
+			parseMedia( str , ctx , 'left' ) ;
+			break ;
+		case BLOCK_FLOAT_RIGHT_MEDIA :
+			parseMedia( str , ctx , 'right' ) ;
+			break ;
+		case BLOCK_HORIZONTAL_RULE :
+			parseHorizontalRule( str , ctx ) ;
+			break ;
+		case BLOCK_CLEAR_FLOAT :
+			parseClearFloat( str , ctx ) ;
+			break ;
+		case BLOCK_CODE :
+			parseCodeBlock( str , ctx ) ;
+			break ;
+		case BLOCK_TABLE_CAPTION :
+			parseTableCaption( str , ctx ) ;
+			break ;
+		case BLOCK_TABLE_ROW :
+			parseTableRow( str , ctx ) ;
+			break ;
+		case BLOCK_TABLE_ROW_SEPARATOR :
+			parseTableRowSeparator( str , ctx ) ;
+			break ;
+		case BLOCK_TABLE_ROW_THICK_SEPARATOR :
+			parseTableRowSeparator( str , ctx , true ) ;
+			break ;
+		case BLOCK_ANCHOR :
+			parseAnchor( str , ctx ) ;
+			break ;
+		case BLOCK_METADATA :
+			parseMetadata( str , ctx ) ;
+			break ;
+		default :
+			throw new Error( "Bad block detection: " + blockType ) ;
+	}
+
+	ctx.lastLineWasEmpty = false ;
+	ctx.lastBlock = blockType ;
+	if ( str[ ctx.i ] === '\n' ) { ctx.i ++ ; }
+}
+
+
+
+const UNQUOTE_INDENT = - 3 ;
+const UNLIST_INDENT = - 2 ;
+const DISCONTINUE_INDENT = - 1 ;
+const NO_INDENT = 0 ;
+const CONTINUE_INDENT = 1 ;	// 2 spaces, continue the previous block
+const LIST_INDENT = 2 ;		// 4 spaces (sub-list)
+const QUOTE_INDENT = 3 ;	// 8 spaces (quote)
+
+const DETECT_INDENT = {
+	isEmptyLine: false ,
+	endOfEmptyLine: - 1 ,
+	indentCharCount: 0 ,
+	indentSpaces: 0 ,
+	indentDelta: 0 ,
+	indentType: NO_INDENT
+} ;
+
+function detectIndent( str , i , parentIndent ) {
+	parentIndent = parentIndent || 0 ;
+
+	DETECT_INDENT.isEmptyLine = false ;
+	DETECT_INDENT.endOfEmptyLine = - 1 ;
+	DETECT_INDENT.indentCharCount = DETECT_INDENT.indentSpaces = DETECT_INDENT.indentDelta = 0 ;
+	DETECT_INDENT.indentType = NO_INDENT ;
+
+	if ( str[ i ] === '\n' ) {
+		DETECT_INDENT.isEmptyLine = true ;
+		DETECT_INDENT.endOfEmptyLine = i ;
+		return DETECT_INDENT ;
+	}
+
+
+	var iSearch = i ;
+
+	for ( ; iSearch < str.length ; iSearch ++ ) {
+		if ( str[ iSearch ] === '\n' ) {
+			DETECT_INDENT.isEmptyLine = true ;
+			DETECT_INDENT.endOfEmptyLine = iSearch ;
+			return DETECT_INDENT ;
+		}
+
+		if ( str[ iSearch ] === '\t' ) {
+			DETECT_INDENT.indentCharCount ++ ;
+			DETECT_INDENT.indentSpaces += 4 ;
+		}
+		else if ( str[ iSearch ] === ' ' ) {
+			DETECT_INDENT.indentCharCount ++ ;
+			DETECT_INDENT.indentSpaces ++ ;
+		}
+		else {
+			break ;
+		}
+	}
+
+	DETECT_INDENT.indentDelta = DETECT_INDENT.indentSpaces - parentIndent ;
+
+	if ( DETECT_INDENT.indentDelta >= 8 ) {
+		DETECT_INDENT.indentType = QUOTE_INDENT ;
+	}
+	else if ( DETECT_INDENT.indentDelta >= 4 ) {
+		DETECT_INDENT.indentType = LIST_INDENT ;
+	}
+	else if ( DETECT_INDENT.indentDelta >= 2 ) {
+		DETECT_INDENT.indentType = CONTINUE_INDENT ;
+	}
+	else if ( DETECT_INDENT.indentDelta <= - 8 ) {
+		DETECT_INDENT.indentType = UNQUOTE_INDENT ;
+	}
+	else if ( DETECT_INDENT.indentDelta <= - 4 ) {
+		DETECT_INDENT.indentType = UNLIST_INDENT ;
+	}
+	else if ( DETECT_INDENT.indentDelta <= - 2 ) {
+		DETECT_INDENT.indentType = DISCONTINUE_INDENT ;
+	}
+
+	return DETECT_INDENT ;
+}
+
+
+
+const BLOCK_PARAGRAPH = 1 ;
+const BLOCK_HEADER = 2 ;
+const BLOCK_LIST_ITEM = 3 ;
+const BLOCK_ORDERED_LIST_ITEM = 4 ;
+const BLOCK_CITE = 5 ;
+const BLOCK_MEDIA = 10 ;
+const BLOCK_FLOAT_LEFT_MEDIA = 11 ;
+const BLOCK_FLOAT_RIGHT_MEDIA = 12 ;
+const BLOCK_HORIZONTAL_RULE = 20 ;
+const BLOCK_CLEAR_FLOAT = 21 ;
+const BLOCK_CODE = 30 ;
+const BLOCK_TABLE_ROW = 40 ;
+const BLOCK_TABLE_ROW_SEPARATOR = 41 ;
+const BLOCK_TABLE_ROW_THICK_SEPARATOR = 42 ;
+const BLOCK_TABLE_CAPTION = 43 ;
+const BLOCK_ANCHOR = 50 ;
+const BLOCK_METADATA = 60 ;
+
+function detectBlockType( str , i ) {
+	if ( str[ i ] === '\\' ) {
+		return BLOCK_PARAGRAPH ;
+	}
+
+	if ( str[ i ] === '#' ) {
+		if ( str[ i + 1 ] === '(' ) { return BLOCK_ANCHOR ; }
+		return BLOCK_HEADER ;
+	}
+
+	if ( str[ i ] === '!' && str[ i + 2 ] === '[' ) {
+		if ( str[ i + 1 ] === '=' ) { return BLOCK_MEDIA ; }
+		else if ( str[ i + 1 ] === '<' ) { return BLOCK_FLOAT_LEFT_MEDIA ; }
+		else if ( str[ i + 1 ] === '>' ) { return BLOCK_FLOAT_RIGHT_MEDIA ; }
+		return BLOCK_PARAGRAPH ;
+	}
+
+	if ( ( str[ i ] === '*' || str[ i ] === '-' ) && str[ i + 1 ] === ' ' ) {
+		return BLOCK_LIST_ITEM ;
+	}
+
+	if ( str[ i ] === '-' && str[ i + 1 ] === '-' ) {
+		if ( str[ i + 2 ] === '-' ) {
+			if ( str[ i + 3 ] === '[' ) {
+				return BLOCK_METADATA ;
+			}
+
+			return BLOCK_HORIZONTAL_RULE ;
+
+		}
+		if ( str[ i + 2 ] === ' ' && searchEndOfEmptyLine( str , i + 3 ) === - 1 ) {
+			return BLOCK_CITE ;
+		}
+	}
+
+	if ( str[ i ] === '<' && str[ i + 1 ] === '-' && str[ i + 2 ] === '-' && str[ i + 3 ] === '-' ) {
+		return BLOCK_CLEAR_FLOAT ;
+	}
+
+	if ( str[ i ] === '`' && str[ i + 1 ] === '`' && str[ i + 2 ] === '`' ) {
+		return BLOCK_CODE ;
+	}
+
+	if ( str[ i ] === '|' ) {
+		if ( str[ i + 1 ] === '[' ) { return BLOCK_TABLE_CAPTION ; }
+
+		if (
+			str[ i + 1 ] === '-'
+			|| ( ( str[ i + 1 ] === '<' || str[ i + 1 ] === '>' ) && str[ i + 2 ] === '-' )
+		) {
+			return BLOCK_TABLE_ROW_SEPARATOR ;
+		}
+
+		if (
+			str[ i + 1 ] === '='
+			|| ( ( str[ i + 1 ] === '<' || str[ i + 1 ] === '>' ) && str[ i + 2 ] === '=' )
+		) {
+			return BLOCK_TABLE_ROW_THICK_SEPARATOR ;
+		}
+
+		return BLOCK_TABLE_ROW ;
+	}
+
+	if ( str[ i ] >= '0' && str[ i ] <= '9' ) {
+		let iAfterNumber = i + 1 ;
+		while ( str[ iAfterNumber ] >= '0' && str[ iAfterNumber ] <= '9' ) { iAfterNumber ++ ; }
+
+		if ( str[ iAfterNumber ] === '.' && ( str[ iAfterNumber + 1 ] === ' ' || str[ iAfterNumber + 1 ] === '\t' ) ) {
+			return BLOCK_ORDERED_LIST_ITEM ;
+		}
+	}
+
+	return BLOCK_PARAGRAPH ;
+}
+
+
+
+const DEFAULT_BLOCK_END_PARAMS = {
+	acceptEmptyLine: false ,
+	acceptBlockType: - 1 ,
+	acceptContinueIndent: true ,
+	acceptIndent: false
+} ;
+
+/*
+	Params:
+		acceptEmptyLine: the block is not interrupted by empty line
+		acceptBlockType: this block is accepted as a continuation
+		acceptContinueIndent: continue if the block is indented 2 spaces (“continue indent”)
+		acceptIndent: continue if the block is indented to the next level (4 or more)
+*/
+function detectBlockEnd( str , nextScanStart , parentIndent = 0 , params = DEFAULT_BLOCK_END_PARAMS ) {
+	var detectedBlockType , isEmptyLine , endOfEmptyLine , indentType ,
+		blockEnd = nextScanStart ;
+
+	//console.error( "=== detectBlockEnd() ===" , nextScanStart , parentIndent , params ) ;
+	while ( nextScanStart < str.length ) {
+		// First, move at the start of the next line...
+		let endOfLine = searchEndOfLine( str , nextScanStart ) ;
+		//console.error( "-> endOfLine:" , endOfLine ) ;
+		blockEnd = endOfLine ;
+		nextScanStart = endOfLine + 1 ;
+
+		if ( nextScanStart > str.length ) { break ; }
+
+		( { isEmptyLine , endOfEmptyLine , indentType } = detectIndent( str , nextScanStart , parentIndent ) ) ;
+		//console.error( "-> detectIndent():" , { isEmptyLine , endOfEmptyLine , indentCharCount , indentSpaces , indentType } ) ;
+
+		if ( isEmptyLine ) {
+			if ( ! params.acceptEmptyLine ) { return blockEnd ; }
+			nextScanStart = endOfEmptyLine + 1 ;
+			continue ;
+		}
+
+		if ( indentType < 0 ) { return blockEnd ; }
+		if ( indentType === CONTINUE_INDENT && params.acceptContinueIndent ) { continue ; }
+		if ( indentType > 0 && params.acceptIndent ) { continue ; }
+
+		detectedBlockType = detectBlockType( str , nextScanStart ) ;
+		//console.error( "-> detectBlockType():" , detectedBlockType ) ;
+		if ( params.acceptBlockType !== detectedBlockType ) { return blockEnd ; }
+	}
+
+	return blockEnd ;
+}
+
+
+
+const PARAGRAPH_END_PARAMS = {
+	acceptEmptyLine: false ,
+	acceptBlockType: BLOCK_PARAGRAPH ,
+	acceptContinueIndent: false ,
+	acceptIndent: false
+} ;
+
+function parseParagraph( str , ctx ) {
+	//console.error( "parseParagraph in:" , ctx.i , str.slice( ctx.i ) ) ;
+	ctx.parts.push( { type: 'paragraph' } ) ;
+
+	var blockEnd = detectBlockEnd( str , ctx.i , ctx.parent?.indent , PARAGRAPH_END_PARAMS ) ;
+	//console.error( "blockEnd:" , blockEnd ) ;
+	parseInlineChildren( str , ctx , blockEnd ) ;
+
+	//console.error( "children:" , children ) ;
+	//console.error( "parseParagraph out:" , ctx.i , str.slice( ctx.i ) ) ;
+}
+
+
+
+const HEADER_END_PARAMS = {
+	acceptEmptyLine: false ,
+	//acceptBlockType: BLOCK_HEADER ,
+	acceptContinueIndent: true ,
+	acceptIndent: false
+} ;
+
+function parseHeader( str , ctx ) {
+	var streak = countStreak( str , ctx.i , '#' ) ;
+	//if ( str[ ctx.i + streak ] !== ' ' ) { return parseParagraph( str , ctx ) ; }
+
+	ctx.i += streak ;
+	if ( str[ ctx.i ] === ' ' ) { ctx.i ++ ; }
+	ctx.parts.push( { type: 'header' , level: streak } ) ;
+
+	var blockEnd = detectBlockEnd( str , ctx.i , ctx.parent?.indent , HEADER_END_PARAMS ) ;
+	parseInlineChildren( str , ctx , blockEnd ) ;
+}
+
+
+
+const CITE_END_PARAMS = {
+	acceptEmptyLine: false ,
+	//acceptBlockType: BLOCK_CITE ,
+	acceptContinueIndent: true ,
+	acceptIndent: false
+} ;
+
+function parseCite( str , ctx ) {
+	ctx.i += 3 ;
+	ctx.parts.push( { type: 'cite' } ) ;
+
+	var blockEnd = detectBlockEnd( str , ctx.i , ctx.parent?.indent , CITE_END_PARAMS ) ;
+	parseInlineChildren( str , ctx , blockEnd ) ;
+}
+
+
+
+// Lists themselve are auto-aggregating, accepting empty-lines, item needs continue-indent
+const LIST_ITEM_END_PARAMS = {
+	acceptEmptyLine: false ,
+	//acceptBlockType: BLOCK_LIST_ITEM ,
+	acceptContinueIndent: true ,
+	acceptIndent: false
+} ;
+
+function parseListItem( str , ctx , indent ) {
+	ctx.i += 2 ;
+
+	var lastPart = ctx.parts[ ctx.parts.length - 1 ] ;
+
+	if ( ! lastPart || lastPart.type !== 'list' ) {
+		ctx.parts.push( { type: 'list' , indent } ) ;
+	}
+
+	stack( ctx ) ;
+
+	ctx.parts.push( { type: 'listItem' , indent } ) ;
+
+	var blockEnd = detectBlockEnd( str , ctx.i , ctx.parent?.indent , LIST_ITEM_END_PARAMS ) ;
+	parseInlineChildren( str , ctx , blockEnd ) ;
+}
+
+
+
+function parseOrderedListItem( str , ctx , indent ) {
+	var endOfNumber = ctx.i ;
+	while ( str[ endOfNumber ] >= '0' && str[ endOfNumber ] <= '9' ) { endOfNumber ++ ; }
+
+	var order = parseInt( str.slice( ctx.i , endOfNumber ) , 10 ) ;
+	ctx.i = endOfNumber + 2 ;
+
+	var lastPart = ctx.parts[ ctx.parts.length - 1 ] ;
+
+	if ( ! lastPart || lastPart.type !== 'orderedList' ) {
+		ctx.parts.push( { type: 'orderedList' , indent } ) ;
+	}
+
+	stack( ctx ) ;
+
+	ctx.parts.push( { type: 'orderedListItem' , indent , order } ) ;
+
+	var blockEnd = detectBlockEnd( str , ctx.i , ctx.parent?.indent , LIST_ITEM_END_PARAMS ) ;
+	parseInlineChildren( str , ctx , blockEnd ) ;
+}
+
+
+
+const MEDIA_DATA_MARK = {
+	text: true , href: true , style: false , extra: false
+} ;
+
+function parseMedia( str , ctx , float = null ) {
+	var end = searchCloser( str , ctx.i + 3 , '[' , ']' ) ;
+	if ( end < 0 ) { return ; }
+
+	var text = str.slice( ctx.i + 3 , end ) ;
+
+	ctx.i = end ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+	var data = parseDataMark( str , ctx , MEDIA_DATA_MARK ) ;
+	if ( ! data ) { return ; }
+
+	if ( ! data.href?.[ 0 ] ) { return ; }
+
+	var type = 'imageBlock' ;
+
+	if ( data.href[ 1 ] ) {
+		switch ( data.href[ 1 ] ) {
+			case 'image' :
+				type = 'imageBlock' ;
+				break ;
+			case 'audio' :
+				type = 'audioBlock' ;
+				break ;
+			case 'video' :
+				type = 'videoBlock' ;
+				break ;
+			default :
+				return ;
+		}
+	}
+
+	var params = { type , altText: text , href: data.href[ 0 ] } ;
+
+	if ( float ) { params.float = float ; }
+
+	if ( data.text?.length ) {
+		params.caption = data.text[ 0 ] ;
+		if ( data.text[ 1 ] ) { params.title = data.text[ 1 ] ; }
+	}
+
+	//if ( data.extra?.length ) { params.title = data.extra[ 0 ] ; }
+
+	ctx.parts.push( params ) ;
+	ctx.i ++ ;
+}
+
+
+
+function parseHorizontalRule( str , ctx ) {
+	var params = { type: 'horizontalRule' } ,
+		streak = countStreak( str , ctx.i , '-' ) ;
+
+	if (
+		str[ ctx.i + streak ] === '<'
+		&& str[ ctx.i + streak + 1 ] === '>'
+		&& str[ ctx.i + streak + 2 ] === '-'
+		&& str[ ctx.i + streak + 3 ] === '-'
+		&& str[ ctx.i + streak + 4 ] === '-'
+	) {
+		params.clearFloat = true ;
+	}
+
+	ctx.parts.push( params ) ;
+	ctx.i = searchEndOfLine( str , ctx.i ) + 1 ;
+}
+
+
+
+function parseClearFloat( str , ctx ) {
+	var streak = countStreak( str , ctx.i + 1 , '-' ) ;
+
+	if ( str[ ctx.i + 1 + streak ] === '>' ) {
+		ctx.parts.push( { type: 'clearFloat' } ) ;
+		ctx.i = searchEndOfLine( str , ctx.i ) + 1 ;
+	}
+	else {
+		parseParagraph( str , ctx ) ;
+	}
+}
+
+
+
+function parseCodeBlock( str , ctx ) {
+	var streak = countStreak( str , ctx.i , '`' ) ,
+		endOfLine = searchEndOfLine( str , ctx.i + streak ) ,
+		lang = str.slice( ctx.i + streak , endOfLine ).trim() || null ,
+		contentStart = endOfLine + 1 ;
+
+	var ends = searchBlockSwitchCloser( str , contentStart , '`' , 3 ) ;
+
+	if ( ! ends ) {
+		return parseParagraph( str , ctx ) ;
+	}
+
+	var [ contentEnd , blockEnd ] = ends ;
+
+	var params = { type: 'codeBlock' } ;
+	if ( lang ) { params.lang = lang ; }
+	params.text = str.slice( contentStart , contentEnd - 1 ) ;	// We strip the last newline
+	ctx.parts.push( params ) ;
+	ctx.i = blockEnd ;
+}
+
+
+
+function parseMetadata( str , ctx ) {
+	var endOfLine = searchEndOfLine( str , ctx.i + 4 ) ,
+		nextBracket = searchNext( str , ctx.i + 4 , endOfLine , '[' ) ;
+
+	if ( nextBracket < 0 ) { return parseParagraph( str , ctx ) ; }
+
+	var type = str.slice( ctx.i + 4 , nextBracket ).trim() || 'metadata' ,
+		contentStart = endOfLine + 1 ,
+		ends = searchFixedBlockSwitchCloser( str , contentStart , ']]---' ) ;
+
+	if ( ! ends ) { return parseParagraph( str , ctx ) ; }
+
+	var [ contentEnd , blockEnd ] = ends ;
+
+	if ( ! ctx.rawMetadata ) { ctx.rawMetadata = {} ; }
+	if ( ! ctx.rawMetadata[ type ] ) { ctx.rawMetadata[ type ] = '' ; }
+	ctx.rawMetadata[ type ] += str.slice( contentStart , contentEnd ) ;		// We DON'T strip the last newline
+	ctx.i = blockEnd ;
+}
+
+
+
+function parseAnchor( str , ctx ) {
+	//console.log( "parseAnchor()" ) ;
+	var end = searchCloser( str , ctx.i + 2 , '(' , ')' , true ) ;
+	if ( end < 0 ) { return parseParagraph( str , ctx ) ; }
+
+	ctx.parts.push( {
+		type: 'anchor' ,
+		href: str.slice( ctx.i + 2 , end )
+	} ) ;
+
+	ctx.i = end + 1 ;
+}
+
+
+
+function parseTableCaption( str , ctx ) {
+	//console.log( "parseTableCaption()" ) ;
+	var lastCharOfLine = searchLastCharOfLine( str , ctx.i + 1 ) ;
+
+	var end = searchCloser( str , ctx.i + 2 , '[' , ']' , true , lastCharOfLine ) ;
+
+	// Check that the syntax is correct: |[ must be followed by a space and ]| must be preceded by a space
+	if ( str[ ctx.i + 2 ] !== ' ' || str[ end - 1 ] !== ' ' || str[ end + 1 ] !== '|' ) {
+		return parseParagraph( str , ctx ) ;
+	}
+
+	var table = ctx.parts[ ctx.parts.length - 1 ] ;
+
+	if ( ! table || table.type !== 'table' || ctx.lastLineWasEmpty ) {
+		table = { type: 'table' , columns: [] } ;
+		ctx.parts.push( table ) ;
+	}
+
+	ctx.i += 3 ;
+	stack( ctx ) ;
+
+	var lastRow = ctx.parts[ ctx.parts.length - 1 ] || null ,
+		tableCaption = lastRow ;
+
+	if ( ! lastRow || lastRow.type !== 'tableCaption' ) {
+		tableCaption = { type: 'tableCaption' } ;
+		ctx.parts.push( tableCaption ) ;
+	}
+
+	parseInlineChildren( str , ctx , end - 1 , true ) ;
+
+	if ( str[ end + 2 ] === '<' ) {
+		ctx.i = end + 1 ;
+		let data = parseDataMark( str , ctx , CELL_DATA_MARK , lastCharOfLine + 1 , false ) ;
+		if ( data?.style?.[ 0 ] ) { tableCaption.style = data.style[ 0 ] ; }
+	}
+
+	ctx.i = lastCharOfLine + 1 ;
+}
+
+
+
+const CELL_DATA_MARK = {
+	text: false , href: false , style: true , extra: false
+} ;
+
+function parseTableRow( str , ctx ) {
+	//console.log( "parseTableRow()" ) ;
+	var lastCharOfLine = searchLastCharOfLine( str , ctx.i + 1 ) ,
+		table = ctx.parts[ ctx.parts.length - 1 ] ,
+		tableRow ,
+		mergeMode = false ;
+
+	if ( ! table || table.type !== 'table' || ctx.lastLineWasEmpty ) {
+		table = { type: 'table' , columns: [] , children: [] } ;
+		ctx.parts.push( table ) ;
+	}
+
+	stack( ctx ) ;
+
+	if ( table.multilineRowMode && ctx.lastBlock === BLOCK_TABLE_ROW ) {
+		//console.error( "???" , ctx.lastBlock , BLOCK_TABLE_ROW ) ;
+		let lastRow = ctx.parts[ ctx.parts.length - 1 ] || null ;
+		tableRow = lastRow ;
+
+		if ( ! lastRow || lastRow.type !== 'tableRow' ) {
+			tableRow = { type: 'tableRow' } ;
+			ctx.parts.push( tableRow ) ;
+		}
+		else {
+			mergeMode = true ;
+		}
+	}
+	else {
+		tableRow = { type: 'tableRow' } ;
+		ctx.parts.push( tableRow ) ;
+	}
+
+	stack( ctx ) ;
+
+	if ( mergeMode ) { return parseTableMultilineRow( str , ctx , lastCharOfLine , table , tableRow ) ; }
+
+
+	//var leftAlign , rightAlign , leftCenter , rightCenter , headColumn ;
+	var columnSeparator , style ,
+		nextBar , firstSpace , lastSpace ,
+		firstBar = ctx.i ,
+		currentBar = ctx.i ;
+
+	while ( ( nextBar = searchNext( str , currentBar + 1 , lastCharOfLine + 1 , '|' ) ) !== - 1 ) {
+		//leftAlign = rightAlign = leftCenter = rightCenter = headColumn = false ;
+		columnSeparator = false ;
+		style = null ;
+
+		lastSpace = searchPrevious( str , nextBar - 1 , currentBar , ' ' ) ;
+
+		if ( str[ nextBar + 1 ] === '|' ) { columnSeparator = true ; }
+
+		if ( str[ currentBar + 1 ] === '<' ) {
+			ctx.i = currentBar ;
+			let data = parseDataMark( str , ctx , CELL_DATA_MARK , nextBar , false ) ;
+			if ( data?.style?.[ 0 ] ) { style = data.style[ 0 ] ; }
+			firstSpace = searchNext( str , ctx.i , nextBar , ' ' ) ;
+		}
+		else {
+			firstSpace = searchNext( str , currentBar + 1 , nextBar , ' ' ) ;
+		}
+
+		let tableCell = { type: 'tableCell' } ;
+
+		// The '|' bar position helps for column span calculation
+		// sx = Start X, the x position of the left bar
+		tableCell.sx = currentBar - firstBar ;
+		// ex = End X, the x position of the right bar
+		tableCell.ex = nextBar - firstBar ;
+
+		if ( style ) { tableCell.style = style ; }
+		if ( columnSeparator ) { tableCell.columnSeparator = true ; }
+
+		ctx.parts.push( tableCell ) ;
+
+		ctx.i = firstSpace + 1 ;
+		parseInlineChildren( str , ctx , lastSpace , true ) ;
+
+		currentBar = columnSeparator ? nextBar + 1 : nextBar ;
+	}
+
+	// Compute cells indexes, columnSpan, rowSpan, column template
+	computeIndexColumnSpan( ctx , table , tableRow ) ;
+
+	if ( str[ currentBar + 1 ] === '<' ) {
+		ctx.i = currentBar ;
+		let data = parseDataMark( str , ctx , CELL_DATA_MARK , lastCharOfLine + 1 , false ) ;
+		if ( data?.style?.[ 0 ] ) { tableRow.style = data.style[ 0 ] ; }
+	}
+
+	ctx.i = lastCharOfLine + 1 ;
+}
+
+
+
+// Merge current row with the previous
+// Should only be called by parseTableRow() which put in the correct scope
+function parseTableMultilineRow( str , ctx , lastCharOfLine , table , tableRow ) {
+	var tableCell , columnSeparator , nextBar , firstSpace , lastSpace ,
+		//firstBar = ctx.i ,
+		currentBar = ctx.i ,
+		columnIndex = 0 ;
+
+	while ( ( nextBar = searchNext( str , currentBar + 1 , lastCharOfLine + 1 , '|' ) ) !== - 1 ) {
+		columnSeparator = false ;
+
+		firstSpace = searchNext( str , currentBar + 1 , nextBar , ' ' ) ;
+		lastSpace = searchPrevious( str , nextBar - 1 , currentBar , ' ' ) ;
+
+		if ( str[ nextBar + 1 ] === '|' ) { columnSeparator = true ; }
+
+		tableCell = tableRow.children[ columnIndex ] ;
+
+		if ( tableCell ) {
+			ctx.i = firstSpace + 1 ;
+			ctx.forceInlineChunkSpace = true ;
+			parseInlineChildrenOfParent( str , ctx , tableCell , lastSpace , true ) ;
+		}
+
+		currentBar = columnSeparator ? nextBar + 1 : nextBar ;
+		columnIndex ++ ;
+	}
+
+	ctx.i = lastCharOfLine + 1 ;
+}
+
+
+
+function parseTableRowSeparator( str , ctx , thick = false ) {
+	//console.log( "parseTableRowSeparator()" ) ;
+	var tableRow , columnIndex ,
+		lastCharOfLine = searchLastCharOfLine( str , ctx.i + 1 ) ,
+		table = ctx.parts[ ctx.parts.length - 1 ] ;
+
+	if ( ! table || table.type !== 'table' || ctx.lastLineWasEmpty ) {
+		table = { type: 'table' , columns: [] , children: [] } ;
+		ctx.parts.push( table ) ;
+	}
+
+	// Fix previous table row as table head row
+	if ( ! table.hasHeadSeparator ) { return parseTableHeadRowSeparator( str , ctx , thick , lastCharOfLine ) ; }
+
+
+	// So this is a true row separator, not a head/body separator
+
+	// If this is the first row separator, we have to merge all existing rows into one
+	if ( ! table.hasRowSeparator ) {
+		table.multilineRowMode = true ;
+
+		for ( let index = 0 ; index < table.children.length ; index ++ ) {
+			let child = table.children[ index ] ;
+
+			if ( child.type === 'tableRow' ) {
+				if ( ! tableRow ) {
+					tableRow = child ;
+				}
+				else {
+					// All subsequent tableRows, are merged into the first tableRow
+
+					if ( child.children ) {
+						for ( columnIndex = 0 ; columnIndex < child.children.length ; columnIndex ++ ) {
+							let child2 = child.children[ columnIndex ] ;
+							if ( child2.type === 'tableCell' || child2.type === 'tableHeadCell' ) {
+								if ( tableRow.children[ columnIndex ] ) {
+									// Merge the cells
+									mergeInlineParts( tableRow.children[ columnIndex ].children , child2.children ) ;
+								}
+								else {
+									tableRow.children[ columnIndex ] = child2 ;
+								}
+							}
+						}
+					}
+
+					table.children.splice( index , 1 ) ;
+					index -- ;
+				}
+			}
+		}
+	}
+
+	table.hasRowSeparator = true ;
+
+	if ( ! tableRow ) {
+		tableRow = searchLastChildOfType( table , 'tableRow' ) ;
+
+		if ( ! tableRow ) {
+			ctx.i = lastCharOfLine + 1 ;
+			return ;
+		}
+	}
+
+	if ( thick ) { tableRow.rowSeparator = true ; }
+
+
+	// Store row span
+	var columnSeparator , nextBar ,
+		firstBar = ctx.i ,
+		currentBar = ctx.i ,
+		columns = table.columns ,
+		separatorCellIndex = 0 ;
+
+	while ( ( nextBar = searchNext( str , currentBar + 1 , lastCharOfLine + 1 , '|' ) ) !== - 1 ) {
+		columnSeparator = false ;
+
+		if ( str[ nextBar + 1 ] === '|' ) { columnSeparator = true ; }
+
+		if ( str[ currentBar + 1 ] === '-' && str[ currentBar + 2 ] === ' ' && str[ nextBar - 1 ] === '-' && str[ nextBar - 2 ] === ' ' ) {
+			// This is a rowSpan
+			ctx.rowSpanTables.add( table ) ;
+			if ( ! tableRow.continueRowSpan ) { tableRow.continueRowSpan = [] ; }
+
+			let sx = currentBar - firstBar ;
+			let closestDelta = Infinity ;
+			let closestColumnIndex = separatorCellIndex ;
+
+			for ( columnIndex = separatorCellIndex ; columnIndex < columns.length ; columnIndex ++ ) {
+				let column = columns[ columnIndex ] ;
+				let delta = Math.abs( sx - column.sx ) ;
+				if ( delta < closestDelta ) {
+					closestDelta = delta ;
+					closestColumnIndex = columnIndex ;
+				}
+			}
+
+			tableRow.continueRowSpan.push( closestColumnIndex ) ;
+		}
+
+		currentBar = columnSeparator ? nextBar + 1 : nextBar ;
+		separatorCellIndex ++ ;
+	}
+
+	ctx.i = lastCharOfLine + 1 ;
+}
+
+
+
+function parseTableHeadRowSeparator( str , ctx , thick , lastCharOfLine ) {
+	var columnIndex , tableHeadRow ,
+		table = ctx.parts[ ctx.parts.length - 1 ] ,
+		columns = table.columns ;
+
+	table.hasHeadSeparator = true ;
+	var leftAlign , rightAlign , leftCenter , rightCenter , headColumn , columnSeparator , style ,
+		nextBar , firstHbar , lastHbar , hbarStreak ,
+		hbarChar = thick ? '=' : '-' ,
+		firstBar = ctx.i ,
+		currentBar = ctx.i ;
+
+	columnIndex = 0 ;
+
+	while ( ( nextBar = searchNext( str , currentBar + 1 , lastCharOfLine + 1 , '|' ) ) !== - 1 ) {
+		leftAlign = rightAlign = leftCenter = rightCenter = headColumn = columnSeparator = false ;
+		style = null ;
+
+		firstHbar = searchNext( str , currentBar + 1 , nextBar , hbarChar ) ;
+		lastHbar = searchPrevious( str , nextBar - 1 , currentBar , hbarChar ) ;
+
+		if ( str[ nextBar + 1 ] === '|' ) { columnSeparator = true ; }
+
+		if ( firstHbar !== - 1 ) {
+			if ( firstHbar - currentBar >= 2 ) {
+				for ( let i = currentBar + 1 ; i < firstHbar ; i ++ ) {
+					if ( str[ i ] === '<' ) { leftAlign = true ; }
+					else if ( str[ i ] === '>' ) { leftCenter = true ; }
+				}
+			}
+
+			if ( nextBar - lastHbar >= 2 ) {
+				for ( let i = lastHbar + 1 ; i < nextBar ; i ++ ) {
+					if ( str[ i ] === '<' ) { rightCenter = true ; }
+					else if ( str[ i ] === '>' ) { rightAlign = true ; }
+					else if ( str[ i ] === ':' ) { headColumn = true ; }
+				}
+			}
+
+			hbarStreak = countStreak( str , firstHbar , hbarChar ) ;
+			if ( firstHbar + hbarStreak - 1 !== lastHbar ) {
+				// Check for style mark
+				if ( str[ firstHbar + hbarStreak ] === '<' ) {
+					ctx.i = firstHbar + hbarStreak - 1 ;
+					let data = parseDataMark( str , ctx , CELL_DATA_MARK , lastHbar , false ) ;
+					if ( data?.style?.[ 0 ] ) { style = data.style[ 0 ] ; }
+				}
+			}
+		}
+
+		let columnTemplate = columns[ columnIndex ] ;
+		if ( ! columnTemplate ) { columnTemplate = columns[ columnIndex ] = {} ; }
+
+		// The '|' bar position helps for column span calculation
+		// sx = Start X, the x position of the left bar
+		columnTemplate.sx = currentBar - firstBar ;
+		// ex = End X, the x position of the right bar
+		columnTemplate.ex = nextBar - firstBar ;
+
+		if ( headColumn ) { columnTemplate.headColumn = true ; }
+		if ( style ) { columnTemplate.style = style ; }
+		if ( columnSeparator ) { columnTemplate.columnSeparator = true ; }
+		if ( leftAlign || rightAlign || leftCenter || rightCenter ) {
+			columnTemplate.align =
+				leftCenter && rightCenter ? 'center' :
+				leftAlign && rightAlign ? 'justify' :
+				leftAlign ? 'left' :
+				rightAlign ? 'right' :
+				'default' ;
+		}
+
+		currentBar = columnSeparator ? nextBar + 1 : nextBar ;
+		columnIndex ++ ;
+	}
+
+
+	// Should come AFTER, because it needs column info
+	// Fix previous table row as table head row: turn all existing tableRow into tableHeadRow
+
+	for ( let index = 0 ; index < table.children.length ; index ++ ) {
+		let child = table.children[ index ] ;
+
+		if ( child.type === 'tableRow' ) {
+			if ( ! tableHeadRow ) {
+				// This is the first tableRow, turn it into a a tableHeadRow
+				child.type = 'tableHeadRow' ;
+
+				if ( child.children ) {
+					for ( columnIndex = 0 ; columnIndex < child.children.length ; columnIndex ++ ) {
+						let child2 = child.children[ columnIndex ] ;
+						if ( child2.type === 'tableCell' || child2.type === 'tableHeadCell' ) {
+							child2.type = 'tableHeadCell' ;
+							child2.isColumnHead = true ;
+						}
+					}
+				}
+
+				tableHeadRow = child ;
+				if ( thick ) { tableHeadRow.rowSeparator = true ; }
+			}
+			else {
+				// All subsequent tableRows, are merged into the first tableHeadRow created
+
+				if ( child.children ) {
+					for ( columnIndex = 0 ; columnIndex < child.children.length ; columnIndex ++ ) {
+						let child2 = child.children[ columnIndex ] ;
+						if ( child2.type === 'tableCell' || child2.type === 'tableHeadCell' ) {
+							if ( tableHeadRow.children[ columnIndex ] ) {
+								// Merge the cells
+								mergeInlineParts( tableHeadRow.children[ columnIndex ].children , child2.children ) ;
+							}
+							else {
+								child2.type = 'tableHeadCell' ;
+								child2.isColumnHead = true ;
+								tableHeadRow.children[ columnIndex ] = child2 ;
+							}
+						}
+					}
+				}
+
+				table.children.splice( index , 1 ) ;
+				index -- ;
+			}
+		}
+	}
+
+	if ( tableHeadRow ) {
+		// Compute cells indexes, columnSpan, rowSpan, column template
+		computeIndexColumnSpan( ctx , table , tableHeadRow ) ;
+	}
+
+	ctx.i = lastCharOfLine + 1 ;
+}
+
+
+
+function computeIndexColumnSpan( ctx , table , tableRow ) {
+	var tableCell , cellIndex , column , columnIndex , columnSpan ,
+		columns = table.columns ,
+		extraSpan = columns ? columns.length - tableRow.children.length : 0 ;
+
+
+	for ( cellIndex = columnIndex = 0 ; cellIndex < tableRow.children.length ; cellIndex ++ , columnIndex ++ ) {
+		tableCell = tableRow.children[ cellIndex ] ;
+		tableCell.column = columnIndex ;
+		columnSpan = 1 ;
+
+		if ( columns ) {
+			column = columns[ columnIndex ] ;
+
+			if ( column ) {
+				if ( column.headColumn ) {
+					tableCell.type = 'tableHeadCell' ;
+					tableCell.isRowHead = true ;
+				}
+			}
+
+			while ( extraSpan > 0 && Math.abs( tableCell.ex - columns[ columnIndex ].ex ) > Math.abs( tableCell.ex - columns[ columnIndex + 1 ].ex ) ) {
+				columnIndex ++ ;
+				extraSpan -- ;
+				columnSpan ++ ;
+			}
+
+			if ( columnSpan >= 2 ) {
+				tableCell.columnSpan = columnSpan ;
+			}
+		}
+	}
+}
+
+
+
+function parseInlineChildren( str , ctx , blockEnd , trim = false ) {
+	stack( ctx ) ;
+	parseInline( str , ctx , blockEnd , trim ) ;
+	unstack( ctx ) ;
+}
+
+
+
+function parseInlineChildrenOfParent( str , ctx , parent , blockEnd , trim = false ) {
+	stack( ctx , parent ) ;
+	parseInline( str , ctx , blockEnd , trim ) ;
+	unstack( ctx ) ;
+}
+
+
+
+// Try to parse non-block content
+function parseInline( str , ctx , blockEnd , trim = false ) {
+	//console.log( "parseInline() -- remaining:" , ctx.i , str.slice( ctx.i ) ) ;
+	var isSpace , scanEnd ,
+		lastWasSpace = WHITE_SPACES.has( str[ ctx.i - 1 ] ) ;
+
+	scanEnd = blockEnd = blockEnd ?? searchEndOfLine( str , ctx.i ) ;
+
+	if ( trim ) {
+		let first = searchNextNotInSet( str , ctx.i , blockEnd , WHITE_SPACES ) ;
+
+		if ( first === - 1 ) {
+			ctx.i = blockEnd ;
+			if ( str[ ctx.i ] === '\n' ) { ctx.i ++ ; }
+			return ;
+		}
+
+		let last = searchPreviousNotInSet( str , blockEnd - 1 , first - 1 , WHITE_SPACES ) ;
+		// The scan can't fail, 'last' can't be -1, because the forward search succeeded
+		ctx.i = first ;
+		scanEnd = last + 1 ;
+	}
+
+	ctx.iStartOfInlineChunk = ctx.i ;
+
+	for ( ; ctx.i < scanEnd ; ctx.i ++ ) {
+		let char = str[ ctx.i ] ;
+
+		//if ( lastWasSpace ) {}
+		//console.error( "Checking: " , string.inspect( char ) ) ;
+
+		isSpace = WHITE_SPACES.has( char ) ;
+
+		if ( isSpace ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseWhiteSpace( str , ctx ) ;
+		}
+		else if ( char === '\\' ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseEscape( str , ctx ) ;
+		}
+		else if ( char === '*' && ! WHITE_SPACES.has( str[ ctx.i + 1 ] ) ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseEmphasis( str , ctx , scanEnd ) ;
+		}
+		else if ( char === '_' && ! WHITE_SPACES.has( str[ ctx.i + 1 ] ) ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseDecoration( str , ctx , scanEnd ) ;
+		}
+		else if ( char === '`' ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseCode( str , ctx , scanEnd ) ;
+		}
+		else if ( char === '[' ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseStyledText( str , ctx , scanEnd ) ;
+		}
+		else if ( char === '!' && str[ ctx.i + 1 ] === '[' && lastWasSpace ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseImage( str , ctx , scanEnd ) ;
+		}
+
+		lastWasSpace = isSpace ;
+	}
+
+	addInlineTextChunk( str , ctx ) ;
+
+	ctx.i = blockEnd ;
+	if ( str[ ctx.i ] === '\n' ) { ctx.i ++ ; }
+}
+
+
+
+function addInlineTextChunk( str , ctx , forcedChunk = null ) {
+	var chunk = forcedChunk ?? str.slice( ctx.iStartOfInlineChunk , ctx.i ) ;
+
+	if ( ctx.forceInlineChunkSpace ) {
+		chunk = ' ' + chunk ;
+		ctx.forceInlineChunkSpace = false ;
+	}
+
+	if ( chunk ) {
+		let lastPart = ctx.parts[ ctx.parts.length - 1 ] ;
+
+		if ( lastPart && lastPart.type === 'text' ) {
+			lastPart.text += chunk ;
+		}
+		else {
+			ctx.parts.push( {
+				type: 'text' ,
+				text: chunk
+			} ) ;
+		}
+	}
+
+	if ( ! forcedChunk ) {
+		ctx.iStartOfInlineChunk = ctx.i ;
+	}
+}
+
+
+
+const WHITE_SPACES = new Set( [ ' ' , '\t' , '\n' , '\r' ] ) ;
+
+
+
+function parseWhiteSpace( str , ctx ) {
+	var end = ctx.i + 1 ;
+	while ( WHITE_SPACES.has( str[ end ] ) ) { end ++ ; }
+
+	ctx.i = end - 1 ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+
+	addInlineTextChunk( str , ctx , ' ' ) ;
+}
+
+
+
+function parseEscape( str , ctx ) {
+	if ( ctx.i + 1 >= str.length ) {
+		ctx.iStartOfInlineChunk = ctx.i + 1 ;
+		return ;
+	}
+
+	if ( str[ ctx.i + 1 ] === ' ' ) {
+		if ( str[ ctx.i - 1 ] === '\n' ) {
+			addInlineTextChunk( str , ctx , '\n' ) ;
+		}
+		else if ( searchEndOfEmptyLine( str , ctx.i + 2 ) !== - 1 ) {
+			// Since we are not at the begining of the line, it actually search for trailing white chars
+			addInlineTextChunk( str , ctx , '\n' ) ;
+		}
+		else {
+			addInlineTextChunk( str , ctx , ' ' ) ;
+		}
+	}
+	else if ( str[ ctx.i + 1 ] === '\n' ) {
+		addInlineTextChunk( str , ctx , '\n' ) ;
+	}
+	else {
+		addInlineTextChunk( str , ctx , str[ ctx.i + 1 ] ) ;
+	}
+
+	ctx.i ++ ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+}
+
+
+
+function parseEmphasis( str , ctx , blockEnd ) {
+	//console.error( "parseStyledText()" ) ;
+	var streak = countStreak( str , ctx.i , '*' ) ;
+	if ( streak > 3 ) { return ; }
+	var end = searchSwitchCloser( str , ctx.i + streak , '*' , streak , true , false , blockEnd ) ;
+	if ( end < 0 ) { return ; }
+
+	var text = str.slice( ctx.i + streak , end + 1 - streak ) ;
+
+	ctx.parts.push( { type: 'emphasis' , level: streak , text } ) ;
+	ctx.i = end ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+}
+
+
+
+function parseDecoration( str , ctx , blockEnd ) {
+	//console.error( "parseStyledText()" ) ;
+	var streak = countStreak( str , ctx.i , '_' ) ;
+	if ( streak > 2 ) { return ; }
+	var end = searchSwitchCloser( str , ctx.i + streak , '_' , streak , true , false , blockEnd ) ;
+	if ( end < 0 ) { return ; }
+
+	var text = str.slice( ctx.i + streak , end + 1 - streak ) ;
+
+	ctx.parts.push( {
+		type: 'decoration' , underline: true , level: streak , text
+	} ) ;
+	ctx.i = end ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+}
+
+
+
+function parseCode( str , ctx , blockEnd ) {
+	//console.error( "parseStyledText()" ) ;
+	var streak = countStreak( str , ctx.i , '`' ) ;
+	// Markdown supports inline code inside two pairs of backquote, to allow backquote in code, hence streak can be 2.
+	if ( streak > 2 ) { return ; }
+	var end = searchSwitchCloser( str , ctx.i + streak , '`' , streak , false , false , blockEnd ) ;
+	if ( end < 0 ) { return ; }
+
+	var sliceStart = ctx.i + streak ,
+		sliceEnd = end + 1 - streak ;
+
+	if ( str[ sliceStart ] === ' ' && str[ sliceStart + 1 ] === '`' ) { sliceStart ++ ; }
+	if ( str[ sliceEnd - 1 ] === ' ' && str[ sliceEnd - 2 ] === '`' ) { sliceEnd -- ; }
+
+	var text = str.slice( sliceStart , sliceEnd ) ;
+
+	ctx.parts.push( { type: 'code' , text } ) ;
+	ctx.i = end ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+}
+
+
+
+const STYLE_DATA_MARK = {
+	text: true , href: true , style: true , extra: false
+} ;
+
+function parseStyledText( str , ctx , blockEnd ) {
+	//console.error( "parseStyledText()" ) ;
+	var end = searchCloser( str , ctx.i + 1 , '[' , ']' , false , blockEnd ) ;
+	if ( end < 0 ) { return ; }
+
+	var text = str.slice( ctx.i + 1 , end ) ;
+
+	ctx.i = end ;
+	var data = parseDataMark( str , ctx , STYLE_DATA_MARK , blockEnd ) ;
+	if ( ! data ) { return ; }
+
+	var params = { type: '' , text } ;
+	if ( data.href?.[ 0 ] ) { params.href = data.href[ 0 ] ; }
+	if ( data.style?.[ 0 ] ) { params.style = data.style[ 0 ] ; }
+	if ( data.text?.[ 0 ] ) { params.title = data.text[ 0 ] ; }
+
+	if ( params.href ) {
+		params.type = 'link' ;
+		ctx.parts.push( params ) ;
+	}
+	else if ( params.style || params.title ) {
+		params.type = 'styledText' ;
+		ctx.parts.push( params ) ;
+	}
+}
+
+
+
+const IMAGE_DATA_MARK = {
+	text: true , href: true , style: false , extra: false
+} ;
+
+function parseImage( str , ctx , blockEnd ) {
+	//console.error( "parseStyledText()" ) ;
+	var end = searchCloser( str , ctx.i + 2 , '[' , ']' , false , blockEnd ) ;
+	if ( end < 0 ) { return ; }
+
+	var text = str.slice( ctx.i + 2 , end ) ;
+
+	ctx.i = end ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+	var data = parseDataMark( str , ctx , IMAGE_DATA_MARK , blockEnd ) ;
+	if ( ! data ) { return ; }
+
+	var params = { type: '' , altText: text } ;
+	if ( data.href?.[ 0 ] ) { params.href = data.href[ 0 ] ; }
+
+	if ( params.href ) {
+		params.type = 'image' ;
+		params.altText = text ;
+		if ( data.text?.[ 0 ] ) { params.title = data.text[ 0 ] ; }
+		ctx.parts.push( params ) ;
+	}
+	else {
+		params.type = 'pictogram' ;
+		params.code = text ;
+		let emojiChar = emoji.get( text ) ;
+		if ( emojiChar ) { params.emoji = emojiChar ; }
+
+		if ( data.text?.[ 0 ] ) { params.altText = data.text[ 0 ] ; }
+		if ( data.text?.[ 1 ] ) { params.title = data.text[ 1 ] ; }
+
+		if ( emojiChar && ! params.altText ) {
+			params.altText = emoji.getCanonicalName( emojiChar ) ;
+		}
+
+		ctx.parts.push( params ) ;
+	}
+}
+
+
+
+function parseDataMark( str , ctx , allow , blockEnd , forTextElement = true ) {
+	var end ,
+		data = {} ;
+
+	for ( ;; ) {
+		if ( str[ ctx.i + 1 ] === '[' && allow.text ) {
+			end = searchCloser( str , ctx.i + 2 , '[' , ']' , false , blockEnd ) ;
+			if ( end < 0 ) { return ; }
+			if ( ! data.text ) { data.text = [] ; }
+			data.text.push( str.slice( ctx.i + 2 , end ) ) ;
+			ctx.i = end ;
+			ctx.iStartOfInlineChunk = ctx.i + 1 ;
+		}
+		else if ( str[ ctx.i + 1 ] === '(' && allow.href ) {
+			end = searchCloser( str , ctx.i + 2 , '(' , ')' , true , blockEnd ) ;
+			if ( end < 0 ) { return ; }
+			if ( ! data.href ) { data.href = [] ; }
+			data.href.push( str.slice( ctx.i + 2 , end ) ) ;
+			ctx.i = end ;
+			ctx.iStartOfInlineChunk = ctx.i + 1 ;
+		}
+		else if ( str[ ctx.i + 1 ] === '<' && allow.style ) {
+			end = searchCloser( str , ctx.i + 2 , '<' , '>' , true , blockEnd ) ;
+			if ( end < 0 ) { return ; }
+			if ( ! data.style ) { data.style = [] ; }
+			//data.style.push( str.slice( ctx.i + 2 , end ) ) ;
+			let style = Style.parse( str.slice( ctx.i + 2 , end ) , forTextElement ) ;
+			data.style.push( style ) ;
+			//console.error( "Parsed style:" , style ) ;
+			ctx.i = end ;
+			ctx.iStartOfInlineChunk = ctx.i + 1 ;
+		}
+		/*
+		else if ( str[ ctx.i + 1 ] === '{' && allow.extra ) {
+			end = searchCloser( str , ctx.i + 2 , '{' , '}' , false , blockEnd ) ;
+			if ( end < 0 ) { return ; }
+			if ( ! data.extra ) { data.extra = [] ; }
+			data.extra.push( str.slice( ctx.i + 2 , end ) ) ;
+			ctx.i = end ;
+			ctx.iStartOfInlineChunk = ctx.i + 1 ;
+		}
+		*/
+		else {
+			break ;
+		}
+	}
+
+	return data ;
+}
+
+
+
+function postProcessTableRowSpan( table ) {
+	var tableRow , tableCell , masterCell , lastRow , lastContinueRowSpan ;
+
+	// First pass: merge cells
+	for ( tableRow of table.children ) {
+		if ( tableRow.type !== 'tableRow' ) { continue ; }
+
+		if ( lastContinueRowSpan ) {
+			for ( let columnIndex of lastContinueRowSpan ) {
+				tableCell = searchColumn( tableRow , columnIndex ) ;
+				masterCell = searchColumn( lastRow , columnIndex ) ;
+				if ( tableCell && masterCell ) {
+					if ( masterCell.masterCell ) { masterCell = masterCell.masterCell ; }
+					mergeInlineParts( masterCell.children , tableCell.children ) ;
+					masterCell.rowSpan = ( masterCell.rowSpan || 1 ) + 1 ;
+					tableCell.masterCell = masterCell ;
+				}
+			}
+		}
+
+		lastRow = tableRow ;
+		lastContinueRowSpan = tableRow.continueRowSpan ;
+	}
+
+	// Second pass: remove dead cells
+	for ( tableRow of table.children ) {
+		if ( tableRow.type !== 'tableRow' ) { continue ; }
+		inPlaceFilter( tableRow.children , tableCell_ => ! tableCell_.masterCell ) ;
+	}
+}
+
+
+
+// Merge two inline parts blocks, adding an extra space joint in between if necessary
+function mergeInlineParts( parts , extraParts ) {
+	if ( ! extraParts.length ) { return ; }
+
+	if ( ! parts.length ) {
+		parts.push( ... extraParts ) ;
+		return ;
+	}
+
+	var lastPart = parts[ parts.length - 1 ] ,
+		firstExtraPart = extraParts[ 0 ] ;
+
+	var needExtraSpace = ! WHITE_SPACES.has( lastPart.text[ lastPart.text.length - 1 ] ) && ! WHITE_SPACES.has( firstExtraPart.text[ 0 ] ) ;
+
+	if ( lastPart.type === 'text' && firstExtraPart.type === 'text' ) {
+		// Combine the last existing with the first additional part
+		if ( needExtraSpace ) { lastPart.text += ' ' + firstExtraPart.text ; }
+		else { lastPart.text += firstExtraPart.text ; }
+		for ( let i = 1 ; i < extraParts.length ; i ++ ) { parts.push( extraParts[ i ] ) ; }
+
+		return ;
+	}
+
+	if ( needExtraSpace ) {
+		if ( lastPart.type === 'text' ) {
+			lastPart.text += ' ' ;
+		}
+		if ( firstExtraPart.type === 'text' ) {
+			firstExtraPart.text = ' ' + firstExtraPart.text ;
+		}
+		else {
+			// Add an additional joint part
+			parts.push( { type: 'text' , text: ' ' } ) ;
+		}
+	}
+
+	parts.push( ... extraParts ) ;
+}
+
+
+
+function searchEndOfLine( str , i ) {
+	var length = str.length ;
+
+	for ( ; i < length ; i ++ ) {
+		if ( str[ i ] === '\n' ) { return i ; }
+	}
+
+	return str.length ;
+}
+
+
+
+// Like searchEndOfLine() but return -1 if it's not an empty line (a line containing characters that are not space or tabs)
+function searchEndOfEmptyLine( str , i ) {
+	var length = str.length ;
+
+	for ( ; i < length ; i ++ ) {
+		if ( str[ i ] === '\n' ) { return i ; }
+		if ( str[ i ] !== '\t' && str[ i ] !== ' ' ) { return - 1 ; }
+	}
+
+	return str.length ;
+}
+
+
+
+function searchLastCharOfLine( str , i ) {
+	var length = str.length ,
+		lastCharIndex = - 1 ;
+
+	for ( ; i < length ; i ++ ) {
+		if ( str[ i ] === '\n' ) { return lastCharIndex ; }
+		if ( ! WHITE_SPACES.has( str[ i ] ) ) { lastCharIndex = i ; }
+	}
+
+	return lastCharIndex ;
+}
+
+
+
+function searchNext( str , start , end , nextChar ) {
+	for ( let i = start ; i < end ; i ++ ) {
+		if ( str[ i ] === '\n' ) { return - 1 ; }
+		if ( str[ i ] === '\\' && str[ i + 1 ] !== '\n' ) { i ++ ; continue ; }
+		if ( str[ i ] === nextChar ) { return i ; }
+	}
+
+	return - 1 ;
+}
+
+
+
+function searchPrevious( str , start , end , previousChar ) {
+	for ( let i = start ; i > end ; i -- ) {
+		if ( str[ i ] === '\n' ) { return - 1 ; }
+		if ( str[ i - 1 ] === '\\' ) { i -- ; continue ; }
+		if ( str[ i ] === previousChar ) { return i ; }
+	}
+
+	return - 1 ;
+}
+
+
+
+// notInSet is a Set
+function searchNextNotInSet( str , start , end , notInSet ) {
+	for ( let i = start ; i < end ; i ++ ) {
+		if ( str[ i ] === '\n' ) { return - 1 ; }
+		if ( str[ i ] === '\\' && str[ i + 1 ] !== '\n' ) { i ++ ; continue ; }
+		if ( ! notInSet.has( str[ i ] ) ) { return i ; }
+	}
+
+	return - 1 ;
+}
+
+
+
+// notInSet is a Set
+function searchPreviousNotInSet( str , start , end , notInSet ) {
+	for ( let i = start ; i > end ; i -- ) {
+		if ( str[ i ] === '\n' ) { return - 1 ; }
+		if ( str[ i - 1 ] === '\\' ) { i -- ; continue ; }
+		if ( ! notInSet.has( str[ i ] ) ) { return i ; }
+	}
+
+	return - 1 ;
+}
+
+
+
+function searchCloser( str , i , opener , closer , inline = false , end = str.length ) {
+	var opened = 1 ;
+
+	for ( ; i < end ; i ++ ) {
+		if ( str[ i ] === '\\' && str[ i + 1 ] !== '\n' ) { i ++ ; continue ; }
+		if ( inline && str[ i ] === '\n' ) { break ; }
+
+		if ( str[ i ] === opener ) {
+			opened ++ ;
+		}
+		else if ( str[ i ] === closer ) {
+			opened -- ;
+			if ( ! opened ) { return i ; }
+		}
+	}
+
+	return - 1 ;
+}
+
+
+
+/*
+	Same that searchCloser() but for things like '*' that starts and stop with the same amount of '*'.
+
+	closerStreak: number of times the closer char should repeat
+	noSpaceBefore: no space should be present right before the closer
+	inline: true if it doesn't span over multiple lines
+	end: the position in the string where to stop scanning
+*/
+function searchSwitchCloser( str , i , closer , closerStreak = 1 , noSpaceBefore = false , inline = false , end = str.length ) {
+	var streak = 0 ;
+
+	for ( ; i < end ; i ++ ) {
+		if ( str[ i ] === '\\' && str[ i + 1 ] !== '\n' ) { i ++ ; continue ; }
+		if ( inline && str[ i ] === '\n' ) { break ; }
+
+		if ( str[ i ] === closer && ( ! noSpaceBefore || ! WHITE_SPACES.has( str[ i - 1 ] ) ) ) {
+			streak ++ ;
+			if ( streak === closerStreak && str[ i + 1 ] !== closer ) { return i ; }
+		}
+		else {
+			streak = 0 ;
+		}
+	}
+
+	return - 1 ;
+}
+
+
+
+/*
+	Same that searchSwitchCloser() but for things like block switcher like '```'.
+	So it search for new lines, and search the switcher at the begining of that line.
+	It returns an array with the block end index before and after the ending markup, or null if nothing was found.
+
+	closerMinStreak: number of times the closer char should repeat
+	end: the position in the string where to stop scanning
+*/
+function searchBlockSwitchCloser( str , i , closer , closerMinStreak = 1 , end = str.length ) {
+	var streak = 0 ;
+
+	while ( i < end ) {
+		// Search next line
+		while ( str[ i ] !== '\n' && i < end ) { i ++ ; }
+
+		i ++ ;
+
+		if ( str[ i ] === '\\' && str[ i + 1 ] !== '\n' ) { i ++ ; continue ; }
+
+		if ( str[ i ] === closer ) {
+			streak = countStreak( str , i , closer ) ;
+			if ( streak >= closerMinStreak ) {
+				end = searchEndOfEmptyLine( str , i + streak ) ;
+				if ( end >= 0 ) {
+					return [ i , end ] ;
+				}
+			}
+		}
+	}
+
+	return null ;
+}
+
+
+
+/*
+	Same that searchBlockSwitchCloser() but with a callback function.
+*/
+function searchFixedBlockSwitchCloser( str , i , fixed , end = str.length ) {
+	var test , j , failed ;
+
+	while ( i < end ) {
+		// Search next line
+		while ( str[ i ] !== '\n' && i < end ) { i ++ ; }
+
+		i ++ ;
+
+		if ( str[ i ] === '\\' && str[ i + 1 ] !== '\n' ) { i ++ ; continue ; }
+
+		if ( str[ i ] === fixed[ 0 ] ) {
+			failed = false ;
+			for ( j = 1 ; j < fixed.length ; j ++ ) {
+				if ( str[ i + j ] !== fixed[ j ] ) { failed = true ; break ; }
+			}
+			if ( ! failed ) {
+				end = searchEndOfEmptyLine( str , i + fixed.length ) ;
+				if ( end >= 0 ) {
+					return [ i , end ] ;
+				}
+			}
+		}
+	}
+
+	return null ;
+}
+
+
+
+// Count successive char
+function countStreak( str , i , streaker ) {
+	var length = str.length ,
+		count = 0 ;
+
+	while ( i < length && str[ i ] === streaker ) {
+		i ++ ;
+		count ++ ;
+	}
+
+	return count ;
+}
+
+
+
+function searchChildOfType( parent , type ) {
+	var children = parent.children ;
+	if ( ! children ) { return null ; }
+
+	for ( let i = 0 ; i < children.length ; i ++ ) {
+		let child = children[ i ] ;
+		if ( child.type === type ) { return child ; }
+	}
+
+	return null ;
+}
+
+
+
+function searchLastChildOfType( parent , type ) {
+	var children = parent.children ;
+	if ( ! children ) { return null ; }
+
+	for ( let i = children.length - 1 ; i >= 0 ; i -- ) {
+		let child = children[ i ] ;
+		if ( child.type === type ) { return child ; }
+	}
+
+	return null ;
+}
+
+
+
+function searchColumn( tableRow , column ) {
+	for ( let tableCell of tableRow.children ) {
+		if ( tableCell.column === column ) { return tableCell ; }
+	}
+
+	return null ;
+}
+
+
+
+function stack( ctx , parent = ctx.parts[ ctx.parts.length - 1 ] ) {
+	ctx.stack.push( {
+		parts: ctx.parts ,
+		parent: ctx.parent ,
+		iEndOfBlock: ctx.iEndOfBlock
+	} ) ;
+
+	ctx.parent = parent ;
+	ctx.parts = parent.children = parent.children || [] ;
+}
+
+
+
+function unstack( ctx ) {
+	if ( ! ctx.stack.length ) { return ; }
+	var old = ctx.stack.pop() ;
+	ctx.parts = old.parts ;
+	ctx.parent = old.parent ;
+	ctx.iEndOfBlock = old.iEndOfBlock ;
+}
+
+
+
+function unstackToIndent( ctx , toIndent = 0 ) {
+	var parentIndent = ctx.parent?.indent || 0 ,
+		parentType = ctx.parent?.type ;
+
+	while ( ctx.parent && ( toIndent < parentIndent || ( toIndent === parentIndent && parentType !== 'quote' ) ) ) {
+		let old = ctx.stack.pop() ;
+		ctx.parts = old.parts ;
+		ctx.parent = old.parent ;
+		ctx.iEndOfBlock = old.iEndOfBlock ;
+		parentIndent = ctx.parent?.indent || 0 ;
+		parentType = ctx.parent?.type ;
+	}
+}
+
+
+},{"./Style.js":36,"./Theme.js":37,"array-kit/lib/inPlaceFilter.js":32,"string-kit/lib/emoji.js":39}],36:[function(require,module,exports){
+/*
+	Book Source
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Color = require( 'palette-shade' ).Color ;
+
+
+
+function Style() {
+	this.textColor = null ;
+	this.backgroundColor = null ;
+	this.bold = null ;
+	this.italic = null ;
+	this.underline = null ;
+}
+
+module.exports = Style ;
+
+
+
+Style.prototype.merge = function( ... styles ) {
+	return Style.merge( this , ... styles ) ;
+} ;
+
+
+
+Style.merge = function( ... styles ) {
+	var mergedStyle = new Style() ;
+
+	for ( let style of styles ) {
+		if ( style.textColor !== null ) { mergedStyle.textColor = style.textColor ; }
+		if ( style.backgroundColor !== null ) { mergedStyle.backgroundColor = style.backgroundColor ; }
+		if ( style.bold !== null ) { mergedStyle.bold = style.bold ; }
+		if ( style.italic !== null ) { mergedStyle.italic = style.italic ; }
+		if ( style.underline !== null ) { mergedStyle.underline = style.underline ; }
+	}
+
+	return mergedStyle ;
+} ;
+
+
+
+const BOOLEAN_PROPERTIES = new Set( [ 'bold' , 'italic' , 'underline' ] ) ;
+const TEXT_COLOR_PROPERTIES = new Set( [ 'text' , 'tx' , 'foreground' , 'fg' ] ) ;
+const BACKGROUND_COLOR_PROPERTIES = new Set( [ 'background' , 'bg' ] ) ;
+
+
+
+Style.parse = function( str , forTextElement = true ) {
+	var style = new Style() ;
+
+	for ( let part of str.trim().split( /,/g ) ) {
+		let [ property , value ] = part.split( ':' ) ;
+
+		if ( value ) {
+			property = TEXT_COLOR_PROPERTIES.has( property ) ? 'text' :
+				BACKGROUND_COLOR_PROPERTIES.has( property ) ? 'background' :
+				forTextElement ? 'text' : 'background' ;
+		}
+		else {
+			if ( BOOLEAN_PROPERTIES.has( property ) ) {
+				style[ property ] = true ;
+				continue ;
+			}
+
+			value = property ;
+			property = forTextElement ? 'text' : 'background' ;
+		}
+
+		switch ( property ) {
+			case 'text' :
+				style.textColor = Color.parse( value ) ;
+				break ;
+			case 'background' :
+				style.backgroundColor = Color.parse( value ) ;
+				break ;
+		}
+	}
+
+	return style ;
+} ;
+
+
+},{"palette-shade":51}],37:[function(require,module,exports){
+/*
+	Book Source
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const paletteShade = require( 'palette-shade' ) ;
+const Color = paletteShade.Color ;
+const Palette = paletteShade.Palette ;
+
+
+
+function Theme( params = {} ) {
+	this.colors = {
+		background: '%white' ,
+
+		text: '%black' ,
+		linkText: '%blue' ,
+		hoverLinkText: '%bright blue' ,
+		visitedLinkText: '%blue' ,
+
+		headerRule: '%brighter gray' ,
+
+		//quoteBackground: '%lighter blue tint' ,
+		quoteBackground: '%brightest blue duller tone' ,
+		quote2Background: '%brighter blue duller tone' ,	// quote in quote
+		quote3Background: '%bright blue duller tone' ,	// quote in quote in quote
+
+		codeBackground: '%bright blue tint slightly dull' ,
+		codeBorder: '%slightly bright blue tint' ,
+
+		figureCaptionBackground: '%brightest blue dull tone' ,
+
+		tableRowBackground: '%white' ,
+		tableEvenRowBackground: '%lightest blue tint' ,
+		tableBorder: '%brighter blue tone slightly dull' ,
+		tableCaptionBackground: '%orange' ,
+		tableCaptionText: '%white' ,
+		tableColumnHead: '%lightest red' ,
+		tableRowHead: '%lightest green' ,
+		tableBothHead: '%brighter gray'
+	} ;
+
+	this.fonts = {
+		main: 'Helvetica,arial,freesans,clean,sans-serif'
+	} ;
+
+	this.sizes = {
+		text: '14px' ,
+		lineHeight: '1.7' ,
+		codeLineHeight: '1.4'
+	} ;
+
+	this.printSizes = {
+		text: '9pt' ,
+		lineHeight: '1.5' ,
+		codeLineHeight: '1.4'
+	} ;
+
+	this.palette = ! params.palette || typeof params.palette !== 'object' ? new Palette() :
+		params.palette instanceof Palette ? params.palette :
+		new Palette( params.palette ) ;
+
+	this.set( params ) ;
+	if ( this.palette ) { this.substituteWithPalette() ; }
+}
+
+module.exports = Theme ;
+
+
+
+const CATEGORIES = [ 'colors' , 'fonts' , 'sizes' , 'printSizes' ] ;
+
+
+
+Theme.prototype.set = function( params ) {
+	for ( let category of CATEGORIES ) {
+		if ( params[ category ] && typeof params[ category ] === 'object' ) {
+			for ( let key in params[ category ] ) {
+				if ( this[ category ][ key ] !== undefined ) {
+					this[ category ][ key ] = params[ category ][ key ] ;
+				}
+			}
+		}
+	}
+} ;
+
+
+
+Theme.prototype.substituteWithPalette = function() {
+	var property , value , colorObject ;
+
+	for ( property in this.colors ) {
+		value = this.colors[ property ] ;
+
+		if ( value[ 0 ] === '%' ) {
+			colorObject = Color.parse( value.slice( 1 ) ) ;
+			if ( this.palette.has( colorObject ) ) {
+				this.colors[ property ] = colorObject ;
+			}
+		}
+	}
+} ;
+
+
+},{"palette-shade":51}],38:[function(require,module,exports){
+/*
+	Book Source
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const bookSource = {} ;
+module.exports = bookSource ;
+
+bookSource.StructuredDocument = require( './StructuredDocument.js' ) ;
+bookSource.Style = require( './Style.js' ) ;
+bookSource.Theme = require( './Theme.js' ) ;
+
+// Exposed external lib
+const paletteShade = require( 'palette-shade' ) ;
+bookSource.Color = paletteShade.Color ;
+bookSource.Palette = paletteShade.Palette ;
+
+bookSource.parse = bookSource.StructuredDocument.parse ;
+
+
+},{"./StructuredDocument.js":35,"./Style.js":36,"./Theme.js":37,"palette-shade":51}],39:[function(require,module,exports){
+/*
+	Book Source
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const latinize = require( './latinize.js' ) ;
+const english = require( './english.js' ) ;
+
+const KEYWORD_TO_CHARLIST = require( './json-data/emoji-keyword-to-charlist.json' ) ;
+const CHAR_TO_CANONICAL_NAME = require( './json-data/emoji-char-to-canonical-name.json' ) ;
+
+
+
+const emoji = {} ;
+module.exports = emoji ;
+
+
+
+emoji.getCanonicalName = emojiChar => CHAR_TO_CANONICAL_NAME[ emojiChar ] ;
+
+
+
+const emojiToKeywordsCache = {} ;
+
+// Return a cached and frozen array
+emoji.getKeywords = emojiChar => {
+	if ( ! CHAR_TO_CANONICAL_NAME[ emojiChar ] ) { return ; }
+
+	if ( ! emojiToKeywordsCache[ emojiChar ] ) {
+		emojiToKeywordsCache[ emojiChar ] = emoji.splitIntoKeywords( CHAR_TO_CANONICAL_NAME[ emojiChar ] ) ;
+		Object.freeze( emojiToKeywordsCache[ emojiChar ] ) ;
+	}
+
+	return emojiToKeywordsCache[ emojiChar ] ;
+} ;
+
+
+
+emoji.search = ( name , bestOnly = false ) => {
+	var keywords = emoji.splitIntoKeywords( name ) ,
+		matches = {} ,
+		score ,
+		bestScore = 0 ;
+
+	for ( let keyword of keywords ) {
+		if ( ! KEYWORD_TO_CHARLIST[ keyword ] ) { continue ; }
+
+		for ( let emojiChar of KEYWORD_TO_CHARLIST[ keyword ] ) {
+			if ( ! matches[ emojiChar ] ) {
+				score = 1 ;
+				matches[ emojiChar ] = {
+					emoji: emojiChar ,
+					score ,
+					canonical: CHAR_TO_CANONICAL_NAME[ emojiChar ] ,
+					keywords: emoji.getKeywords( emojiChar )
+				} ;
+			}
+			else {
+				score = matches[ emojiChar ].score + 1 ;
+				matches[ emojiChar ].score = score ;
+			}
+
+			if ( score > bestScore ) { bestScore = score ; }
+		}
+	}
+
+	var results = [ ... Object.values( matches ) ] ;
+	if ( bestOnly ) { results = results.filter( e => e.score === bestScore ) ; }
+	results.sort( ( a , b ) => ( b.score - a.score ) || ( a.keywords.length - b.keywords.length ) ) ;
+	return results ;
+} ;
+
+emoji.searchBest = name => emoji.search( name , true ) ;
+emoji.get = name => emoji.search( name , true )[ 0 ]?.emoji ;
+
+
+
+
+
+// Internal API, exposed because it is used by the builder
+
+
+
+emoji.simplifyName = name => {
+	name = name.toLowerCase().replace( /[“”().!]/g , '' ).replace( /[ ’',]/g , '-' ).replace( /-+/g , '-' ) ;
+	name = latinize( name ) ;
+	return name ;
+} ;
+
+
+
+emoji.simplifyKeyword = inputKeyword => {
+	var kw = inputKeyword ;
+	kw = english.undoPresentParticiple( kw ) ;
+
+	//if ( kw !== inputKeyword ) { console.log( "Changing KW:" , inputKeyword , "-->" , kw ) ; }
+	return kw ;
+} ;
+
+
+
+const KEYWORD_EXCLUSION = new Set( [ 'with' , 'of' ] ) ;
+
+emoji.splitIntoKeywords = ( name , noSimplify = false ) => {
+	if ( ! noSimplify ) { name = emoji.simplifyName( name ) ; }
+	var keywords = name.split( /-/g ).filter( keyword => keyword.length >= 2 && ! KEYWORD_EXCLUSION.has( keyword ) ) ;
+	keywords = keywords.map( emoji.simplifyKeyword ) ;
+	keywords = [ ... new Set( keywords ) ] ;	// Make them unique
+	return keywords ;
+} ;
+
+
+},{"./english.js":40,"./json-data/emoji-char-to-canonical-name.json":41,"./json-data/emoji-keyword-to-charlist.json":42,"./latinize.js":44}],40:[function(require,module,exports){
+/*
+	Book Source
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const english = {} ;
+module.exports = english ;
+
+
+
+const VOWELS = new Set( [ 'a' , 'e' , 'i' , 'o' , 'u' , 'y' ] ) ;
+const VOWELS_ADDING_E = new Set( [ 'a' , 'i' , 'o' , 'u' ] ) ;
+const CONSONANTS_AFTER_VOWEL_ADDING_E = new Set( [ 's' ] ) ;
+const CONSONANTS_ADDING_E = new Set( [ 'v' ] ) ;
+const CONSONANTS_NOT_ADDING_E = new Set( [ 'w' , 'x' ] ) ;
+const DOUBLE_CONSONANTS_ADDING_E = new Set( [ 'cl' , 'dl' , 'gl' , 'kl' , 'nc' , 'pl' , 'tl' ] ) ;
+const REDUCING_DOUBLE_CONSONANTS = new Set( [ 'd' , 'g' , 'm' , 'n' , 'p' ] ) ;
+const CONSONANTS_AFTER_VOWELS_COMBO_NOT_ADDING_E = new Set( [ 'or' ] ) ;	// Last chance fix
+
+// Remove -ing and transform to a proper verb or noun
+english.undoPresentParticiple = word => {
+	if ( word.endsWith( 'ing' ) && word.length >= 6 && ! word.endsWith( 'ghtning' ) ) {
+		let ingSuffix = 'ing' ;
+		//if ( word.endsWith( 'ling' ) ) { ingSuffix = 'ling' ; }
+
+		let ingLen = ingSuffix.length ;
+
+		let before = word[ word.length - ingLen - 1 ] ,
+			before2 = word[ word.length - ingLen - 2 ] ,
+			before3 = word[ word.length - ingLen - 3 ] ;
+
+		if ( VOWELS.has( before ) ) {
+			word = word.slice( 0 , -ingLen ) ;
+		}
+		else if ( VOWELS.has( before2 ) ) {
+			if ( VOWELS.has( before3 ) ) {
+				if ( CONSONANTS_AFTER_VOWEL_ADDING_E.has( before ) && ! CONSONANTS_AFTER_VOWELS_COMBO_NOT_ADDING_E.has( before2 + before ) ) {
+					word = word.slice( 0 , -ingLen ) + 'e' ;
+				}
+				else {
+					word = word.slice( 0 , -ingLen ) ;
+				}
+			}
+			else if ( VOWELS_ADDING_E.has( before2 ) && ! CONSONANTS_NOT_ADDING_E.has( before ) ) {
+				word = word.slice( 0 , -ingLen ) + 'e' ;
+			}
+			else {
+				word = word.slice( 0 , -ingLen ) ;
+			}
+		}
+		else if ( before === before2 && REDUCING_DOUBLE_CONSONANTS.has( before ) ) {
+			word = word.slice( 0 , -ingLen - 1 ) ;
+		}
+		else if ( CONSONANTS_ADDING_E.has( before ) || DOUBLE_CONSONANTS_ADDING_E.has( before2 + before ) ) {
+			word = word.slice( 0 , -ingLen ) + 'e' ;
+		}
+		else {
+			word = word.slice( 0 , -ingLen ) ;
+		}
+	}
+
+	return word ;
+} ;
+
+
+},{}],41:[function(require,module,exports){
+module.exports={"😀":"grinning-face","😃":"grinning-face-with-big-eyes","😄":"grinning-face-with-smiling-eyes","😁":"beaming-face-with-smiling-eyes","😆":"grinning-squinting-face","😅":"grinning-face-with-sweat","🤣":"rolling-on-the-floor-laughing","😂":"face-with-tears-of-joy","🙂":"slightly-smiling-face","🙃":"upside-down-face","🫠":"melting-face","😉":"winking-face","😊":"smiling-face-with-smiling-eyes","😇":"smiling-face-with-halo","🥰":"smiling-face-with-hearts","😍":"smiling-face-with-heart-eyes","🤩":"star-struck","😘":"face-blowing-a-kiss","😗":"kissing-face","☺️":"smiling-face","😚":"kissing-face-with-closed-eyes","😙":"kissing-face-with-smiling-eyes","🥲":"smiling-face-with-tear","😋":"face-savoring-food","😛":"face-with-tongue","😜":"winking-face-with-tongue","🤪":"zany-face","😝":"squinting-face-with-tongue","🤑":"money-mouth-face","🤗":"smiling-face-with-open-hands","🤭":"face-with-hand-over-mouth","🫢":"face-with-open-eyes-and-hand-over-mouth","🫣":"face-with-peeking-eye","🤫":"shushing-face","🤔":"thinking-face","🫡":"saluting-face","🤐":"zipper-mouth-face","🤨":"face-with-raised-eyebrow","😐":"neutral-face","😑":"expressionless-face","😶":"face-without-mouth","🫥":"dotted-line-face","😶‍🌫️":"face-in-clouds","😏":"smirking-face","😒":"unamused-face","🙄":"face-with-rolling-eyes","😬":"grimacing-face","😮‍💨":"face-exhaling","🤥":"lying-face","🫨":"shaking-face","😌":"relieved-face","😔":"pensive-face","😪":"sleepy-face","🤤":"drooling-face","😴":"sleeping-face","😷":"face-with-medical-mask","🤒":"face-with-thermometer","🤕":"face-with-head-bandage","🤢":"nauseated-face","🤮":"face-vomiting","🤧":"sneezing-face","🥵":"hot-face","🥶":"cold-face","🥴":"woozy-face","😵":"face-with-crossed-out-eyes","😵‍💫":"face-with-spiral-eyes","🤯":"exploding-head","🤠":"cowboy-hat-face","🥳":"partying-face","🥸":"disguised-face","😎":"smiling-face-with-sunglasses","🤓":"nerd-face","🧐":"face-with-monocle","😕":"confused-face","🫤":"face-with-diagonal-mouth","😟":"worried-face","🙁":"slightly-frowning-face","☹️":"frowning-face","😮":"face-with-open-mouth","😯":"hushed-face","😲":"astonished-face","😳":"flushed-face","🥺":"pleading-face","🥹":"face-holding-back-tears","😦":"frowning-face-with-open-mouth","😧":"anguished-face","😨":"fearful-face","😰":"anxious-face-with-sweat","😥":"sad-but-relieved-face","😢":"crying-face","😭":"loudly-crying-face","😱":"face-screaming-in-fear","😖":"confounded-face","😣":"persevering-face","😞":"disappointed-face","😓":"downcast-face-with-sweat","😩":"weary-face","😫":"tired-face","🥱":"yawning-face","😤":"face-with-steam-from-nose","😡":"enraged-face","😠":"angry-face","🤬":"face-with-symbols-on-mouth","😈":"smiling-face-with-horns","👿":"angry-face-with-horns","💀":"skull","☠️":"skull-and-crossbones","💩":"pile-of-poo","🤡":"clown-face","👹":"ogre","👺":"goblin","👻":"ghost","👽":"alien","👾":"alien-monster","🤖":"robot","😺":"grinning-cat","😸":"grinning-cat-with-smiling-eyes","😹":"cat-with-tears-of-joy","😻":"smiling-cat-with-heart-eyes","😼":"cat-with-wry-smile","😽":"kissing-cat","🙀":"weary-cat","😿":"crying-cat","😾":"pouting-cat","🙈":"see-no-evil-monkey","🙉":"hear-no-evil-monkey","🙊":"speak-no-evil-monkey","💌":"love-letter","💘":"heart-with-arrow","💝":"heart-with-ribbon","💖":"sparkling-heart","💗":"growing-heart","💓":"beating-heart","💞":"revolving-hearts","💕":"two-hearts","💟":"heart-decoration","❣️":"heart-exclamation","💔":"broken-heart","❤️‍🔥":"heart-on-fire","❤️‍🩹":"mending-heart","❤️":"red-heart","🩷":"pink-heart","🧡":"orange-heart","💛":"yellow-heart","💚":"green-heart","💙":"blue-heart","🩵":"light-blue-heart","💜":"purple-heart","🤎":"brown-heart","🖤":"black-heart","🩶":"grey-heart","🤍":"white-heart","💋":"kiss-mark","💯":"hundred-points","💢":"anger-symbol","💥":"collision","💫":"dizzy","💦":"sweat-droplets","💨":"dashing-away","🕳️":"hole","💬":"speech-balloon","👁️‍🗨️":"eye-in-speech-bubble","🗨️":"left-speech-bubble","🗯️":"right-anger-bubble","💭":"thought-balloon","💤":"zzz","👋":"waving-hand","🤚":"raised-back-of-hand","🖐️":"hand-with-fingers-splayed","✋":"raised-hand","🖖":"vulcan-salute","🫱":"rightwards-hand","🫲":"leftwards-hand","🫳":"palm-down-hand","🫴":"palm-up-hand","🫷":"leftwards-pushing-hand","🫸":"rightwards-pushing-hand","👌":"ok-hand","🤌":"pinched-fingers","🤏":"pinching-hand","✌️":"victory-hand","🤞":"crossed-fingers","🫰":"hand-with-index-finger-and-thumb-crossed","🤟":"love-you-gesture","🤘":"sign-of-the-horns","🤙":"call-me-hand","👈":"backhand-index-pointing-left","👉":"backhand-index-pointing-right","👆":"backhand-index-pointing-up","🖕":"middle-finger","👇":"backhand-index-pointing-down","☝️":"index-pointing-up","🫵":"index-pointing-at-the-viewer","👍":"thumbs-up","👎":"thumbs-down","✊":"raised-fist","👊":"oncoming-fist","🤛":"left-facing-fist","🤜":"right-facing-fist","👏":"clapping-hands","🙌":"raising-hands","🫶":"heart-hands","👐":"open-hands","🤲":"palms-up-together","🤝":"handshake","🙏":"folded-hands","✍️":"writing-hand","💅":"nail-polish","🤳":"selfie","💪":"flexed-biceps","🦾":"mechanical-arm","🦿":"mechanical-leg","🦵":"leg","🦶":"foot","👂":"ear","🦻":"ear-with-hearing-aid","👃":"nose","🧠":"brain","🫀":"anatomical-heart","🫁":"lungs","🦷":"tooth","🦴":"bone","👀":"eyes","👁️":"eye","👅":"tongue","👄":"mouth","🫦":"biting-lip","👶":"baby","🧒":"child","👦":"boy","👧":"girl","🧑":"person","👱":"person-blond-hair","👨":"man","🧔":"person-beard","🧔‍♂️":"man-beard","🧔‍♀️":"woman-beard","👨‍🦰":"man-red-hair","👨‍🦱":"man-curly-hair","👨‍🦳":"man-white-hair","👨‍🦲":"man-bald","👩":"woman","👩‍🦰":"woman-red-hair","🧑‍🦰":"person-red-hair","👩‍🦱":"woman-curly-hair","🧑‍🦱":"person-curly-hair","👩‍🦳":"woman-white-hair","🧑‍🦳":"person-white-hair","👩‍🦲":"woman-bald","🧑‍🦲":"person-bald","👱‍♀️":"woman-blond-hair","👱‍♂️":"man-blond-hair","🧓":"older-person","👴":"old-man","👵":"old-woman","🙍":"person-frowning","🙍‍♂️":"man-frowning","🙍‍♀️":"woman-frowning","🙎":"person-pouting","🙎‍♂️":"man-pouting","🙎‍♀️":"woman-pouting","🙅":"person-gesturing-no","🙅‍♂️":"man-gesturing-no","🙅‍♀️":"woman-gesturing-no","🙆":"person-gesturing-ok","🙆‍♂️":"man-gesturing-ok","🙆‍♀️":"woman-gesturing-ok","💁":"person-tipping-hand","💁‍♂️":"man-tipping-hand","💁‍♀️":"woman-tipping-hand","🙋":"person-raising-hand","🙋‍♂️":"man-raising-hand","🙋‍♀️":"woman-raising-hand","🧏":"deaf-person","🧏‍♂️":"deaf-man","🧏‍♀️":"deaf-woman","🙇":"person-bowing","🙇‍♂️":"man-bowing","🙇‍♀️":"woman-bowing","🤦":"person-facepalming","🤦‍♂️":"man-facepalming","🤦‍♀️":"woman-facepalming","🤷":"person-shrugging","🤷‍♂️":"man-shrugging","🤷‍♀️":"woman-shrugging","🧑‍⚕️":"health-worker","👨‍⚕️":"man-health-worker","👩‍⚕️":"woman-health-worker","🧑‍🎓":"student","👨‍🎓":"man-student","👩‍🎓":"woman-student","🧑‍🏫":"teacher","👨‍🏫":"man-teacher","👩‍🏫":"woman-teacher","🧑‍⚖️":"judge","👨‍⚖️":"man-judge","👩‍⚖️":"woman-judge","🧑‍🌾":"farmer","👨‍🌾":"man-farmer","👩‍🌾":"woman-farmer","🧑‍🍳":"cook","👨‍🍳":"man-cook","👩‍🍳":"woman-cook","🧑‍🔧":"mechanic","👨‍🔧":"man-mechanic","👩‍🔧":"woman-mechanic","🧑‍🏭":"factory-worker","👨‍🏭":"man-factory-worker","👩‍🏭":"woman-factory-worker","🧑‍💼":"office-worker","👨‍💼":"man-office-worker","👩‍💼":"woman-office-worker","🧑‍🔬":"scientist","👨‍🔬":"man-scientist","👩‍🔬":"woman-scientist","🧑‍💻":"technologist","👨‍💻":"man-technologist","👩‍💻":"woman-technologist","🧑‍🎤":"singer","👨‍🎤":"man-singer","👩‍🎤":"woman-singer","🧑‍🎨":"artist","👨‍🎨":"man-artist","👩‍🎨":"woman-artist","🧑‍✈️":"pilot","👨‍✈️":"man-pilot","👩‍✈️":"woman-pilot","🧑‍🚀":"astronaut","👨‍🚀":"man-astronaut","👩‍🚀":"woman-astronaut","🧑‍🚒":"firefighter","👨‍🚒":"man-firefighter","👩‍🚒":"woman-firefighter","👮":"police-officer","👮‍♂️":"man-police-officer","👮‍♀️":"woman-police-officer","🕵️":"detective","🕵️‍♂️":"man-detective","🕵️‍♀️":"woman-detective","💂":"guard","💂‍♂️":"man-guard","💂‍♀️":"woman-guard","🥷":"ninja","👷":"construction-worker","👷‍♂️":"man-construction-worker","👷‍♀️":"woman-construction-worker","🫅":"person-with-crown","🤴":"prince","👸":"princess","👳":"person-wearing-turban","👳‍♂️":"man-wearing-turban","👳‍♀️":"woman-wearing-turban","👲":"person-with-skullcap","🧕":"woman-with-headscarf","🤵":"person-in-tuxedo","🤵‍♂️":"man-in-tuxedo","🤵‍♀️":"woman-in-tuxedo","👰":"person-with-veil","👰‍♂️":"man-with-veil","👰‍♀️":"woman-with-veil","🤰":"pregnant-woman","🫃":"pregnant-man","🫄":"pregnant-person","🤱":"breast-feeding","👩‍🍼":"woman-feeding-baby","👨‍🍼":"man-feeding-baby","🧑‍🍼":"person-feeding-baby","👼":"baby-angel","🎅":"santa-claus","🤶":"mrs-claus","🧑‍🎄":"mx-claus","🦸":"superhero","🦸‍♂️":"man-superhero","🦸‍♀️":"woman-superhero","🦹":"supervillain","🦹‍♂️":"man-supervillain","🦹‍♀️":"woman-supervillain","🧙":"mage","🧙‍♂️":"man-mage","🧙‍♀️":"woman-mage","🧚":"fairy","🧚‍♂️":"man-fairy","🧚‍♀️":"woman-fairy","🧛":"vampire","🧛‍♂️":"man-vampire","🧛‍♀️":"woman-vampire","🧜":"merperson","🧜‍♂️":"merman","🧜‍♀️":"mermaid","🧝":"elf","🧝‍♂️":"man-elf","🧝‍♀️":"woman-elf","🧞":"genie","🧞‍♂️":"man-genie","🧞‍♀️":"woman-genie","🧟":"zombie","🧟‍♂️":"man-zombie","🧟‍♀️":"woman-zombie","🧌":"troll","💆":"person-getting-massage","💆‍♂️":"man-getting-massage","💆‍♀️":"woman-getting-massage","💇":"person-getting-haircut","💇‍♂️":"man-getting-haircut","💇‍♀️":"woman-getting-haircut","🚶":"person-walking","🚶‍♂️":"man-walking","🚶‍♀️":"woman-walking","🧍":"person-standing","🧍‍♂️":"man-standing","🧍‍♀️":"woman-standing","🧎":"person-kneeling","🧎‍♂️":"man-kneeling","🧎‍♀️":"woman-kneeling","🧑‍🦯":"person-with-white-cane","👨‍🦯":"man-with-white-cane","👩‍🦯":"woman-with-white-cane","🧑‍🦼":"person-in-motorized-wheelchair","👨‍🦼":"man-in-motorized-wheelchair","👩‍🦼":"woman-in-motorized-wheelchair","🧑‍🦽":"person-in-manual-wheelchair","👨‍🦽":"man-in-manual-wheelchair","👩‍🦽":"woman-in-manual-wheelchair","🏃":"person-running","🏃‍♂️":"man-running","🏃‍♀️":"woman-running","💃":"woman-dancing","🕺":"man-dancing","🕴️":"person-in-suit-levitating","👯":"people-with-bunny-ears","👯‍♂️":"men-with-bunny-ears","👯‍♀️":"women-with-bunny-ears","🧖":"person-in-steamy-room","🧖‍♂️":"man-in-steamy-room","🧖‍♀️":"woman-in-steamy-room","🧗":"person-climbing","🧗‍♂️":"man-climbing","🧗‍♀️":"woman-climbing","🤺":"person-fencing","🏇":"horse-racing","⛷️":"skier","🏂":"snowboarder","🏌️":"person-golfing","🏌️‍♂️":"man-golfing","🏌️‍♀️":"woman-golfing","🏄":"person-surfing","🏄‍♂️":"man-surfing","🏄‍♀️":"woman-surfing","🚣":"person-rowing-boat","🚣‍♂️":"man-rowing-boat","🚣‍♀️":"woman-rowing-boat","🏊":"person-swimming","🏊‍♂️":"man-swimming","🏊‍♀️":"woman-swimming","⛹️":"person-bouncing-ball","⛹️‍♂️":"man-bouncing-ball","⛹️‍♀️":"woman-bouncing-ball","🏋️":"person-lifting-weights","🏋️‍♂️":"man-lifting-weights","🏋️‍♀️":"woman-lifting-weights","🚴":"person-biking","🚴‍♂️":"man-biking","🚴‍♀️":"woman-biking","🚵":"person-mountain-biking","🚵‍♂️":"man-mountain-biking","🚵‍♀️":"woman-mountain-biking","🤸":"person-cartwheeling","🤸‍♂️":"man-cartwheeling","🤸‍♀️":"woman-cartwheeling","🤼":"people-wrestling","🤼‍♂️":"men-wrestling","🤼‍♀️":"women-wrestling","🤽":"person-playing-water-polo","🤽‍♂️":"man-playing-water-polo","🤽‍♀️":"woman-playing-water-polo","🤾":"person-playing-handball","🤾‍♂️":"man-playing-handball","🤾‍♀️":"woman-playing-handball","🤹":"person-juggling","🤹‍♂️":"man-juggling","🤹‍♀️":"woman-juggling","🧘":"person-in-lotus-position","🧘‍♂️":"man-in-lotus-position","🧘‍♀️":"woman-in-lotus-position","🛀":"person-taking-bath","🛌":"person-in-bed","🧑‍🤝‍🧑":"people-holding-hands","👭":"women-holding-hands","👫":"woman-and-man-holding-hands","👬":"men-holding-hands","💏":"kiss","👩‍❤️‍💋‍👨":"kiss-woman-man","👨‍❤️‍💋‍👨":"kiss-man-man","👩‍❤️‍💋‍👩":"kiss-woman-woman","💑":"couple-with-heart","👩‍❤️‍👨":"couple-with-heart-woman-man","👨‍❤️‍👨":"couple-with-heart-man-man","👩‍❤️‍👩":"couple-with-heart-woman-woman","👪":"family","👨‍👩‍👦":"family-man-woman-boy","👨‍👩‍👧":"family-man-woman-girl","👨‍👩‍👧‍👦":"family-man-woman-girl-boy","👨‍👩‍👦‍👦":"family-man-woman-boy-boy","👨‍👩‍👧‍👧":"family-man-woman-girl-girl","👨‍👨‍👦":"family-man-man-boy","👨‍👨‍👧":"family-man-man-girl","👨‍👨‍👧‍👦":"family-man-man-girl-boy","👨‍👨‍👦‍👦":"family-man-man-boy-boy","👨‍👨‍👧‍👧":"family-man-man-girl-girl","👩‍👩‍👦":"family-woman-woman-boy","👩‍👩‍👧":"family-woman-woman-girl","👩‍👩‍👧‍👦":"family-woman-woman-girl-boy","👩‍👩‍👦‍👦":"family-woman-woman-boy-boy","👩‍👩‍👧‍👧":"family-woman-woman-girl-girl","👨‍👦":"family-man-boy","👨‍👦‍👦":"family-man-boy-boy","👨‍👧":"family-man-girl","👨‍👧‍👦":"family-man-girl-boy","👨‍👧‍👧":"family-man-girl-girl","👩‍👦":"family-woman-boy","👩‍👦‍👦":"family-woman-boy-boy","👩‍👧":"family-woman-girl","👩‍👧‍👦":"family-woman-girl-boy","👩‍👧‍👧":"family-woman-girl-girl","🗣️":"speaking-head","👤":"bust-in-silhouette","👥":"busts-in-silhouette","🫂":"people-hugging","👣":"footprints","🐵":"monkey-face","🐒":"monkey","🦍":"gorilla","🦧":"orangutan","🐶":"dog-face","🐕":"dog","🦮":"guide-dog","🐕‍🦺":"service-dog","🐩":"poodle","🐺":"wolf","🦊":"fox","🦝":"raccoon","🐱":"cat-face","🐈":"cat","🐈‍⬛":"black-cat","🦁":"lion","🐯":"tiger-face","🐅":"tiger","🐆":"leopard","🐴":"horse-face","🫎":"moose","🫏":"donkey","🐎":"horse","🦄":"unicorn","🦓":"zebra","🦌":"deer","🦬":"bison","🐮":"cow-face","🐂":"ox","🐃":"water-buffalo","🐄":"cow","🐷":"pig-face","🐖":"pig","🐗":"boar","🐽":"pig-nose","🐏":"ram","🐑":"ewe","🐐":"goat","🐪":"camel","🐫":"two-hump-camel","🦙":"llama","🦒":"giraffe","🐘":"elephant","🦣":"mammoth","🦏":"rhinoceros","🦛":"hippopotamus","🐭":"mouse-face","🐁":"mouse","🐀":"rat","🐹":"hamster","🐰":"rabbit-face","🐇":"rabbit","🐿️":"chipmunk","🦫":"beaver","🦔":"hedgehog","🦇":"bat","🐻":"bear","🐻‍❄️":"polar-bear","🐨":"koala","🐼":"panda","🦥":"sloth","🦦":"otter","🦨":"skunk","🦘":"kangaroo","🦡":"badger","🐾":"paw-prints","🦃":"turkey","🐔":"chicken","🐓":"rooster","🐣":"hatching-chick","🐤":"baby-chick","🐥":"front-facing-baby-chick","🐦":"bird","🐧":"penguin","🕊️":"dove","🦅":"eagle","🦆":"duck","🦢":"swan","🦉":"owl","🦤":"dodo","🪶":"feather","🦩":"flamingo","🦚":"peacock","🦜":"parrot","🪽":"wing","🐦‍⬛":"black-bird","🪿":"goose","🐸":"frog","🐊":"crocodile","🐢":"turtle","🦎":"lizard","🐍":"snake","🐲":"dragon-face","🐉":"dragon","🦕":"sauropod","🦖":"t-rex","🐳":"spouting-whale","🐋":"whale","🐬":"dolphin","🦭":"seal","🐟":"fish","🐠":"tropical-fish","🐡":"blowfish","🦈":"shark","🐙":"octopus","🐚":"spiral-shell","🪸":"coral","🪼":"jellyfish","🐌":"snail","🦋":"butterfly","🐛":"bug","🐜":"ant","🐝":"honeybee","🪲":"beetle","🐞":"lady-beetle","🦗":"cricket","🪳":"cockroach","🕷️":"spider","🕸️":"spider-web","🦂":"scorpion","🦟":"mosquito","🪰":"fly","🪱":"worm","🦠":"microbe","💐":"bouquet","🌸":"cherry-blossom","💮":"white-flower","🪷":"lotus","🏵️":"rosette","🌹":"rose","🥀":"wilted-flower","🌺":"hibiscus","🌻":"sunflower","🌼":"blossom","🌷":"tulip","🪻":"hyacinth","🌱":"seedling","🪴":"potted-plant","🌲":"evergreen-tree","🌳":"deciduous-tree","🌴":"palm-tree","🌵":"cactus","🌾":"sheaf-of-rice","🌿":"herb","☘️":"shamrock","🍀":"four-leaf-clover","🍁":"maple-leaf","🍂":"fallen-leaf","🍃":"leaf-fluttering-in-wind","🪹":"empty-nest","🪺":"nest-with-eggs","🍄":"mushroom","🍇":"grapes","🍈":"melon","🍉":"watermelon","🍊":"tangerine","🍋":"lemon","🍌":"banana","🍍":"pineapple","🥭":"mango","🍎":"red-apple","🍏":"green-apple","🍐":"pear","🍑":"peach","🍒":"cherries","🍓":"strawberry","🫐":"blueberries","🥝":"kiwi-fruit","🍅":"tomato","🫒":"olive","🥥":"coconut","🥑":"avocado","🍆":"eggplant","🥔":"potato","🥕":"carrot","🌽":"ear-of-corn","🌶️":"hot-pepper","🫑":"bell-pepper","🥒":"cucumber","🥬":"leafy-green","🥦":"broccoli","🧄":"garlic","🧅":"onion","🥜":"peanuts","🫘":"beans","🌰":"chestnut","🫚":"ginger-root","🫛":"pea-pod","🍞":"bread","🥐":"croissant","🥖":"baguette-bread","🫓":"flatbread","🥨":"pretzel","🥯":"bagel","🥞":"pancakes","🧇":"waffle","🧀":"cheese-wedge","🍖":"meat-on-bone","🍗":"poultry-leg","🥩":"cut-of-meat","🥓":"bacon","🍔":"hamburger","🍟":"french-fries","🍕":"pizza","🌭":"hot-dog","🥪":"sandwich","🌮":"taco","🌯":"burrito","🫔":"tamale","🥙":"stuffed-flatbread","🧆":"falafel","🥚":"egg","🍳":"cooking","🥘":"shallow-pan-of-food","🍲":"pot-of-food","🫕":"fondue","🥣":"bowl-with-spoon","🥗":"green-salad","🍿":"popcorn","🧈":"butter","🧂":"salt","🥫":"canned-food","🍱":"bento-box","🍘":"rice-cracker","🍙":"rice-ball","🍚":"cooked-rice","🍛":"curry-rice","🍜":"steaming-bowl","🍝":"spaghetti","🍠":"roasted-sweet-potato","🍢":"oden","🍣":"sushi","🍤":"fried-shrimp","🍥":"fish-cake-with-swirl","🥮":"moon-cake","🍡":"dango","🥟":"dumpling","🥠":"fortune-cookie","🥡":"takeout-box","🦀":"crab","🦞":"lobster","🦐":"shrimp","🦑":"squid","🦪":"oyster","🍦":"soft-ice-cream","🍧":"shaved-ice","🍨":"ice-cream","🍩":"doughnut","🍪":"cookie","🎂":"birthday-cake","🍰":"shortcake","🧁":"cupcake","🥧":"pie","🍫":"chocolate-bar","🍬":"candy","🍭":"lollipop","🍮":"custard","🍯":"honey-pot","🍼":"baby-bottle","🥛":"glass-of-milk","☕":"hot-beverage","🫖":"teapot","🍵":"teacup-without-handle","🍶":"sake","🍾":"bottle-with-popping-cork","🍷":"wine-glass","🍸":"cocktail-glass","🍹":"tropical-drink","🍺":"beer-mug","🍻":"clinking-beer-mugs","🥂":"clinking-glasses","🥃":"tumbler-glass","🫗":"pouring-liquid","🥤":"cup-with-straw","🧋":"bubble-tea","🧃":"beverage-box","🧉":"mate","🧊":"ice","🥢":"chopsticks","🍽️":"fork-and-knife-with-plate","🍴":"fork-and-knife","🥄":"spoon","🔪":"kitchen-knife","🫙":"jar","🏺":"amphora","🌍":"globe-showing-europe-africa","🌎":"globe-showing-americas","🌏":"globe-showing-asia-australia","🌐":"globe-with-meridians","🗺️":"world-map","🗾":"map-of-japan","🧭":"compass","🏔️":"snow-capped-mountain","⛰️":"mountain","🌋":"volcano","🗻":"mount-fuji","🏕️":"camping","🏖️":"beach-with-umbrella","🏜️":"desert","🏝️":"desert-island","🏞️":"national-park","🏟️":"stadium","🏛️":"classical-building","🏗️":"building-construction","🧱":"brick","🪨":"rock","🪵":"wood","🛖":"hut","🏘️":"houses","🏚️":"derelict-house","🏠":"house","🏡":"house-with-garden","🏢":"office-building","🏣":"japanese-post-office","🏤":"post-office","🏥":"hospital","🏦":"bank","🏨":"hotel","🏩":"love-hotel","🏪":"convenience-store","🏫":"school","🏬":"department-store","🏭":"factory","🏯":"japanese-castle","🏰":"castle","💒":"wedding","🗼":"tokyo-tower","🗽":"statue-of-liberty","⛪":"church","🕌":"mosque","🛕":"hindu-temple","🕍":"synagogue","⛩️":"shinto-shrine","🕋":"kaaba","⛲":"fountain","⛺":"tent","🌁":"foggy","🌃":"night-with-stars","🏙️":"cityscape","🌄":"sunrise-over-mountains","🌅":"sunrise","🌆":"cityscape-at-dusk","🌇":"sunset","🌉":"bridge-at-night","♨️":"hot-springs","🎠":"carousel-horse","🛝":"playground-slide","🎡":"ferris-wheel","🎢":"roller-coaster","💈":"barber-pole","🎪":"circus-tent","🚂":"locomotive","🚃":"railway-car","🚄":"high-speed-train","🚅":"bullet-train","🚆":"train","🚇":"metro","🚈":"light-rail","🚉":"station","🚊":"tram","🚝":"monorail","🚞":"mountain-railway","🚋":"tram-car","🚌":"bus","🚍":"oncoming-bus","🚎":"trolleybus","🚐":"minibus","🚑":"ambulance","🚒":"fire-engine","🚓":"police-car","🚔":"oncoming-police-car","🚕":"taxi","🚖":"oncoming-taxi","🚗":"automobile","🚘":"oncoming-automobile","🚙":"sport-utility-vehicle","🛻":"pickup-truck","🚚":"delivery-truck","🚛":"articulated-lorry","🚜":"tractor","🏎️":"racing-car","🏍️":"motorcycle","🛵":"motor-scooter","🦽":"manual-wheelchair","🦼":"motorized-wheelchair","🛺":"auto-rickshaw","🚲":"bicycle","🛴":"kick-scooter","🛹":"skateboard","🛼":"roller-skate","🚏":"bus-stop","🛣️":"motorway","🛤️":"railway-track","🛢️":"oil-drum","⛽":"fuel-pump","🛞":"wheel","🚨":"police-car-light","🚥":"horizontal-traffic-light","🚦":"vertical-traffic-light","🛑":"stop-sign","🚧":"construction","⚓":"anchor","🛟":"ring-buoy","⛵":"sailboat","🛶":"canoe","🚤":"speedboat","🛳️":"passenger-ship","⛴️":"ferry","🛥️":"motor-boat","🚢":"ship","✈️":"airplane","🛩️":"small-airplane","🛫":"airplane-departure","🛬":"airplane-arrival","🪂":"parachute","💺":"seat","🚁":"helicopter","🚟":"suspension-railway","🚠":"mountain-cableway","🚡":"aerial-tramway","🛰️":"satellite","🚀":"rocket","🛸":"flying-saucer","🛎️":"bellhop-bell","🧳":"luggage","⌛":"hourglass-done","⏳":"hourglass-not-done","⌚":"watch","⏰":"alarm-clock","⏱️":"stopwatch","⏲️":"timer-clock","🕰️":"mantelpiece-clock","🕛":"twelve-o-clock","🕧":"twelve-thirty","🕐":"one-o-clock","🕜":"one-thirty","🕑":"two-o-clock","🕝":"two-thirty","🕒":"three-o-clock","🕞":"three-thirty","🕓":"four-o-clock","🕟":"four-thirty","🕔":"five-o-clock","🕠":"five-thirty","🕕":"six-o-clock","🕡":"six-thirty","🕖":"seven-o-clock","🕢":"seven-thirty","🕗":"eight-o-clock","🕣":"eight-thirty","🕘":"nine-o-clock","🕤":"nine-thirty","🕙":"ten-o-clock","🕥":"ten-thirty","🕚":"eleven-o-clock","🕦":"eleven-thirty","🌑":"new-moon","🌒":"waxing-crescent-moon","🌓":"first-quarter-moon","🌔":"waxing-gibbous-moon","🌕":"full-moon","🌖":"waning-gibbous-moon","🌗":"last-quarter-moon","🌘":"waning-crescent-moon","🌙":"crescent-moon","🌚":"new-moon-face","🌛":"first-quarter-moon-face","🌜":"last-quarter-moon-face","🌡️":"thermometer","☀️":"sun","🌝":"full-moon-face","🌞":"sun-with-face","🪐":"ringed-planet","⭐":"star","🌟":"glowing-star","🌠":"shooting-star","🌌":"milky-way","☁️":"cloud","⛅":"sun-behind-cloud","⛈️":"cloud-with-lightning-and-rain","🌤️":"sun-behind-small-cloud","🌥️":"sun-behind-large-cloud","🌦️":"sun-behind-rain-cloud","🌧️":"cloud-with-rain","🌨️":"cloud-with-snow","🌩️":"cloud-with-lightning","🌪️":"tornado","🌫️":"fog","🌬️":"wind-face","🌀":"cyclone","🌈":"rainbow","🌂":"closed-umbrella","☂️":"umbrella","☔":"umbrella-with-rain-drops","⛱️":"umbrella-on-ground","⚡":"high-voltage","❄️":"snowflake","☃️":"snowman","⛄":"snowman-without-snow","☄️":"comet","🔥":"fire","💧":"droplet","🌊":"water-wave","🎃":"jack-o-lantern","🎄":"christmas-tree","🎆":"fireworks","🎇":"sparkler","🧨":"firecracker","✨":"sparkles","🎈":"balloon","🎉":"party-popper","🎊":"confetti-ball","🎋":"tanabata-tree","🎍":"pine-decoration","🎎":"japanese-dolls","🎏":"carp-streamer","🎐":"wind-chime","🎑":"moon-viewing-ceremony","🧧":"red-envelope","🎀":"ribbon","🎁":"wrapped-gift","🎗️":"reminder-ribbon","🎟️":"admission-tickets","🎫":"ticket","🎖️":"military-medal","🏆":"trophy","🏅":"sports-medal","🥇":"1st-place-medal","🥈":"2nd-place-medal","🥉":"3rd-place-medal","⚽":"soccer-ball","⚾":"baseball","🥎":"softball","🏀":"basketball","🏐":"volleyball","🏈":"american-football","🏉":"rugby-football","🎾":"tennis","🥏":"flying-disc","🎳":"bowling","🏏":"cricket-game","🏑":"field-hockey","🏒":"ice-hockey","🥍":"lacrosse","🏓":"ping-pong","🏸":"badminton","🥊":"boxing-glove","🥋":"martial-arts-uniform","🥅":"goal-net","⛳":"flag-in-hole","⛸️":"ice-skate","🎣":"fishing-pole","🤿":"diving-mask","🎽":"running-shirt","🎿":"skis","🛷":"sled","🥌":"curling-stone","🎯":"bullseye","🪀":"yo-yo","🪁":"kite","🔫":"water-pistol","🎱":"pool-8-ball","🔮":"crystal-ball","🪄":"magic-wand","🎮":"video-game","🕹️":"joystick","🎰":"slot-machine","🎲":"game-die","🧩":"puzzle-piece","🧸":"teddy-bear","🪅":"pinata","🪩":"mirror-ball","🪆":"nesting-dolls","♠️":"spade-suit","♥️":"heart-suit","♦️":"diamond-suit","♣️":"club-suit","♟️":"chess-pawn","🃏":"joker","🀄":"mahjong-red-dragon","🎴":"flower-playing-cards","🎭":"performing-arts","🖼️":"framed-picture","🎨":"artist-palette","🧵":"thread","🪡":"sewing-needle","🧶":"yarn","🪢":"knot","👓":"glasses","🕶️":"sunglasses","🥽":"goggles","🥼":"lab-coat","🦺":"safety-vest","👔":"necktie","👕":"t-shirt","👖":"jeans","🧣":"scarf","🧤":"gloves","🧥":"coat","🧦":"socks","👗":"dress","👘":"kimono","🥻":"sari","🩱":"one-piece-swimsuit","🩲":"briefs","🩳":"shorts","👙":"bikini","👚":"woman-s-clothes","🪭":"folding-hand-fan","👛":"purse","👜":"handbag","👝":"clutch-bag","🛍️":"shopping-bags","🎒":"backpack","🩴":"thong-sandal","👞":"man-s-shoe","👟":"running-shoe","🥾":"hiking-boot","🥿":"flat-shoe","👠":"high-heeled-shoe","👡":"woman-s-sandal","🩰":"ballet-shoes","👢":"woman-s-boot","🪮":"hair-pick","👑":"crown","👒":"woman-s-hat","🎩":"top-hat","🎓":"graduation-cap","🧢":"billed-cap","🪖":"military-helmet","⛑️":"rescue-worker-s-helmet","📿":"prayer-beads","💄":"lipstick","💍":"ring","💎":"gem-stone","🔇":"muted-speaker","🔈":"speaker-low-volume","🔉":"speaker-medium-volume","🔊":"speaker-high-volume","📢":"loudspeaker","📣":"megaphone","📯":"postal-horn","🔔":"bell","🔕":"bell-with-slash","🎼":"musical-score","🎵":"musical-note","🎶":"musical-notes","🎙️":"studio-microphone","🎚️":"level-slider","🎛️":"control-knobs","🎤":"microphone","🎧":"headphone","📻":"radio","🎷":"saxophone","🪗":"accordion","🎸":"guitar","🎹":"musical-keyboard","🎺":"trumpet","🎻":"violin","🪕":"banjo","🥁":"drum","🪘":"long-drum","🪇":"maracas","🪈":"flute","📱":"mobile-phone","📲":"mobile-phone-with-arrow","☎️":"telephone","📞":"telephone-receiver","📟":"pager","📠":"fax-machine","🔋":"battery","🪫":"low-battery","🔌":"electric-plug","💻":"laptop","🖥️":"desktop-computer","🖨️":"printer","⌨️":"keyboard","🖱️":"computer-mouse","🖲️":"trackball","💽":"computer-disk","💾":"floppy-disk","💿":"optical-disk","📀":"dvd","🧮":"abacus","🎥":"movie-camera","🎞️":"film-frames","📽️":"film-projector","🎬":"clapper-board","📺":"television","📷":"camera","📸":"camera-with-flash","📹":"video-camera","📼":"videocassette","🔍":"magnifying-glass-tilted-left","🔎":"magnifying-glass-tilted-right","🕯️":"candle","💡":"light-bulb","🔦":"flashlight","🏮":"red-paper-lantern","🪔":"diya-lamp","📔":"notebook-with-decorative-cover","📕":"closed-book","📖":"open-book","📗":"green-book","📘":"blue-book","📙":"orange-book","📚":"books","📓":"notebook","📒":"ledger","📃":"page-with-curl","📜":"scroll","📄":"page-facing-up","📰":"newspaper","🗞️":"rolled-up-newspaper","📑":"bookmark-tabs","🔖":"bookmark","🏷️":"label","💰":"money-bag","🪙":"coin","💴":"yen-banknote","💵":"dollar-banknote","💶":"euro-banknote","💷":"pound-banknote","💸":"money-with-wings","💳":"credit-card","🧾":"receipt","💹":"chart-increasing-with-yen","✉️":"envelope","📧":"e-mail","📨":"incoming-envelope","📩":"envelope-with-arrow","📤":"outbox-tray","📥":"inbox-tray","📦":"package","📫":"closed-mailbox-with-raised-flag","📪":"closed-mailbox-with-lowered-flag","📬":"open-mailbox-with-raised-flag","📭":"open-mailbox-with-lowered-flag","📮":"postbox","🗳️":"ballot-box-with-ballot","✏️":"pencil","✒️":"black-nib","🖋️":"fountain-pen","🖊️":"pen","🖌️":"paintbrush","🖍️":"crayon","📝":"memo","💼":"briefcase","📁":"file-folder","📂":"open-file-folder","🗂️":"card-index-dividers","📅":"calendar","📆":"tear-off-calendar","🗒️":"spiral-notepad","🗓️":"spiral-calendar","📇":"card-index","📈":"chart-increasing","📉":"chart-decreasing","📊":"bar-chart","📋":"clipboard","📌":"pushpin","📍":"round-pushpin","📎":"paperclip","🖇️":"linked-paperclips","📏":"straight-ruler","📐":"triangular-ruler","✂️":"scissors","🗃️":"card-file-box","🗄️":"file-cabinet","🗑️":"wastebasket","🔒":"locked","🔓":"unlocked","🔏":"locked-with-pen","🔐":"locked-with-key","🔑":"key","🗝️":"old-key","🔨":"hammer","🪓":"axe","⛏️":"pick","⚒️":"hammer-and-pick","🛠️":"hammer-and-wrench","🗡️":"dagger","⚔️":"crossed-swords","💣":"bomb","🪃":"boomerang","🏹":"bow-and-arrow","🛡️":"shield","🪚":"carpentry-saw","🔧":"wrench","🪛":"screwdriver","🔩":"nut-and-bolt","⚙️":"gear","🗜️":"clamp","⚖️":"balance-scale","🦯":"white-cane","🔗":"link","⛓️":"chains","🪝":"hook","🧰":"toolbox","🧲":"magnet","🪜":"ladder","⚗️":"alembic","🧪":"test-tube","🧫":"petri-dish","🧬":"dna","🔬":"microscope","🔭":"telescope","📡":"satellite-antenna","💉":"syringe","🩸":"drop-of-blood","💊":"pill","🩹":"adhesive-bandage","🩼":"crutch","🩺":"stethoscope","🩻":"x-ray","🚪":"door","🛗":"elevator","🪞":"mirror","🪟":"window","🛏️":"bed","🛋️":"couch-and-lamp","🪑":"chair","🚽":"toilet","🪠":"plunger","🚿":"shower","🛁":"bathtub","🪤":"mouse-trap","🪒":"razor","🧴":"lotion-bottle","🧷":"safety-pin","🧹":"broom","🧺":"basket","🧻":"roll-of-paper","🪣":"bucket","🧼":"soap","🫧":"bubbles","🪥":"toothbrush","🧽":"sponge","🧯":"fire-extinguisher","🛒":"shopping-cart","🚬":"cigarette","⚰️":"coffin","🪦":"headstone","⚱️":"funeral-urn","🧿":"nazar-amulet","🪬":"hamsa","🗿":"moai","🪧":"placard","🪪":"identification-card","🏧":"atm-sign","🚮":"litter-in-bin-sign","🚰":"potable-water","♿":"wheelchair-symbol","🚹":"men-s-room","🚺":"women-s-room","🚻":"restroom","🚼":"baby-symbol","🚾":"water-closet","🛂":"passport-control","🛃":"customs","🛄":"baggage-claim","🛅":"left-luggage","⚠️":"warning","🚸":"children-crossing","⛔":"no-entry","🚫":"prohibited","🚳":"no-bicycles","🚭":"no-smoking","🚯":"no-littering","🚱":"non-potable-water","🚷":"no-pedestrians","📵":"no-mobile-phones","🔞":"no-one-under-eighteen","☢️":"radioactive","☣️":"biohazard","⬆️":"up-arrow","↗️":"up-right-arrow","➡️":"right-arrow","↘️":"down-right-arrow","⬇️":"down-arrow","↙️":"down-left-arrow","⬅️":"left-arrow","↖️":"up-left-arrow","↕️":"up-down-arrow","↔️":"left-right-arrow","↩️":"right-arrow-curving-left","↪️":"left-arrow-curving-right","⤴️":"right-arrow-curving-up","⤵️":"right-arrow-curving-down","🔃":"clockwise-vertical-arrows","🔄":"counterclockwise-arrows-button","🔙":"back-arrow","🔚":"end-arrow","🔛":"on-arrow","🔜":"soon-arrow","🔝":"top-arrow","🛐":"place-of-worship","⚛️":"atom-symbol","🕉️":"om","✡️":"star-of-david","☸️":"wheel-of-dharma","☯️":"yin-yang","✝️":"latin-cross","☦️":"orthodox-cross","☪️":"star-and-crescent","☮️":"peace-symbol","🕎":"menorah","🔯":"dotted-six-pointed-star","🪯":"khanda","♈":"aries","♉":"taurus","♊":"gemini","♋":"cancer","♌":"leo","♍":"virgo","♎":"libra","♏":"scorpio","♐":"sagittarius","♑":"capricorn","♒":"aquarius","♓":"pisces","⛎":"ophiuchus","🔀":"shuffle-tracks-button","🔁":"repeat-button","🔂":"repeat-single-button","▶️":"play-button","⏩":"fast-forward-button","⏭️":"next-track-button","⏯️":"play-or-pause-button","◀️":"reverse-button","⏪":"fast-reverse-button","⏮️":"last-track-button","🔼":"upwards-button","⏫":"fast-up-button","🔽":"downwards-button","⏬":"fast-down-button","⏸️":"pause-button","⏹️":"stop-button","⏺️":"record-button","⏏️":"eject-button","🎦":"cinema","🔅":"dim-button","🔆":"bright-button","📶":"antenna-bars","🛜":"wireless","📳":"vibration-mode","📴":"mobile-phone-off","♀️":"female-sign","♂️":"male-sign","⚧️":"transgender-symbol","✖️":"multiply","➕":"plus","➖":"minus","➗":"divide","🟰":"heavy-equals-sign","♾️":"infinity","‼️":"double-exclamation-mark","⁉️":"exclamation-question-mark","❓":"red-question-mark","❔":"white-question-mark","❕":"white-exclamation-mark","❗":"red-exclamation-mark","〰️":"wavy-dash","💱":"currency-exchange","💲":"heavy-dollar-sign","⚕️":"medical-symbol","♻️":"recycling-symbol","⚜️":"fleur-de-lis","🔱":"trident-emblem","📛":"name-badge","🔰":"japanese-symbol-for-beginner","⭕":"hollow-red-circle","✅":"check-mark-button","☑️":"check-box-with-check","✔️":"check-mark","❌":"cross-mark","❎":"cross-mark-button","➰":"curly-loop","➿":"double-curly-loop","〽️":"part-alternation-mark","✳️":"eight-spoked-asterisk","✴️":"eight-pointed-star","❇️":"sparkle","©️":"copyright","®️":"registered","™️":"trade-mark","#️⃣":"keycap-#","*️⃣":"keycap-*","0️⃣":"keycap-0","1️⃣":"keycap-1","2️⃣":"keycap-2","3️⃣":"keycap-3","4️⃣":"keycap-4","5️⃣":"keycap-5","6️⃣":"keycap-6","7️⃣":"keycap-7","8️⃣":"keycap-8","9️⃣":"keycap-9","🔟":"keycap-10","🔠":"input-latin-uppercase","🔡":"input-latin-lowercase","🔢":"input-numbers","🔣":"input-symbols","🔤":"input-latin-letters","🅰️":"a-button-blood-type","🆎":"ab-button-blood-type","🅱️":"b-button-blood-type","🆑":"cl-button","🆒":"cool-button","🆓":"free-button","ℹ️":"information","🆔":"id-button","Ⓜ️":"circled-m","🆕":"new-button","🆖":"ng-button","🅾️":"o-button-blood-type","🆗":"ok-button","🅿️":"p-button","🆘":"sos-button","🆙":"up-button","🆚":"vs-button","🈁":"japanese-here-button","🈂️":"japanese-service-charge-button","🈷️":"japanese-monthly-amount-button","🈶":"japanese-not-free-of-charge-button","🈯":"japanese-reserved-button","🉐":"japanese-bargain-button","🈹":"japanese-discount-button","🈚":"japanese-free-of-charge-button","🈲":"japanese-prohibited-button","🉑":"japanese-acceptable-button","🈸":"japanese-application-button","🈴":"japanese-passing-grade-button","🈳":"japanese-vacancy-button","㊗️":"japanese-congratulations-button","㊙️":"japanese-secret-button","🈺":"japanese-open-for-business-button","🈵":"japanese-no-vacancy-button","🔴":"red-circle","🟠":"orange-circle","🟡":"yellow-circle","🟢":"green-circle","🔵":"blue-circle","🟣":"purple-circle","🟤":"brown-circle","⚫":"black-circle","⚪":"white-circle","🟥":"red-square","🟧":"orange-square","🟨":"yellow-square","🟩":"green-square","🟦":"blue-square","🟪":"purple-square","🟫":"brown-square","⬛":"black-large-square","⬜":"white-large-square","◼️":"black-medium-square","◻️":"white-medium-square","◾":"black-medium-small-square","◽":"white-medium-small-square","▪️":"black-small-square","▫️":"white-small-square","🔶":"large-orange-diamond","🔷":"large-blue-diamond","🔸":"small-orange-diamond","🔹":"small-blue-diamond","🔺":"red-triangle-pointed-up","🔻":"red-triangle-pointed-down","💠":"diamond-with-a-dot","🔘":"radio-button","🔳":"white-square-button","🔲":"black-square-button","🏁":"chequered-flag","🚩":"triangular-flag","🎌":"crossed-flags","🏴":"black-flag","🏳️":"white-flag","🏳️‍🌈":"rainbow-flag","🏳️‍⚧️":"transgender-flag","🏴‍☠️":"pirate-flag","🇦🇨":"flag-ascension-island","🇦🇩":"flag-andorra","🇦🇪":"flag-united-arab-emirates","🇦🇫":"flag-afghanistan","🇦🇬":"flag-antigua-&-barbuda","🇦🇮":"flag-anguilla","🇦🇱":"flag-albania","🇦🇲":"flag-armenia","🇦🇴":"flag-angola","🇦🇶":"flag-antarctica","🇦🇷":"flag-argentina","🇦🇸":"flag-american-samoa","🇦🇹":"flag-austria","🇦🇺":"flag-australia","🇦🇼":"flag-aruba","🇦🇽":"flag-aland-islands","🇦🇿":"flag-azerbaijan","🇧🇦":"flag-bosnia-&-herzegovina","🇧🇧":"flag-barbados","🇧🇩":"flag-bangladesh","🇧🇪":"flag-belgium","🇧🇫":"flag-burkina-faso","🇧🇬":"flag-bulgaria","🇧🇭":"flag-bahrain","🇧🇮":"flag-burundi","🇧🇯":"flag-benin","🇧🇱":"flag-st-barthelemy","🇧🇲":"flag-bermuda","🇧🇳":"flag-brunei","🇧🇴":"flag-bolivia","🇧🇶":"flag-caribbean-netherlands","🇧🇷":"flag-brazil","🇧🇸":"flag-bahamas","🇧🇹":"flag-bhutan","🇧🇻":"flag-bouvet-island","🇧🇼":"flag-botswana","🇧🇾":"flag-belarus","🇧🇿":"flag-belize","🇨🇦":"flag-canada","🇨🇨":"flag-cocos-keeling-islands","🇨🇩":"flag-congo-kinshasa","🇨🇫":"flag-central-african-republic","🇨🇬":"flag-congo-brazzaville","🇨🇭":"flag-switzerland","🇨🇮":"flag-cote-d-ivoire","🇨🇰":"flag-cook-islands","🇨🇱":"flag-chile","🇨🇲":"flag-cameroon","🇨🇳":"flag-china","🇨🇴":"flag-colombia","🇨🇵":"flag-clipperton-island","🇨🇷":"flag-costa-rica","🇨🇺":"flag-cuba","🇨🇻":"flag-cape-verde","🇨🇼":"flag-curacao","🇨🇽":"flag-christmas-island","🇨🇾":"flag-cyprus","🇨🇿":"flag-czechia","🇩🇪":"flag-germany","🇩🇬":"flag-diego-garcia","🇩🇯":"flag-djibouti","🇩🇰":"flag-denmark","🇩🇲":"flag-dominica","🇩🇴":"flag-dominican-republic","🇩🇿":"flag-algeria","🇪🇦":"flag-ceuta-&-melilla","🇪🇨":"flag-ecuador","🇪🇪":"flag-estonia","🇪🇬":"flag-egypt","🇪🇭":"flag-western-sahara","🇪🇷":"flag-eritrea","🇪🇸":"flag-spain","🇪🇹":"flag-ethiopia","🇪🇺":"flag-european-union","🇫🇮":"flag-finland","🇫🇯":"flag-fiji","🇫🇰":"flag-falkland-islands","🇫🇲":"flag-micronesia","🇫🇴":"flag-faroe-islands","🇫🇷":"flag-france","🇬🇦":"flag-gabon","🇬🇧":"flag-united-kingdom","🇬🇩":"flag-grenada","🇬🇪":"flag-georgia","🇬🇫":"flag-french-guiana","🇬🇬":"flag-guernsey","🇬🇭":"flag-ghana","🇬🇮":"flag-gibraltar","🇬🇱":"flag-greenland","🇬🇲":"flag-gambia","🇬🇳":"flag-guinea","🇬🇵":"flag-guadeloupe","🇬🇶":"flag-equatorial-guinea","🇬🇷":"flag-greece","🇬🇸":"flag-south-georgia-&-south-sandwich-islands","🇬🇹":"flag-guatemala","🇬🇺":"flag-guam","🇬🇼":"flag-guinea-bissau","🇬🇾":"flag-guyana","🇭🇰":"flag-hong-kong-sar-china","🇭🇲":"flag-heard-&-mcdonald-islands","🇭🇳":"flag-honduras","🇭🇷":"flag-croatia","🇭🇹":"flag-haiti","🇭🇺":"flag-hungary","🇮🇨":"flag-canary-islands","🇮🇩":"flag-indonesia","🇮🇪":"flag-ireland","🇮🇱":"flag-israel","🇮🇲":"flag-isle-of-man","🇮🇳":"flag-india","🇮🇴":"flag-british-indian-ocean-territory","🇮🇶":"flag-iraq","🇮🇷":"flag-iran","🇮🇸":"flag-iceland","🇮🇹":"flag-italy","🇯🇪":"flag-jersey","🇯🇲":"flag-jamaica","🇯🇴":"flag-jordan","🇯🇵":"flag-japan","🇰🇪":"flag-kenya","🇰🇬":"flag-kyrgyzstan","🇰🇭":"flag-cambodia","🇰🇮":"flag-kiribati","🇰🇲":"flag-comoros","🇰🇳":"flag-st-kitts-&-nevis","🇰🇵":"flag-north-korea","🇰🇷":"flag-south-korea","🇰🇼":"flag-kuwait","🇰🇾":"flag-cayman-islands","🇰🇿":"flag-kazakhstan","🇱🇦":"flag-laos","🇱🇧":"flag-lebanon","🇱🇨":"flag-st-lucia","🇱🇮":"flag-liechtenstein","🇱🇰":"flag-sri-lanka","🇱🇷":"flag-liberia","🇱🇸":"flag-lesotho","🇱🇹":"flag-lithuania","🇱🇺":"flag-luxembourg","🇱🇻":"flag-latvia","🇱🇾":"flag-libya","🇲🇦":"flag-morocco","🇲🇨":"flag-monaco","🇲🇩":"flag-moldova","🇲🇪":"flag-montenegro","🇲🇫":"flag-st-martin","🇲🇬":"flag-madagascar","🇲🇭":"flag-marshall-islands","🇲🇰":"flag-north-macedonia","🇲🇱":"flag-mali","🇲🇲":"flag-myanmar-burma","🇲🇳":"flag-mongolia","🇲🇴":"flag-macao-sar-china","🇲🇵":"flag-northern-mariana-islands","🇲🇶":"flag-martinique","🇲🇷":"flag-mauritania","🇲🇸":"flag-montserrat","🇲🇹":"flag-malta","🇲🇺":"flag-mauritius","🇲🇻":"flag-maldives","🇲🇼":"flag-malawi","🇲🇽":"flag-mexico","🇲🇾":"flag-malaysia","🇲🇿":"flag-mozambique","🇳🇦":"flag-namibia","🇳🇨":"flag-new-caledonia","🇳🇪":"flag-niger","🇳🇫":"flag-norfolk-island","🇳🇬":"flag-nigeria","🇳🇮":"flag-nicaragua","🇳🇱":"flag-netherlands","🇳🇴":"flag-norway","🇳🇵":"flag-nepal","🇳🇷":"flag-nauru","🇳🇺":"flag-niue","🇳🇿":"flag-new-zealand","🇴🇲":"flag-oman","🇵🇦":"flag-panama","🇵🇪":"flag-peru","🇵🇫":"flag-french-polynesia","🇵🇬":"flag-papua-new-guinea","🇵🇭":"flag-philippines","🇵🇰":"flag-pakistan","🇵🇱":"flag-poland","🇵🇲":"flag-st-pierre-&-miquelon","🇵🇳":"flag-pitcairn-islands","🇵🇷":"flag-puerto-rico","🇵🇸":"flag-palestinian-territories","🇵🇹":"flag-portugal","🇵🇼":"flag-palau","🇵🇾":"flag-paraguay","🇶🇦":"flag-qatar","🇷🇪":"flag-reunion","🇷🇴":"flag-romania","🇷🇸":"flag-serbia","🇷🇺":"flag-russia","🇷🇼":"flag-rwanda","🇸🇦":"flag-saudi-arabia","🇸🇧":"flag-solomon-islands","🇸🇨":"flag-seychelles","🇸🇩":"flag-sudan","🇸🇪":"flag-sweden","🇸🇬":"flag-singapore","🇸🇭":"flag-st-helena","🇸🇮":"flag-slovenia","🇸🇯":"flag-svalbard-&-jan-mayen","🇸🇰":"flag-slovakia","🇸🇱":"flag-sierra-leone","🇸🇲":"flag-san-marino","🇸🇳":"flag-senegal","🇸🇴":"flag-somalia","🇸🇷":"flag-suriname","🇸🇸":"flag-south-sudan","🇸🇹":"flag-sao-tome-&-principe","🇸🇻":"flag-el-salvador","🇸🇽":"flag-sint-maarten","🇸🇾":"flag-syria","🇸🇿":"flag-eswatini","🇹🇦":"flag-tristan-da-cunha","🇹🇨":"flag-turks-&-caicos-islands","🇹🇩":"flag-chad","🇹🇫":"flag-french-southern-territories","🇹🇬":"flag-togo","🇹🇭":"flag-thailand","🇹🇯":"flag-tajikistan","🇹🇰":"flag-tokelau","🇹🇱":"flag-timor-leste","🇹🇲":"flag-turkmenistan","🇹🇳":"flag-tunisia","🇹🇴":"flag-tonga","🇹🇷":"flag-turkey","🇹🇹":"flag-trinidad-&-tobago","🇹🇻":"flag-tuvalu","🇹🇼":"flag-taiwan","🇹🇿":"flag-tanzania","🇺🇦":"flag-ukraine","🇺🇬":"flag-uganda","🇺🇲":"flag-us-outlying-islands","🇺🇳":"flag-united-nations","🇺🇸":"flag-united-states","🇺🇾":"flag-uruguay","🇺🇿":"flag-uzbekistan","🇻🇦":"flag-vatican-city","🇻🇨":"flag-st-vincent-&-grenadines","🇻🇪":"flag-venezuela","🇻🇬":"flag-british-virgin-islands","🇻🇮":"flag-us-virgin-islands","🇻🇳":"flag-vietnam","🇻🇺":"flag-vanuatu","🇼🇫":"flag-wallis-&-futuna","🇼🇸":"flag-samoa","🇽🇰":"flag-kosovo","🇾🇪":"flag-yemen","🇾🇹":"flag-mayotte","🇿🇦":"flag-south-africa","🇿🇲":"flag-zambia","🇿🇼":"flag-zimbabwe","🏴󠁧󠁢󠁥󠁮󠁧󠁿":"flag-england","🏴󠁧󠁢󠁳󠁣󠁴󠁿":"flag-scotland","🏴󠁧󠁢󠁷󠁬󠁳󠁿":"flag-wales"}
+},{}],42:[function(require,module,exports){
+module.exports={"10":["🔟"],"grin":["😀","😃","😄","😆","😅","😺","😸"],"face":["😀","😃","😄","😁","😆","😅","😂","🙂","🙃","🫠","😉","😊","😇","🥰","😍","😘","😗","☺️","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🫢","🫣","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😶‍🌫️","😏","😒","🙄","😬","😮‍💨","🤥","🫨","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","😵‍💫","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹️","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","🤡","🤛","🤜","🐵","🐶","🐱","🐯","🐴","🐮","🐷","🐭","🐰","🐥","🐲","🌚","🌛","🌜","🌝","🌞","🌬️","📄"],"big":["😃"],"eyes":["😃","😄","😁","😊","😍","😚","😙","🫢","🙄","😵","😵‍💫","😸","😻","👀"],"smile":["😄","😁","🙂","😊","😇","🥰","😍","☺️","😙","🥲","🤗","😎","😈","😸","😻","😼"],"beam":["😁"],"squint":["😆","😝"],"sweat":["😅","😰","😓","💦"],"roll":["🤣","🙄","🧻"],"on":["🤣","🤬","❤️‍🔥","🍖","⛱️","🔛"],"the":["🤣","🤘","🫵"],"floor":["🤣"],"laugh":["🤣"],"tears":["😂","🥹","😹"],"joy":["😂","😹"],"slightly":["🙂","🙁"],"upside":["🙃"],"down":["🙃","🫳","👇","👎","↘️","⬇️","↙️","↕️","⤵️","⏬","🔻"],"melt":["🫠"],"wink":["😉","😜"],"halo":["😇"],"hearts":["🥰","💞","💕"],"heart":["😍","😻","💘","💝","💖","💗","💓","💟","❣️","💔","❤️‍🔥","❤️‍🩹","❤️","🩷","🧡","💛","💚","💙","🩵","💜","🤎","🖤","🩶","🤍","🫶","🫀","💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩","♥️"],"star":["🤩","⭐","🌟","🌠","✡️","☪️","🔯","✴️"],"struck":["🤩"],"blow":["😘"],"kiss":["😘","😗","😚","😙","😽","💋","💏","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍💋‍👩"],"closed":["😚","🌂","📕","📫","📪"],"tear":["🥲","📆"],"savore":["😋"],"food":["😋","🥘","🍲","🥫"],"tongue":["😛","😜","😝","👅"],"zany":["🤪"],"money":["🤑","💰","💸"],"mouth":["🤑","🤭","🫢","🤐","😶","🫤","😮","😦","🤬","👄"],"open":["🤗","🫢","😮","😦","👐","📖","📬","📭","📂","🈺"],"hands":["🤗","👏","🙌","🫶","👐","🙏","🧑‍🤝‍🧑","👭","👫","👬"],"hand":["🤭","🫢","👋","🤚","🖐️","✋","🫱","🫲","🫳","🫴","🫷","🫸","👌","🤏","✌️","🫰","🤙","✍️","💁","💁‍♂️","💁‍♀️","🙋","🙋‍♂️","🙋‍♀️","🪭"],"over":["🤭","🫢","🌄"],"and":["🫢","☠️","🫰","👫","🍽️","🍴","⛈️","⚒️","🛠️","🏹","🔩","🛋️","☪️"],"peek":["🫣"],"eye":["🫣","👁️‍🗨️","👁️"],"shush":["🤫"],"think":["🤔"],"salute":["🫡","🖖"],"zipper":["🤐"],"raised":["🤨","🤚","✋","✊","📫","📬"],"eyebrow":["🤨"],"neutral":["😐"],"expressionless":["😑"],"without":["😶","🍵","⛄"],"dotted":["🫥","🔯"],"line":["🫥"],"in":["😶‍🌫️","😱","👁️‍🗨️","🤵","🤵‍♂️","🤵‍♀️","🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🕴️","🧖","🧖‍♂️","🧖‍♀️","🧘","🧘‍♂️","🧘‍♀️","🛌","👤","👥","🍃","⛳","🚮"],"clouds":["😶‍🌫️"],"smirk":["😏"],"unamused":["😒"],"grimace":["😬"],"exhale":["😮‍💨"],"lying":["🤥"],"shake":["🫨"],"relieved":["😌","😥"],"pensive":["😔"],"sleepy":["😪"],"drool":["🤤"],"sleep":["😴"],"medical":["😷","⚕️"],"mask":["😷","🤿"],"thermometer":["🤒","🌡️"],"head":["🤕","🤯","🗣️"],"bandage":["🤕","🩹"],"nauseated":["🤢"],"vomite":["🤮"],"sneez":["🤧"],"hot":["🥵","🌶️","🌭","☕","♨️"],"cold":["🥶"],"woozy":["🥴"],"crossed":["😵","🤞","🫰","⚔️","🎌"],"out":["😵"],"spiral":["😵‍💫","🐚","🗒️","🗓️"],"explode":["🤯"],"cowboy":["🤠"],"hat":["🤠","👒","🎩"],"party":["🥳","🎉"],"disguised":["🥸"],"sunglasses":["😎","🕶️"],"nerd":["🤓"],"monocle":["🧐"],"confused":["😕"],"diagonal":["🫤"],"worried":["😟"],"frown":["🙁","☹️","😦","🙍","🙍‍♂️","🙍‍♀️"],"hushed":["😯"],"astonished":["😲"],"flushed":["😳"],"plead":["🥺"],"hold":["🥹","🧑‍🤝‍🧑","👭","👫","👬"],"back":["🥹","🤚","🔙"],"anguished":["😧"],"fearful":["😨"],"anxious":["😰"],"sad":["😥"],"but":["😥"],"cry":["😢","😭","😿"],"loudly":["😭"],"scream":["😱"],"fear":["😱"],"confounded":["😖"],"persever":["😣"],"disappointed":["😞"],"downcast":["😓"],"weary":["😩","🙀"],"tired":["😫"],"yawn":["🥱"],"steam":["😤","🍜"],"from":["😤"],"nose":["😤","👃","🐽"],"enraged":["😡"],"angry":["😠","👿"],"symbols":["🤬","🔣"],"horns":["😈","👿","🤘"],"skull":["💀","☠️"],"crossbones":["☠️"],"pile":["💩"],"poo":["💩"],"clown":["🤡"],"ogre":["👹"],"goblin":["👺"],"ghost":["👻"],"alien":["👽","👾"],"monster":["👾"],"robot":["🤖"],"cat":["😺","😸","😹","😻","😼","😽","🙀","😿","😾","🐱","🐈","🐈‍⬛"],"wry":["😼"],"pout":["😾","🙎","🙎‍♂️","🙎‍♀️"],"see":["🙈"],"no":["🙈","🙉","🙊","🙅","🙅‍♂️","🙅‍♀️","⛔","🚳","🚭","🚯","🚷","📵","🔞","🈵"],"evil":["🙈","🙉","🙊"],"monkey":["🙈","🙉","🙊","🐵","🐒"],"hear":["🙉","🦻"],"speak":["🙊","🗣️"],"love":["💌","🤟","🏩"],"letter":["💌"],"arrow":["💘","📲","📩","🏹","⬆️","↗️","➡️","↘️","⬇️","↙️","⬅️","↖️","↕️","↔️","↩️","↪️","⤴️","⤵️","🔙","🔚","🔛","🔜","🔝"],"ribbon":["💝","🎀","🎗️"],"sparkle":["💖","❇️"],"grow":["💗"],"beat":["💓"],"revolve":["💞"],"two":["💕","🐫","🕑","🕝"],"decoration":["💟","🎍"],"exclamation":["❣️","‼️","⁉️","❕","❗"],"broken":["💔"],"fire":["❤️‍🔥","🚒","🔥","🧯"],"mend":["❤️‍🩹"],"red":["❤️","👨‍🦰","👩‍🦰","🧑‍🦰","🍎","🧧","🀄","🏮","❓","❗","⭕","🔴","🟥","🔺","🔻"],"pink":["🩷"],"orange":["🧡","📙","🟠","🟧","🔶","🔸"],"yellow":["💛","🟡","🟨"],"green":["💚","🍏","🥬","🥗","📗","🟢","🟩"],"blue":["💙","🩵","📘","🔵","🟦","🔷","🔹"],"light":["🩵","🚈","🚨","🚥","🚦","💡"],"purple":["💜","🟣","🟪"],"brown":["🤎","🟤","🟫"],"black":["🖤","🐈‍⬛","🐦‍⬛","✒️","⚫","⬛","◼️","◾","▪️","🔲","🏴"],"grey":["🩶"],"white":["🤍","👨‍🦳","👩‍🦳","🧑‍🦳","🧑‍🦯","👨‍🦯","👩‍🦯","💮","🦯","❔","❕","⚪","⬜","◻️","◽","▫️","🔳","🏳️"],"mark":["💋","‼️","⁉️","❓","❔","❕","❗","✅","✔️","❌","❎","〽️","™️"],"hundred":["💯"],"points":["💯"],"anger":["💢","🗯️"],"symbol":["💢","♿","🚼","⚛️","☮️","⚧️","⚕️","♻️","🔰"],"collision":["💥"],"dizzy":["💫"],"droplets":["💦"],"dash":["💨","〰️"],"away":["💨"],"hole":["🕳️","⛳"],"speech":["💬","👁️‍🗨️","🗨️"],"balloon":["💬","💭","🎈"],"bubble":["👁️‍🗨️","🗨️","🗯️","🧋"],"left":["🗨️","👈","🤛","🔍","🛅","↙️","⬅️","↖️","↔️","↩️","↪️"],"right":["🗯️","👉","🤜","🔎","↗️","➡️","↘️","↔️","↩️","↪️","⤴️","⤵️"],"thought":["💭"],"zzz":["💤"],"wave":["👋","🌊"],"fingers":["🖐️","🤌","🤞"],"splayed":["🖐️"],"vulcan":["🖖"],"rightwards":["🫱","🫸"],"leftwards":["🫲","🫷"],"palm":["🫳","🫴","🌴"],"up":["🫴","👆","☝️","👍","🤲","📄","🗞️","⬆️","↗️","↖️","↕️","⤴️","⏫","🆙","🔺"],"push":["🫷","🫸"],"ok":["👌","🙆","🙆‍♂️","🙆‍♀️","🆗"],"pinched":["🤌"],"pinch":["🤏"],"victory":["✌️"],"index":["🫰","👈","👉","👆","👇","☝️","🫵","🗂️","📇"],"finger":["🫰","🖕"],"thumb":["🫰"],"you":["🤟"],"gesture":["🤟","🙅","🙅‍♂️","🙅‍♀️","🙆","🙆‍♂️","🙆‍♀️"],"sign":["🤘","🛑","🏧","🚮","♀️","♂️","🟰","💲"],"call":["🤙"],"me":["🤙"],"backhand":["👈","👉","👆","👇"],"point":["👈","👉","👆","👇","☝️","🫵"],"middle":["🖕"],"at":["🫵","🌆","🌉"],"viewer":["🫵"],"thumbs":["👍","👎"],"fist":["✊","👊","🤛","🤜"],"oncome":["👊","🚍","🚔","🚖","🚘"],"clap":["👏"],"raise":["🙌","🙋","🙋‍♂️","🙋‍♀️"],"palms":["🤲"],"together":["🤲"],"handshake":["🤝"],"folded":["🙏"],"write":["✍️"],"nail":["💅"],"polish":["💅"],"selfie":["🤳"],"flexed":["💪"],"biceps":["💪"],"mechanical":["🦾","🦿"],"arm":["🦾"],"leg":["🦿","🦵","🍗"],"foot":["🦶"],"ear":["👂","🦻","🌽"],"aid":["🦻"],"brain":["🧠"],"anatomical":["🫀"],"lungs":["🫁"],"tooth":["🦷"],"bone":["🦴","🍖"],"bite":["🫦"],"lip":["🫦"],"baby":["👶","👩‍🍼","👨‍🍼","🧑‍🍼","👼","🐤","🐥","🍼","🚼"],"child":["🧒"],"boy":["👦","👨‍👩‍👦","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👨‍👦","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👩‍👩‍👦","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👨‍👦","👨‍👦‍👦","👨‍👧‍👦","👩‍👦","👩‍👦‍👦","👩‍👧‍👦"],"girl":["👧","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👧‍👧","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👧‍👧","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👧‍👧","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"person":["🧑","👱","🧔","🧑‍🦰","🧑‍🦱","🧑‍🦳","🧑‍🦲","🧓","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","🫅","👳","👲","🤵","👰","🫄","🧑‍🍼","💆","💇","🚶","🧍","🧎","🧑‍🦯","🧑‍🦼","🧑‍🦽","🏃","🕴️","🧖","🧗","🤺","🏌️","🏄","🚣","🏊","⛹️","🏋️","🚴","🚵","🤸","🤽","🤾","🤹","🧘","🛀","🛌"],"blond":["👱","👱‍♀️","👱‍♂️"],"hair":["👱","👨‍🦰","👨‍🦱","👨‍🦳","👩‍🦰","🧑‍🦰","👩‍🦱","🧑‍🦱","👩‍🦳","🧑‍🦳","👱‍♀️","👱‍♂️","🪮"],"man":["👨","🧔‍♂️","👨‍🦰","👨‍🦱","👨‍🦳","👨‍🦲","👱‍♂️","👴","🙍‍♂️","🙎‍♂️","🙅‍♂️","🙆‍♂️","💁‍♂️","🙋‍♂️","🧏‍♂️","🙇‍♂️","🤦‍♂️","🤷‍♂️","👨‍⚕️","👨‍🎓","👨‍🏫","👨‍⚖️","👨‍🌾","👨‍🍳","👨‍🔧","👨‍🏭","👨‍💼","👨‍🔬","👨‍💻","👨‍🎤","👨‍🎨","👨‍✈️","👨‍🚀","👨‍🚒","👮‍♂️","🕵️‍♂️","💂‍♂️","👷‍♂️","👳‍♂️","🤵‍♂️","👰‍♂️","🫃","👨‍🍼","🦸‍♂️","🦹‍♂️","🧙‍♂️","🧚‍♂️","🧛‍♂️","🧝‍♂️","🧞‍♂️","🧟‍♂️","💆‍♂️","💇‍♂️","🚶‍♂️","🧍‍♂️","🧎‍♂️","👨‍🦯","👨‍🦼","👨‍🦽","🏃‍♂️","🕺","🧖‍♂️","🧗‍♂️","🏌️‍♂️","🏄‍♂️","🚣‍♂️","🏊‍♂️","⛹️‍♂️","🏋️‍♂️","🚴‍♂️","🚵‍♂️","🤸‍♂️","🤽‍♂️","🤾‍♂️","🤹‍♂️","🧘‍♂️","👫","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍👨","👨‍❤️‍👨","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👞","🇮🇲"],"beard":["🧔","🧔‍♂️","🧔‍♀️"],"woman":["🧔‍♀️","👩","👩‍🦰","👩‍🦱","👩‍🦳","👩‍🦲","👱‍♀️","👵","🙍‍♀️","🙎‍♀️","🙅‍♀️","🙆‍♀️","💁‍♀️","🙋‍♀️","🧏‍♀️","🙇‍♀️","🤦‍♀️","🤷‍♀️","👩‍⚕️","👩‍🎓","👩‍🏫","👩‍⚖️","👩‍🌾","👩‍🍳","👩‍🔧","👩‍🏭","👩‍💼","👩‍🔬","👩‍💻","👩‍🎤","👩‍🎨","👩‍✈️","👩‍🚀","👩‍🚒","👮‍♀️","🕵️‍♀️","💂‍♀️","👷‍♀️","👳‍♀️","🧕","🤵‍♀️","👰‍♀️","🤰","👩‍🍼","🦸‍♀️","🦹‍♀️","🧙‍♀️","🧚‍♀️","🧛‍♀️","🧝‍♀️","🧞‍♀️","🧟‍♀️","💆‍♀️","💇‍♀️","🚶‍♀️","🧍‍♀️","🧎‍♀️","👩‍🦯","👩‍🦼","👩‍🦽","🏃‍♀️","💃","🧖‍♀️","🧗‍♀️","🏌️‍♀️","🏄‍♀️","🚣‍♀️","🏊‍♀️","⛹️‍♀️","🏋️‍♀️","🚴‍♀️","🚵‍♀️","🤸‍♀️","🤽‍♀️","🤾‍♀️","🤹‍♀️","🧘‍♀️","👫","👩‍❤️‍💋‍👨","👩‍❤️‍💋‍👩","👩‍❤️‍👨","👩‍❤️‍👩","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧","👚","👡","👢","👒"],"curly":["👨‍🦱","👩‍🦱","🧑‍🦱","➰","➿"],"bald":["👨‍🦲","👩‍🦲","🧑‍🦲"],"older":["🧓"],"old":["👴","👵","🗝️"],"tip":["💁","💁‍♂️","💁‍♀️"],"deaf":["🧏","🧏‍♂️","🧏‍♀️"],"bow":["🙇","🙇‍♂️","🙇‍♀️","🏹"],"facepalm":["🤦","🤦‍♂️","🤦‍♀️"],"shrug":["🤷","🤷‍♂️","🤷‍♀️"],"health":["🧑‍⚕️","👨‍⚕️","👩‍⚕️"],"worker":["🧑‍⚕️","👨‍⚕️","👩‍⚕️","🧑‍🏭","👨‍🏭","👩‍🏭","🧑‍💼","👨‍💼","👩‍💼","👷","👷‍♂️","👷‍♀️","⛑️"],"student":["🧑‍🎓","👨‍🎓","👩‍🎓"],"teacher":["🧑‍🏫","👨‍🏫","👩‍🏫"],"judge":["🧑‍⚖️","👨‍⚖️","👩‍⚖️"],"farmer":["🧑‍🌾","👨‍🌾","👩‍🌾"],"cook":["🧑‍🍳","👨‍🍳","👩‍🍳","🍳","🇨🇰"],"mechanic":["🧑‍🔧","👨‍🔧","👩‍🔧"],"factory":["🧑‍🏭","👨‍🏭","👩‍🏭","🏭"],"office":["🧑‍💼","👨‍💼","👩‍💼","🏢","🏣","🏤"],"scientist":["🧑‍🔬","👨‍🔬","👩‍🔬"],"technologist":["🧑‍💻","👨‍💻","👩‍💻"],"singer":["🧑‍🎤","👨‍🎤","👩‍🎤"],"artist":["🧑‍🎨","👨‍🎨","👩‍🎨","🎨"],"pilot":["🧑‍✈️","👨‍✈️","👩‍✈️"],"astronaut":["🧑‍🚀","👨‍🚀","👩‍🚀"],"firefighter":["🧑‍🚒","👨‍🚒","👩‍🚒"],"police":["👮","👮‍♂️","👮‍♀️","🚓","🚔","🚨"],"officer":["👮","👮‍♂️","👮‍♀️"],"detective":["🕵️","🕵️‍♂️","🕵️‍♀️"],"guard":["💂","💂‍♂️","💂‍♀️"],"ninja":["🥷"],"construction":["👷","👷‍♂️","👷‍♀️","🏗️","🚧"],"crown":["🫅","👑"],"prince":["🤴"],"princess":["👸"],"wear":["👳","👳‍♂️","👳‍♀️"],"turban":["👳","👳‍♂️","👳‍♀️"],"skullcap":["👲"],"headscarf":["🧕"],"tuxedo":["🤵","🤵‍♂️","🤵‍♀️"],"veil":["👰","👰‍♂️","👰‍♀️"],"pregnant":["🤰","🫃","🫄"],"breast":["🤱"],"feed":["🤱","👩‍🍼","👨‍🍼","🧑‍🍼"],"angel":["👼"],"santa":["🎅"],"claus":["🎅","🤶","🧑‍🎄"],"mrs":["🤶"],"mx":["🧑‍🎄"],"superhero":["🦸","🦸‍♂️","🦸‍♀️"],"supervillain":["🦹","🦹‍♂️","🦹‍♀️"],"mage":["🧙","🧙‍♂️","🧙‍♀️"],"fairy":["🧚","🧚‍♂️","🧚‍♀️"],"vampire":["🧛","🧛‍♂️","🧛‍♀️"],"merperson":["🧜"],"merman":["🧜‍♂️"],"mermaid":["🧜‍♀️"],"elf":["🧝","🧝‍♂️","🧝‍♀️"],"genie":["🧞","🧞‍♂️","🧞‍♀️"],"zombie":["🧟","🧟‍♂️","🧟‍♀️"],"troll":["🧌"],"gett":["💆","💆‍♂️","💆‍♀️","💇","💇‍♂️","💇‍♀️"],"massage":["💆","💆‍♂️","💆‍♀️"],"haircut":["💇","💇‍♂️","💇‍♀️"],"walk":["🚶","🚶‍♂️","🚶‍♀️"],"stand":["🧍","🧍‍♂️","🧍‍♀️"],"kneel":["🧎","🧎‍♂️","🧎‍♀️"],"cane":["🧑‍🦯","👨‍🦯","👩‍🦯","🦯"],"motorized":["🧑‍🦼","👨‍🦼","👩‍🦼","🦼"],"wheelchair":["🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🦽","🦼","♿"],"manual":["🧑‍🦽","👨‍🦽","👩‍🦽","🦽"],"run":["🏃","🏃‍♂️","🏃‍♀️","🎽","👟"],"dance":["💃","🕺"],"suit":["🕴️","♠️","♥️","♦️","♣️"],"levitate":["🕴️"],"people":["👯","🤼","🧑‍🤝‍🧑","🫂"],"bunny":["👯","👯‍♂️","👯‍♀️"],"ears":["👯","👯‍♂️","👯‍♀️"],"men":["👯‍♂️","🤼‍♂️","👬","🚹"],"women":["👯‍♀️","🤼‍♀️","👭","🚺"],"steamy":["🧖","🧖‍♂️","🧖‍♀️"],"room":["🧖","🧖‍♂️","🧖‍♀️","🚹","🚺"],"climb":["🧗","🧗‍♂️","🧗‍♀️"],"fence":["🤺"],"horse":["🏇","🐴","🐎","🎠"],"race":["🏇","🏎️"],"skier":["⛷️"],"snowboarder":["🏂"],"golf":["🏌️","🏌️‍♂️","🏌️‍♀️"],"surf":["🏄","🏄‍♂️","🏄‍♀️"],"row":["🚣","🚣‍♂️","🚣‍♀️"],"boat":["🚣","🚣‍♂️","🚣‍♀️","🛥️"],"swim":["🏊","🏊‍♂️","🏊‍♀️"],"bounce":["⛹️","⛹️‍♂️","⛹️‍♀️"],"ball":["⛹️","⛹️‍♂️","⛹️‍♀️","🍙","🎊","⚽","🎱","🔮","🪩"],"lift":["🏋️","🏋️‍♂️","🏋️‍♀️"],"weights":["🏋️","🏋️‍♂️","🏋️‍♀️"],"bike":["🚴","🚴‍♂️","🚴‍♀️","🚵","🚵‍♂️","🚵‍♀️"],"mountain":["🚵","🚵‍♂️","🚵‍♀️","🏔️","⛰️","🚞","🚠"],"cartwheel":["🤸","🤸‍♂️","🤸‍♀️"],"wrestle":["🤼","🤼‍♂️","🤼‍♀️"],"play":["🤽","🤽‍♂️","🤽‍♀️","🤾","🤾‍♂️","🤾‍♀️","🎴","▶️","⏯️"],"water":["🤽","🤽‍♂️","🤽‍♀️","🐃","🌊","🔫","🚰","🚾","🚱"],"polo":["🤽","🤽‍♂️","🤽‍♀️"],"handball":["🤾","🤾‍♂️","🤾‍♀️"],"juggle":["🤹","🤹‍♂️","🤹‍♀️"],"lotus":["🧘","🧘‍♂️","🧘‍♀️","🪷"],"position":["🧘","🧘‍♂️","🧘‍♀️"],"take":["🛀"],"bath":["🛀"],"bed":["🛌","🛏️"],"couple":["💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩"],"family":["👪","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"bust":["👤"],"silhouette":["👤","👥"],"busts":["👥"],"hug":["🫂"],"footprints":["👣"],"gorilla":["🦍"],"orangutan":["🦧"],"dog":["🐶","🐕","🦮","🐕‍🦺","🌭"],"guide":["🦮"],"service":["🐕‍🦺","🈂️"],"poodle":["🐩"],"wolf":["🐺"],"fox":["🦊"],"raccoon":["🦝"],"lion":["🦁"],"tiger":["🐯","🐅"],"leopard":["🐆"],"moose":["🫎"],"donkey":["🫏"],"unicorn":["🦄"],"zebra":["🦓"],"deer":["🦌"],"bison":["🦬"],"cow":["🐮","🐄"],"ox":["🐂"],"buffalo":["🐃"],"pig":["🐷","🐖","🐽"],"boar":["🐗"],"ram":["🐏"],"ewe":["🐑"],"goat":["🐐"],"camel":["🐪","🐫"],"hump":["🐫"],"llama":["🦙"],"giraffe":["🦒"],"elephant":["🐘"],"mammoth":["🦣"],"rhinoceros":["🦏"],"hippopotamus":["🦛"],"mouse":["🐭","🐁","🖱️","🪤"],"rat":["🐀"],"hamster":["🐹"],"rabbit":["🐰","🐇"],"chipmunk":["🐿️"],"beaver":["🦫"],"hedgehog":["🦔"],"bat":["🦇"],"bear":["🐻","🐻‍❄️","🧸"],"polar":["🐻‍❄️"],"koala":["🐨"],"panda":["🐼"],"sloth":["🦥"],"otter":["🦦"],"skunk":["🦨"],"kangaroo":["🦘"],"badger":["🦡"],"paw":["🐾"],"prints":["🐾"],"turkey":["🦃","🇹🇷"],"chicken":["🐔"],"rooster":["🐓"],"hatch":["🐣"],"chick":["🐣","🐤","🐥"],"front":["🐥"],"bird":["🐦","🐦‍⬛"],"penguin":["🐧"],"dove":["🕊️"],"eagle":["🦅"],"duck":["🦆"],"swan":["🦢"],"owl":["🦉"],"dodo":["🦤"],"feather":["🪶"],"flamingo":["🦩"],"peacock":["🦚"],"parrot":["🦜"],"wing":["🪽"],"goose":["🪿"],"frog":["🐸"],"crocodile":["🐊"],"turtle":["🐢"],"lizard":["🦎"],"snake":["🐍"],"dragon":["🐲","🐉","🀄"],"sauropod":["🦕"],"rex":["🦖"],"spout":["🐳"],"whale":["🐳","🐋"],"dolphin":["🐬"],"seal":["🦭"],"fish":["🐟","🐠","🍥","🎣"],"tropical":["🐠","🍹"],"blowfish":["🐡"],"shark":["🦈"],"octopus":["🐙"],"shell":["🐚"],"coral":["🪸"],"jellyfish":["🪼"],"snail":["🐌"],"butterfly":["🦋"],"bug":["🐛"],"ant":["🐜"],"honeybee":["🐝"],"beetle":["🪲","🐞"],"lady":["🐞"],"cricket":["🦗","🏏"],"cockroach":["🪳"],"spider":["🕷️","🕸️"],"web":["🕸️"],"scorpion":["🦂"],"mosquito":["🦟"],"fly":["🪰","🛸","🥏"],"worm":["🪱"],"microbe":["🦠"],"bouquet":["💐"],"cherry":["🌸"],"blossom":["🌸","🌼"],"flower":["💮","🥀","🎴"],"rosette":["🏵️"],"rose":["🌹"],"wilted":["🥀"],"hibiscus":["🌺"],"sunflower":["🌻"],"tulip":["🌷"],"hyacinth":["🪻"],"seedle":["🌱"],"potted":["🪴"],"plant":["🪴"],"evergreen":["🌲"],"tree":["🌲","🌳","🌴","🎄","🎋"],"deciduous":["🌳"],"cactus":["🌵"],"sheaf":["🌾"],"rice":["🌾","🍘","🍙","🍚","🍛"],"herb":["🌿"],"shamrock":["☘️"],"four":["🍀","🕓","🕟"],"leaf":["🍀","🍁","🍂","🍃"],"clover":["🍀"],"maple":["🍁"],"fallen":["🍂"],"flutter":["🍃"],"wind":["🍃","🌬️","🎐"],"empty":["🪹"],"nest":["🪹","🪺","🪆"],"eggs":["🪺"],"mushroom":["🍄"],"grapes":["🍇"],"melon":["🍈"],"watermelon":["🍉"],"tangerine":["🍊"],"lemon":["🍋"],"banana":["🍌"],"pineapple":["🍍"],"mango":["🥭"],"apple":["🍎","🍏"],"pear":["🍐"],"peach":["🍑"],"cherries":["🍒"],"strawberry":["🍓"],"blueberries":["🫐"],"kiwi":["🥝"],"fruit":["🥝"],"tomato":["🍅"],"olive":["🫒"],"coconut":["🥥"],"avocado":["🥑"],"eggplant":["🍆"],"potato":["🥔","🍠"],"carrot":["🥕"],"corn":["🌽"],"pepper":["🌶️","🫑"],"bell":["🫑","🛎️","🔔","🔕"],"cucumber":["🥒"],"leafy":["🥬"],"broccoli":["🥦"],"garlic":["🧄"],"onion":["🧅"],"peanuts":["🥜"],"beans":["🫘"],"chestnut":["🌰"],"ginger":["🫚"],"root":["🫚"],"pea":["🫛"],"pod":["🫛"],"bread":["🍞","🥖"],"croissant":["🥐"],"baguette":["🥖"],"flatbread":["🫓","🥙"],"pretzel":["🥨"],"bagel":["🥯"],"pancakes":["🥞"],"waffle":["🧇"],"cheese":["🧀"],"wedge":["🧀"],"meat":["🍖","🥩"],"poultry":["🍗"],"cut":["🥩"],"bacon":["🥓"],"hamburger":["🍔"],"french":["🍟","🇬🇫","🇵🇫","🇹🇫"],"fries":["🍟"],"pizza":["🍕"],"sandwich":["🥪","🇬🇸"],"taco":["🌮"],"burrito":["🌯"],"tamale":["🫔"],"stuffed":["🥙"],"falafel":["🧆"],"egg":["🥚"],"shallow":["🥘"],"pan":["🥘"],"pot":["🍲","🍯"],"fondue":["🫕"],"bowl":["🥣","🍜","🎳"],"spoon":["🥣","🥄"],"salad":["🥗"],"popcorn":["🍿"],"butter":["🧈"],"salt":["🧂"],"canned":["🥫"],"bento":["🍱"],"box":["🍱","🥡","🧃","🥊","🗳️","🗃️","☑️"],"cracker":["🍘"],"cooked":["🍚"],"curry":["🍛"],"spaghetti":["🍝"],"roasted":["🍠"],"sweet":["🍠"],"oden":["🍢"],"sushi":["🍣"],"fried":["🍤"],"shrimp":["🍤","🦐"],"cake":["🍥","🥮","🎂"],"swirl":["🍥"],"moon":["🥮","🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘","🌙","🌚","🌛","🌜","🌝","🎑"],"dango":["🍡"],"dumple":["🥟"],"fortune":["🥠"],"cookie":["🥠","🍪"],"takeout":["🥡"],"crab":["🦀"],"lobster":["🦞"],"squid":["🦑"],"oyster":["🦪"],"soft":["🍦"],"ice":["🍦","🍧","🍨","🧊","🏒","⛸️"],"cream":["🍦","🍨"],"shaved":["🍧"],"doughnut":["🍩"],"birthday":["🎂"],"shortcake":["🍰"],"cupcake":["🧁"],"pie":["🥧"],"chocolate":["🍫"],"bar":["🍫","📊"],"candy":["🍬"],"lollipop":["🍭"],"custard":["🍮"],"honey":["🍯"],"bottle":["🍼","🍾","🧴"],"glass":["🥛","🍷","🍸","🥃","🔍","🔎"],"milk":["🥛"],"beverage":["☕","🧃"],"teapot":["🫖"],"teacup":["🍵"],"handle":["🍵"],"sake":["🍶"],"pop":["🍾"],"cork":["🍾"],"wine":["🍷"],"cocktail":["🍸"],"drink":["🍹"],"beer":["🍺","🍻"],"mug":["🍺"],"clink":["🍻","🥂"],"mugs":["🍻"],"glasses":["🥂","👓"],"tumbler":["🥃"],"pour":["🫗"],"liquid":["🫗"],"cup":["🥤"],"straw":["🥤"],"tea":["🧋"],"mate":["🧉"],"chopsticks":["🥢"],"fork":["🍽️","🍴"],"knife":["🍽️","🍴","🔪"],"plate":["🍽️"],"kitchen":["🔪"],"jar":["🫙"],"amphora":["🏺"],"globe":["🌍","🌎","🌏","🌐"],"show":["🌍","🌎","🌏"],"europe":["🌍"],"africa":["🌍","🇿🇦"],"americas":["🌎"],"asia":["🌏"],"australia":["🌏","🇦🇺"],"meridians":["🌐"],"world":["🗺️"],"map":["🗺️","🗾"],"japan":["🗾","🇯🇵"],"compass":["🧭"],"snow":["🏔️","🌨️","⛄"],"capped":["🏔️"],"volcano":["🌋"],"mount":["🗻"],"fuji":["🗻"],"camp":["🏕️"],"beach":["🏖️"],"umbrella":["🏖️","🌂","☂️","☔","⛱️"],"desert":["🏜️","🏝️"],"island":["🏝️","🇦🇨","🇧🇻","🇨🇵","🇨🇽","🇳🇫"],"national":["🏞️"],"park":["🏞️"],"stadium":["🏟️"],"classical":["🏛️"],"build":["🏛️","🏗️","🏢"],"brick":["🧱"],"rock":["🪨"],"wood":["🪵"],"hut":["🛖"],"houses":["🏘️"],"derelict":["🏚️"],"house":["🏚️","🏠","🏡"],"garden":["🏡"],"japanese":["🏣","🏯","🎎","🔰","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵"],"post":["🏣","🏤"],"hospital":["🏥"],"bank":["🏦"],"hotel":["🏨","🏩"],"convenience":["🏪"],"store":["🏪","🏬"],"school":["🏫"],"department":["🏬"],"castle":["🏯","🏰"],"wed":["💒"],"tokyo":["🗼"],"tower":["🗼"],"statue":["🗽"],"liberty":["🗽"],"church":["⛪"],"mosque":["🕌"],"hindu":["🛕"],"temple":["🛕"],"synagogue":["🕍"],"shinto":["⛩️"],"shrine":["⛩️"],"kaaba":["🕋"],"fountain":["⛲","🖋️"],"tent":["⛺","🎪"],"foggy":["🌁"],"night":["🌃","🌉"],"stars":["🌃"],"cityscape":["🏙️","🌆"],"sunrise":["🌄","🌅"],"mountains":["🌄"],"dusk":["🌆"],"sunset":["🌇"],"bridge":["🌉"],"springs":["♨️"],"carousel":["🎠"],"playground":["🛝"],"slide":["🛝"],"ferris":["🎡"],"wheel":["🎡","🛞","☸️"],"roller":["🎢","🛼"],"coaster":["🎢"],"barber":["💈"],"pole":["💈","🎣"],"circus":["🎪"],"locomotive":["🚂"],"railway":["🚃","🚞","🛤️","🚟"],"car":["🚃","🚋","🚓","🚔","🏎️","🚨"],"high":["🚄","⚡","👠","🔊"],"speed":["🚄"],"train":["🚄","🚅","🚆"],"bullet":["🚅"],"metro":["🚇"],"rail":["🚈"],"station":["🚉"],"tram":["🚊","🚋"],"monorail":["🚝"],"bus":["🚌","🚍","🚏"],"trolleybus":["🚎"],"minibus":["🚐"],"ambulance":["🚑"],"engine":["🚒"],"taxi":["🚕","🚖"],"automobile":["🚗","🚘"],"sport":["🚙"],"utility":["🚙"],"vehicle":["🚙"],"pickup":["🛻"],"truck":["🛻","🚚"],"delivery":["🚚"],"articulated":["🚛"],"lorry":["🚛"],"tractor":["🚜"],"motorcycle":["🏍️"],"motor":["🛵","🛥️"],"scooter":["🛵","🛴"],"auto":["🛺"],"rickshaw":["🛺"],"bicycle":["🚲"],"kick":["🛴"],"skateboard":["🛹"],"skate":["🛼","⛸️"],"stop":["🚏","🛑","⏹️"],"motorway":["🛣️"],"track":["🛤️","⏭️","⏮️"],"oil":["🛢️"],"drum":["🛢️","🥁","🪘"],"fuel":["⛽"],"pump":["⛽"],"horizontal":["🚥"],"traffic":["🚥","🚦"],"vertical":["🚦","🔃"],"anchor":["⚓"],"ring":["🛟","💍"],"buoy":["🛟"],"sailboat":["⛵"],"canoe":["🛶"],"speedboat":["🚤"],"passenger":["🛳️"],"ship":["🛳️","🚢"],"ferry":["⛴️"],"airplane":["✈️","🛩️","🛫","🛬"],"small":["🛩️","🌤️","◾","◽","▪️","▫️","🔸","🔹"],"departure":["🛫"],"arrival":["🛬"],"parachute":["🪂"],"seat":["💺"],"helicopter":["🚁"],"suspension":["🚟"],"cableway":["🚠"],"aerial":["🚡"],"tramway":["🚡"],"satellite":["🛰️","📡"],"rocket":["🚀"],"saucer":["🛸"],"bellhop":["🛎️"],"luggage":["🧳","🛅"],"hourglass":["⌛","⏳"],"done":["⌛","⏳"],"not":["⏳","🈶"],"watch":["⌚"],"alarm":["⏰"],"clock":["⏰","⏲️","🕰️","🕛","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚"],"stopwatch":["⏱️"],"timer":["⏲️"],"mantelpiece":["🕰️"],"twelve":["🕛","🕧"],"thirty":["🕧","🕜","🕝","🕞","🕟","🕠","🕡","🕢","🕣","🕤","🕥","🕦"],"one":["🕐","🕜","🩱","🔞"],"three":["🕒","🕞"],"five":["🕔","🕠"],"six":["🕕","🕡","🔯"],"seven":["🕖","🕢"],"eight":["🕗","🕣","✳️","✴️"],"nine":["🕘","🕤"],"ten":["🕙","🕥"],"eleven":["🕚","🕦"],"new":["🌑","🌚","🆕","🇳🇨","🇳🇿","🇵🇬"],"wax":["🌒","🌔"],"crescent":["🌒","🌘","🌙","☪️"],"first":["🌓","🌛"],"quarter":["🌓","🌗","🌛","🌜"],"gibbous":["🌔","🌖"],"full":["🌕","🌝"],"wane":["🌖","🌘"],"last":["🌗","🌜","⏮️"],"sun":["☀️","🌞","⛅","🌤️","🌥️","🌦️"],"ringed":["🪐"],"planet":["🪐"],"glow":["🌟"],"shoot":["🌠"],"milky":["🌌"],"way":["🌌"],"cloud":["☁️","⛅","⛈️","🌤️","🌥️","🌦️","🌧️","🌨️","🌩️"],"behind":["⛅","🌤️","🌥️","🌦️"],"lightning":["⛈️","🌩️"],"rain":["⛈️","🌦️","🌧️","☔"],"large":["🌥️","⬛","⬜","🔶","🔷"],"tornado":["🌪️"],"fog":["🌫️"],"cyclone":["🌀"],"rainbow":["🌈","🏳️‍🌈"],"drops":["☔"],"ground":["⛱️"],"voltage":["⚡"],"snowflake":["❄️"],"snowman":["☃️","⛄"],"comet":["☄️"],"droplet":["💧"],"jack":["🎃"],"lantern":["🎃","🏮"],"christmas":["🎄","🇨🇽"],"fireworks":["🎆"],"sparkler":["🎇"],"firecracker":["🧨"],"sparkles":["✨"],"popper":["🎉"],"confetti":["🎊"],"tanabata":["🎋"],"pine":["🎍"],"dolls":["🎎","🪆"],"carp":["🎏"],"streamer":["🎏"],"chime":["🎐"],"view":["🎑"],"ceremony":["🎑"],"envelope":["🧧","✉️","📨","📩"],"wrapped":["🎁"],"gift":["🎁"],"reminder":["🎗️"],"admission":["🎟️"],"tickets":["🎟️"],"ticket":["🎫"],"military":["🎖️","🪖"],"medal":["🎖️","🏅","🥇","🥈","🥉"],"trophy":["🏆"],"sports":["🏅"],"1st":["🥇"],"place":["🥇","🥈","🥉","🛐"],"2nd":["🥈"],"3rd":["🥉"],"soccer":["⚽"],"baseball":["⚾"],"softball":["🥎"],"basketball":["🏀"],"volleyball":["🏐"],"american":["🏈","🇦🇸"],"football":["🏈","🏉"],"rugby":["🏉"],"tennis":["🎾"],"disc":["🥏"],"game":["🏏","🎮","🎲"],"field":["🏑"],"hockey":["🏑","🏒"],"lacrosse":["🥍"],"ping":["🏓"],"pong":["🏓"],"badminton":["🏸"],"glove":["🥊"],"martial":["🥋"],"arts":["🥋","🎭"],"uniform":["🥋"],"goal":["🥅"],"net":["🥅"],"flag":["⛳","📫","📪","📬","📭","🏁","🚩","🏴","🏳️","🏳️‍🌈","🏳️‍⚧️","🏴‍☠️","🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺","🇦🇼","🇦🇽","🇦🇿","🇧🇦","🇧🇧","🇧🇩","🇧🇪","🇧🇫","🇧🇬","🇧🇭","🇧🇮","🇧🇯","🇧🇱","🇧🇲","🇧🇳","🇧🇴","🇧🇶","🇧🇷","🇧🇸","🇧🇹","🇧🇻","🇧🇼","🇧🇾","🇧🇿","🇨🇦","🇨🇨","🇨🇩","🇨🇫","🇨🇬","🇨🇭","🇨🇮","🇨🇰","🇨🇱","🇨🇲","🇨🇳","🇨🇴","🇨🇵","🇨🇷","🇨🇺","🇨🇻","🇨🇼","🇨🇽","🇨🇾","🇨🇿","🇩🇪","🇩🇬","🇩🇯","🇩🇰","🇩🇲","🇩🇴","🇩🇿","🇪🇦","🇪🇨","🇪🇪","🇪🇬","🇪🇭","🇪🇷","🇪🇸","🇪🇹","🇪🇺","🇫🇮","🇫🇯","🇫🇰","🇫🇲","🇫🇴","🇫🇷","🇬🇦","🇬🇧","🇬🇩","🇬🇪","🇬🇫","🇬🇬","🇬🇭","🇬🇮","🇬🇱","🇬🇲","🇬🇳","🇬🇵","🇬🇶","🇬🇷","🇬🇸","🇬🇹","🇬🇺","🇬🇼","🇬🇾","🇭🇰","🇭🇲","🇭🇳","🇭🇷","🇭🇹","🇭🇺","🇮🇨","🇮🇩","🇮🇪","🇮🇱","🇮🇲","🇮🇳","🇮🇴","🇮🇶","🇮🇷","🇮🇸","🇮🇹","🇯🇪","🇯🇲","🇯🇴","🇯🇵","🇰🇪","🇰🇬","🇰🇭","🇰🇮","🇰🇲","🇰🇳","🇰🇵","🇰🇷","🇰🇼","🇰🇾","🇰🇿","🇱🇦","🇱🇧","🇱🇨","🇱🇮","🇱🇰","🇱🇷","🇱🇸","🇱🇹","🇱🇺","🇱🇻","🇱🇾","🇲🇦","🇲🇨","🇲🇩","🇲🇪","🇲🇫","🇲🇬","🇲🇭","🇲🇰","🇲🇱","🇲🇲","🇲🇳","🇲🇴","🇲🇵","🇲🇶","🇲🇷","🇲🇸","🇲🇹","🇲🇺","🇲🇻","🇲🇼","🇲🇽","🇲🇾","🇲🇿","🇳🇦","🇳🇨","🇳🇪","🇳🇫","🇳🇬","🇳🇮","🇳🇱","🇳🇴","🇳🇵","🇳🇷","🇳🇺","🇳🇿","🇴🇲","🇵🇦","🇵🇪","🇵🇫","🇵🇬","🇵🇭","🇵🇰","🇵🇱","🇵🇲","🇵🇳","🇵🇷","🇵🇸","🇵🇹","🇵🇼","🇵🇾","🇶🇦","🇷🇪","🇷🇴","🇷🇸","🇷🇺","🇷🇼","🇸🇦","🇸🇧","🇸🇨","🇸🇩","🇸🇪","🇸🇬","🇸🇭","🇸🇮","🇸🇯","🇸🇰","🇸🇱","🇸🇲","🇸🇳","🇸🇴","🇸🇷","🇸🇸","🇸🇹","🇸🇻","🇸🇽","🇸🇾","🇸🇿","🇹🇦","🇹🇨","🇹🇩","🇹🇫","🇹🇬","🇹🇭","🇹🇯","🇹🇰","🇹🇱","🇹🇲","🇹🇳","🇹🇴","🇹🇷","🇹🇹","🇹🇻","🇹🇼","🇹🇿","🇺🇦","🇺🇬","🇺🇲","🇺🇳","🇺🇸","🇺🇾","🇺🇿","🇻🇦","🇻🇨","🇻🇪","🇻🇬","🇻🇮","🇻🇳","🇻🇺","🇼🇫","🇼🇸","🇽🇰","🇾🇪","🇾🇹","🇿🇦","🇿🇲","🇿🇼","🏴󠁧󠁢󠁥󠁮󠁧󠁿","🏴󠁧󠁢󠁳󠁣󠁴󠁿","🏴󠁧󠁢󠁷󠁬󠁳󠁿"],"dive":["🤿"],"shirt":["🎽","👕"],"skis":["🎿"],"sled":["🛷"],"curl":["🥌","📃"],"stone":["🥌","💎"],"bullseye":["🎯"],"yo":["🪀"],"kite":["🪁"],"pistol":["🔫"],"pool":["🎱"],"crystal":["🔮"],"magic":["🪄"],"wand":["🪄"],"video":["🎮","📹"],"joystick":["🕹️"],"slot":["🎰"],"machine":["🎰","📠"],"die":["🎲"],"puzzle":["🧩"],"piece":["🧩","🩱"],"teddy":["🧸"],"pinata":["🪅"],"mirror":["🪩","🪞"],"spade":["♠️"],"diamond":["♦️","🔶","🔷","🔸","🔹","💠"],"club":["♣️"],"chess":["♟️"],"pawn":["♟️"],"joker":["🃏"],"mahjong":["🀄"],"cards":["🎴"],"perform":["🎭"],"framed":["🖼️"],"picture":["🖼️"],"palette":["🎨"],"thread":["🧵"],"sew":["🪡"],"needle":["🪡"],"yarn":["🧶"],"knot":["🪢"],"goggles":["🥽"],"lab":["🥼"],"coat":["🥼","🧥"],"safety":["🦺","🧷"],"vest":["🦺"],"necktie":["👔"],"jeans":["👖"],"scarf":["🧣"],"gloves":["🧤"],"socks":["🧦"],"dress":["👗"],"kimono":["👘"],"sari":["🥻"],"swimsuit":["🩱"],"briefs":["🩲"],"shorts":["🩳"],"bikini":["👙"],"clothes":["👚"],"fold":["🪭"],"fan":["🪭"],"purse":["👛"],"handbag":["👜"],"clutch":["👝"],"bag":["👝","💰"],"shop":["🛍️","🛒"],"bags":["🛍️"],"backpack":["🎒"],"thong":["🩴"],"sandal":["🩴","👡"],"shoe":["👞","👟","🥿","👠"],"hike":["🥾"],"boot":["🥾","👢"],"flat":["🥿"],"heeled":["👠"],"ballet":["🩰"],"shoes":["🩰"],"pick":["🪮","⛏️","⚒️"],"top":["🎩","🔝"],"graduation":["🎓"],"cap":["🎓","🧢"],"billed":["🧢"],"helmet":["🪖","⛑️"],"rescue":["⛑️"],"prayer":["📿"],"beads":["📿"],"lipstick":["💄"],"gem":["💎"],"muted":["🔇"],"speaker":["🔇","🔈","🔉","🔊"],"low":["🔈","🪫"],"volume":["🔈","🔉","🔊"],"medium":["🔉","◼️","◻️","◾","◽"],"loudspeaker":["📢"],"megaphone":["📣"],"postal":["📯"],"horn":["📯"],"slash":["🔕"],"musical":["🎼","🎵","🎶","🎹"],"score":["🎼"],"note":["🎵"],"notes":["🎶"],"studio":["🎙️"],"microphone":["🎙️","🎤"],"level":["🎚️"],"slider":["🎚️"],"control":["🎛️","🛂"],"knobs":["🎛️"],"headphone":["🎧"],"radio":["📻","🔘"],"saxophone":["🎷"],"accordion":["🪗"],"guitar":["🎸"],"keyboard":["🎹","⌨️"],"trumpet":["🎺"],"violin":["🎻"],"banjo":["🪕"],"long":["🪘"],"maracas":["🪇"],"flute":["🪈"],"mobile":["📱","📲","📵","📴"],"phone":["📱","📲","📴"],"telephone":["☎️","📞"],"receiver":["📞"],"pager":["📟"],"fax":["📠"],"battery":["🔋","🪫"],"electric":["🔌"],"plug":["🔌"],"laptop":["💻"],"desktop":["🖥️"],"computer":["🖥️","🖱️","💽"],"printer":["🖨️"],"trackball":["🖲️"],"disk":["💽","💾","💿"],"floppy":["💾"],"optical":["💿"],"dvd":["📀"],"abacus":["🧮"],"movie":["🎥"],"camera":["🎥","📷","📸","📹"],"film":["🎞️","📽️"],"frames":["🎞️"],"projector":["📽️"],"clapper":["🎬"],"board":["🎬"],"television":["📺"],"flash":["📸"],"videocassette":["📼"],"magnify":["🔍","🔎"],"tilted":["🔍","🔎"],"candle":["🕯️"],"bulb":["💡"],"flashlight":["🔦"],"paper":["🏮","🧻"],"diya":["🪔"],"lamp":["🪔","🛋️"],"notebook":["📔","📓"],"decorative":["📔"],"cover":["📔"],"book":["📕","📖","📗","📘","📙"],"books":["📚"],"ledger":["📒"],"page":["📃","📄"],"scroll":["📜"],"newspaper":["📰","🗞️"],"rolled":["🗞️"],"bookmark":["📑","🔖"],"tabs":["📑"],"label":["🏷️"],"coin":["🪙"],"yen":["💴","💹"],"banknote":["💴","💵","💶","💷"],"dollar":["💵","💲"],"euro":["💶"],"pound":["💷"],"wings":["💸"],"credit":["💳"],"card":["💳","🗂️","📇","🗃️","🪪"],"receipt":["🧾"],"chart":["💹","📈","📉","📊"],"increase":["💹","📈"],"mail":["📧"],"income":["📨"],"outbox":["📤"],"tray":["📤","📥"],"inbox":["📥"],"package":["📦"],"mailbox":["📫","📪","📬","📭"],"lowered":["📪","📭"],"postbox":["📮"],"ballot":["🗳️"],"pencil":["✏️"],"nib":["✒️"],"pen":["🖋️","🖊️","🔏"],"paintbrush":["🖌️"],"crayon":["🖍️"],"memo":["📝"],"briefcase":["💼"],"file":["📁","📂","🗃️","🗄️"],"folder":["📁","📂"],"dividers":["🗂️"],"calendar":["📅","📆","🗓️"],"off":["📆","📴"],"notepad":["🗒️"],"decrease":["📉"],"clipboard":["📋"],"pushpin":["📌","📍"],"round":["📍"],"paperclip":["📎"],"linked":["🖇️"],"paperclips":["🖇️"],"straight":["📏"],"ruler":["📏","📐"],"triangular":["📐","🚩"],"scissors":["✂️"],"cabinet":["🗄️"],"wastebasket":["🗑️"],"locked":["🔒","🔏","🔐"],"unlocked":["🔓"],"key":["🔐","🔑","🗝️"],"hammer":["🔨","⚒️","🛠️"],"axe":["🪓"],"wrench":["🛠️","🔧"],"dagger":["🗡️"],"swords":["⚔️"],"bomb":["💣"],"boomerang":["🪃"],"shield":["🛡️"],"carpentry":["🪚"],"saw":["🪚"],"screwdriver":["🪛"],"nut":["🔩"],"bolt":["🔩"],"gear":["⚙️"],"clamp":["🗜️"],"balance":["⚖️"],"scale":["⚖️"],"link":["🔗"],"chains":["⛓️"],"hook":["🪝"],"toolbox":["🧰"],"magnet":["🧲"],"ladder":["🪜"],"alembic":["⚗️"],"test":["🧪"],"tube":["🧪"],"petri":["🧫"],"dish":["🧫"],"dna":["🧬"],"microscope":["🔬"],"telescope":["🔭"],"antenna":["📡","📶"],"syringe":["💉"],"drop":["🩸"],"blood":["🩸","🅰️","🆎","🅱️","🅾️"],"pill":["💊"],"adhesive":["🩹"],"crutch":["🩼"],"stethoscope":["🩺"],"ray":["🩻"],"door":["🚪"],"elevator":["🛗"],"window":["🪟"],"couch":["🛋️"],"chair":["🪑"],"toilet":["🚽"],"plunger":["🪠"],"shower":["🚿"],"bathtub":["🛁"],"trap":["🪤"],"razor":["🪒"],"lotion":["🧴"],"pin":["🧷"],"broom":["🧹"],"basket":["🧺"],"bucket":["🪣"],"soap":["🧼"],"bubbles":["🫧"],"toothbrush":["🪥"],"sponge":["🧽"],"extinguisher":["🧯"],"cart":["🛒"],"cigarette":["🚬"],"coffin":["⚰️"],"headstone":["🪦"],"funeral":["⚱️"],"urn":["⚱️"],"nazar":["🧿"],"amulet":["🧿"],"hamsa":["🪬"],"moai":["🗿"],"placard":["🪧"],"identification":["🪪"],"atm":["🏧"],"litter":["🚮","🚯"],"bin":["🚮"],"potable":["🚰","🚱"],"restroom":["🚻"],"closet":["🚾"],"passport":["🛂"],"customs":["🛃"],"baggage":["🛄"],"claim":["🛄"],"warn":["⚠️"],"children":["🚸"],"cross":["🚸","✝️","☦️","❌","❎"],"entry":["⛔"],"prohibited":["🚫","🈲"],"bicycles":["🚳"],"smoke":["🚭"],"non":["🚱"],"pedestrians":["🚷"],"phones":["📵"],"under":["🔞"],"eighteen":["🔞"],"radioactive":["☢️"],"biohazard":["☣️"],"curve":["↩️","↪️","⤴️","⤵️"],"clockwise":["🔃"],"arrows":["🔃","🔄"],"counterclockwise":["🔄"],"button":["🔄","🔀","🔁","🔂","▶️","⏩","⏭️","⏯️","◀️","⏪","⏮️","🔼","⏫","🔽","⏬","⏸️","⏹️","⏺️","⏏️","🔅","🔆","✅","❎","🅰️","🆎","🅱️","🆑","🆒","🆓","🆔","🆕","🆖","🅾️","🆗","🅿️","🆘","🆙","🆚","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵","🔘","🔳","🔲"],"end":["🔚"],"soon":["🔜"],"worship":["🛐"],"atom":["⚛️"],"om":["🕉️"],"david":["✡️"],"dharma":["☸️"],"yin":["☯️"],"yang":["☯️"],"latin":["✝️","🔠","🔡","🔤"],"orthodox":["☦️"],"peace":["☮️"],"menorah":["🕎"],"pointed":["🔯","✴️","🔺","🔻"],"khanda":["🪯"],"aries":["♈"],"taurus":["♉"],"gemini":["♊"],"cancer":["♋"],"leo":["♌"],"virgo":["♍"],"libra":["♎"],"scorpio":["♏"],"sagittarius":["♐"],"capricorn":["♑"],"aquarius":["♒"],"pisces":["♓"],"ophiuchus":["⛎"],"shuffle":["🔀"],"tracks":["🔀"],"repeat":["🔁","🔂"],"single":["🔂"],"fast":["⏩","⏪","⏫","⏬"],"forward":["⏩"],"next":["⏭️"],"or":["⏯️"],"pause":["⏯️","⏸️"],"reverse":["◀️","⏪"],"upwards":["🔼"],"downwards":["🔽"],"record":["⏺️"],"eject":["⏏️"],"cinema":["🎦"],"dim":["🔅"],"bright":["🔆"],"bars":["📶"],"wireless":["🛜"],"vibration":["📳"],"mode":["📳"],"female":["♀️"],"male":["♂️"],"transgender":["⚧️","🏳️‍⚧️"],"multiply":["✖️"],"plus":["➕"],"minus":["➖"],"divide":["➗"],"heavy":["🟰","💲"],"equals":["🟰"],"infinity":["♾️"],"double":["‼️","➿"],"question":["⁉️","❓","❔"],"wavy":["〰️"],"currency":["💱"],"exchange":["💱"],"recycle":["♻️"],"fleur":["⚜️"],"de":["⚜️"],"lis":["⚜️"],"trident":["🔱"],"emblem":["🔱"],"name":["📛"],"badge":["📛"],"for":["🔰","🈺"],"beginner":["🔰"],"hollow":["⭕"],"circle":["⭕","🔴","🟠","🟡","🟢","🔵","🟣","🟤","⚫","⚪"],"check":["✅","☑️","✔️"],"loop":["➰","➿"],"part":["〽️"],"alternation":["〽️"],"spoked":["✳️"],"asterisk":["✳️"],"copyright":["©️"],"registered":["®️"],"trade":["™️"],"keycap":["#️⃣","*️⃣","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"],"input":["🔠","🔡","🔢","🔣","🔤"],"uppercase":["🔠"],"lowercase":["🔡"],"numbers":["🔢"],"letters":["🔤"],"type":["🅰️","🆎","🅱️","🅾️"],"ab":["🆎"],"cl":["🆑"],"cool":["🆒"],"free":["🆓","🈶","🈚"],"information":["ℹ️"],"id":["🆔"],"circled":["Ⓜ️"],"ng":["🆖"],"sos":["🆘"],"vs":["🆚"],"here":["🈁"],"charge":["🈂️","🈶","🈚"],"monthly":["🈷️"],"amount":["🈷️"],"reserved":["🈯"],"bargain":["🉐"],"discount":["🈹"],"acceptable":["🉑"],"application":["🈸"],"pass":["🈴"],"grade":["🈴"],"vacancy":["🈳","🈵"],"congratulations":["㊗️"],"secret":["㊙️"],"business":["🈺"],"square":["🟥","🟧","🟨","🟩","🟦","🟪","🟫","⬛","⬜","◼️","◻️","◾","◽","▪️","▫️","🔳","🔲"],"triangle":["🔺","🔻"],"dot":["💠"],"chequered":["🏁"],"flags":["🎌"],"pirate":["🏴‍☠️"],"ascension":["🇦🇨"],"andorra":["🇦🇩"],"united":["🇦🇪","🇬🇧","🇺🇳","🇺🇸"],"arab":["🇦🇪"],"emirates":["🇦🇪"],"afghanistan":["🇦🇫"],"antigua":["🇦🇬"],"barbuda":["🇦🇬"],"anguilla":["🇦🇮"],"albania":["🇦🇱"],"armenia":["🇦🇲"],"angola":["🇦🇴"],"antarctica":["🇦🇶"],"argentina":["🇦🇷"],"samoa":["🇦🇸","🇼🇸"],"austria":["🇦🇹"],"aruba":["🇦🇼"],"aland":["🇦🇽"],"islands":["🇦🇽","🇨🇨","🇨🇰","🇫🇰","🇫🇴","🇬🇸","🇭🇲","🇮🇨","🇰🇾","🇲🇭","🇲🇵","🇵🇳","🇸🇧","🇹🇨","🇺🇲","🇻🇬","🇻🇮"],"azerbaijan":["🇦🇿"],"bosnia":["🇧🇦"],"herzegovina":["🇧🇦"],"barbados":["🇧🇧"],"bangladesh":["🇧🇩"],"belgium":["🇧🇪"],"burkina":["🇧🇫"],"faso":["🇧🇫"],"bulgaria":["🇧🇬"],"bahrain":["🇧🇭"],"burundi":["🇧🇮"],"benin":["🇧🇯"],"st":["🇧🇱","🇰🇳","🇱🇨","🇲🇫","🇵🇲","🇸🇭","🇻🇨"],"barthelemy":["🇧🇱"],"bermuda":["🇧🇲"],"brunei":["🇧🇳"],"bolivia":["🇧🇴"],"caribbean":["🇧🇶"],"netherlands":["🇧🇶","🇳🇱"],"brazil":["🇧🇷"],"bahamas":["🇧🇸"],"bhutan":["🇧🇹"],"bouvet":["🇧🇻"],"botswana":["🇧🇼"],"belarus":["🇧🇾"],"belize":["🇧🇿"],"canada":["🇨🇦"],"cocos":["🇨🇨"],"keel":["🇨🇨"],"congo":["🇨🇩","🇨🇬"],"kinshasa":["🇨🇩"],"central":["🇨🇫"],"african":["🇨🇫"],"republic":["🇨🇫","🇩🇴"],"brazzaville":["🇨🇬"],"switzerland":["🇨🇭"],"cote":["🇨🇮"],"ivoire":["🇨🇮"],"chile":["🇨🇱"],"cameroon":["🇨🇲"],"china":["🇨🇳","🇭🇰","🇲🇴"],"colombia":["🇨🇴"],"clipperton":["🇨🇵"],"costa":["🇨🇷"],"rica":["🇨🇷"],"cuba":["🇨🇺"],"cape":["🇨🇻"],"verde":["🇨🇻"],"curacao":["🇨🇼"],"cyprus":["🇨🇾"],"czechia":["🇨🇿"],"germany":["🇩🇪"],"diego":["🇩🇬"],"garcia":["🇩🇬"],"djibouti":["🇩🇯"],"denmark":["🇩🇰"],"dominica":["🇩🇲"],"dominican":["🇩🇴"],"algeria":["🇩🇿"],"ceuta":["🇪🇦"],"melilla":["🇪🇦"],"ecuador":["🇪🇨"],"estonia":["🇪🇪"],"egypt":["🇪🇬"],"western":["🇪🇭"],"sahara":["🇪🇭"],"eritrea":["🇪🇷"],"spain":["🇪🇸"],"ethiopia":["🇪🇹"],"european":["🇪🇺"],"union":["🇪🇺"],"finland":["🇫🇮"],"fiji":["🇫🇯"],"falkland":["🇫🇰"],"micronesia":["🇫🇲"],"faroe":["🇫🇴"],"france":["🇫🇷"],"gabon":["🇬🇦"],"kingdom":["🇬🇧"],"grenada":["🇬🇩"],"georgia":["🇬🇪","🇬🇸"],"guiana":["🇬🇫"],"guernsey":["🇬🇬"],"ghana":["🇬🇭"],"gibraltar":["🇬🇮"],"greenland":["🇬🇱"],"gambia":["🇬🇲"],"guinea":["🇬🇳","🇬🇶","🇬🇼","🇵🇬"],"guadeloupe":["🇬🇵"],"equatorial":["🇬🇶"],"greece":["🇬🇷"],"south":["🇬🇸","🇰🇷","🇸🇸","🇿🇦"],"guatemala":["🇬🇹"],"guam":["🇬🇺"],"bissau":["🇬🇼"],"guyana":["🇬🇾"],"hong":["🇭🇰"],"kong":["🇭🇰"],"sar":["🇭🇰","🇲🇴"],"heard":["🇭🇲"],"mcdonald":["🇭🇲"],"honduras":["🇭🇳"],"croatia":["🇭🇷"],"haiti":["🇭🇹"],"hungary":["🇭🇺"],"canary":["🇮🇨"],"indonesia":["🇮🇩"],"ireland":["🇮🇪"],"israel":["🇮🇱"],"isle":["🇮🇲"],"india":["🇮🇳"],"british":["🇮🇴","🇻🇬"],"indian":["🇮🇴"],"ocean":["🇮🇴"],"territory":["🇮🇴"],"iraq":["🇮🇶"],"iran":["🇮🇷"],"iceland":["🇮🇸"],"italy":["🇮🇹"],"jersey":["🇯🇪"],"jamaica":["🇯🇲"],"jordan":["🇯🇴"],"kenya":["🇰🇪"],"kyrgyzstan":["🇰🇬"],"cambodia":["🇰🇭"],"kiribati":["🇰🇮"],"comoros":["🇰🇲"],"kitts":["🇰🇳"],"nevis":["🇰🇳"],"north":["🇰🇵","🇲🇰"],"korea":["🇰🇵","🇰🇷"],"kuwait":["🇰🇼"],"cayman":["🇰🇾"],"kazakhstan":["🇰🇿"],"laos":["🇱🇦"],"lebanon":["🇱🇧"],"lucia":["🇱🇨"],"liechtenstein":["🇱🇮"],"sri":["🇱🇰"],"lanka":["🇱🇰"],"liberia":["🇱🇷"],"lesotho":["🇱🇸"],"lithuania":["🇱🇹"],"luxembourg":["🇱🇺"],"latvia":["🇱🇻"],"libya":["🇱🇾"],"morocco":["🇲🇦"],"monaco":["🇲🇨"],"moldova":["🇲🇩"],"montenegro":["🇲🇪"],"martin":["🇲🇫"],"madagascar":["🇲🇬"],"marshall":["🇲🇭"],"macedonia":["🇲🇰"],"mali":["🇲🇱"],"myanmar":["🇲🇲"],"burma":["🇲🇲"],"mongolia":["🇲🇳"],"macao":["🇲🇴"],"northern":["🇲🇵"],"mariana":["🇲🇵"],"martinique":["🇲🇶"],"mauritania":["🇲🇷"],"montserrat":["🇲🇸"],"malta":["🇲🇹"],"mauritius":["🇲🇺"],"maldives":["🇲🇻"],"malawi":["🇲🇼"],"mexico":["🇲🇽"],"malaysia":["🇲🇾"],"mozambique":["🇲🇿"],"namibia":["🇳🇦"],"caledonia":["🇳🇨"],"niger":["🇳🇪"],"norfolk":["🇳🇫"],"nigeria":["🇳🇬"],"nicaragua":["🇳🇮"],"norway":["🇳🇴"],"nepal":["🇳🇵"],"nauru":["🇳🇷"],"niue":["🇳🇺"],"zealand":["🇳🇿"],"oman":["🇴🇲"],"panama":["🇵🇦"],"peru":["🇵🇪"],"polynesia":["🇵🇫"],"papua":["🇵🇬"],"philippines":["🇵🇭"],"pakistan":["🇵🇰"],"poland":["🇵🇱"],"pierre":["🇵🇲"],"miquelon":["🇵🇲"],"pitcairn":["🇵🇳"],"puerto":["🇵🇷"],"rico":["🇵🇷"],"palestinian":["🇵🇸"],"territories":["🇵🇸","🇹🇫"],"portugal":["🇵🇹"],"palau":["🇵🇼"],"paraguay":["🇵🇾"],"qatar":["🇶🇦"],"reunion":["🇷🇪"],"romania":["🇷🇴"],"serbia":["🇷🇸"],"russia":["🇷🇺"],"rwanda":["🇷🇼"],"saudi":["🇸🇦"],"arabia":["🇸🇦"],"solomon":["🇸🇧"],"seychelles":["🇸🇨"],"sudan":["🇸🇩","🇸🇸"],"sweden":["🇸🇪"],"singapore":["🇸🇬"],"helena":["🇸🇭"],"slovenia":["🇸🇮"],"svalbard":["🇸🇯"],"jan":["🇸🇯"],"mayen":["🇸🇯"],"slovakia":["🇸🇰"],"sierra":["🇸🇱"],"leone":["🇸🇱"],"san":["🇸🇲"],"marino":["🇸🇲"],"senegal":["🇸🇳"],"somalia":["🇸🇴"],"suriname":["🇸🇷"],"sao":["🇸🇹"],"tome":["🇸🇹"],"principe":["🇸🇹"],"el":["🇸🇻"],"salvador":["🇸🇻"],"sint":["🇸🇽"],"maarten":["🇸🇽"],"syria":["🇸🇾"],"eswatini":["🇸🇿"],"tristan":["🇹🇦"],"da":["🇹🇦"],"cunha":["🇹🇦"],"turks":["🇹🇨"],"caicos":["🇹🇨"],"chad":["🇹🇩"],"southern":["🇹🇫"],"togo":["🇹🇬"],"thailand":["🇹🇭"],"tajikistan":["🇹🇯"],"tokelau":["🇹🇰"],"timor":["🇹🇱"],"leste":["🇹🇱"],"turkmenistan":["🇹🇲"],"tunisia":["🇹🇳"],"tonga":["🇹🇴"],"trinidad":["🇹🇹"],"tobago":["🇹🇹"],"tuvalu":["🇹🇻"],"taiwan":["🇹🇼"],"tanzania":["🇹🇿"],"ukraine":["🇺🇦"],"uganda":["🇺🇬"],"us":["🇺🇲","🇻🇮"],"outly":["🇺🇲"],"nations":["🇺🇳"],"states":["🇺🇸"],"uruguay":["🇺🇾"],"uzbekistan":["🇺🇿"],"vatican":["🇻🇦"],"city":["🇻🇦"],"vincent":["🇻🇨"],"grenadines":["🇻🇨"],"venezuela":["🇻🇪"],"virgin":["🇻🇬","🇻🇮"],"vietnam":["🇻🇳"],"vanuatu":["🇻🇺"],"wallis":["🇼🇫"],"futuna":["🇼🇫"],"kosovo":["🇽🇰"],"yemen":["🇾🇪"],"mayotte":["🇾🇹"],"zambia":["🇿🇲"],"zimbabwe":["🇿🇼"],"england":["🏴󠁧󠁢󠁥󠁮󠁧󠁿"],"scotland":["🏴󠁧󠁢󠁳󠁣󠁴󠁿"],"wales":["🏴󠁧󠁢󠁷󠁬󠁳󠁿"]}
+},{}],43:[function(require,module,exports){
+module.exports={"߀":"0","́":""," ":" ","Ⓐ":"A","Ａ":"A","À":"A","Á":"A","Â":"A","Ầ":"A","Ấ":"A","Ẫ":"A","Ẩ":"A","Ã":"A","Ā":"A","Ă":"A","Ằ":"A","Ắ":"A","Ẵ":"A","Ẳ":"A","Ȧ":"A","Ǡ":"A","Ä":"A","Ǟ":"A","Ả":"A","Å":"A","Ǻ":"A","Ǎ":"A","Ȁ":"A","Ȃ":"A","Ạ":"A","Ậ":"A","Ặ":"A","Ḁ":"A","Ą":"A","Ⱥ":"A","Ɐ":"A","Ꜳ":"AA","Æ":"AE","Ǽ":"AE","Ǣ":"AE","Ꜵ":"AO","Ꜷ":"AU","Ꜹ":"AV","Ꜻ":"AV","Ꜽ":"AY","Ⓑ":"B","Ｂ":"B","Ḃ":"B","Ḅ":"B","Ḇ":"B","Ƀ":"B","Ɓ":"B","ｃ":"C","Ⓒ":"C","Ｃ":"C","Ꜿ":"C","Ḉ":"C","Ç":"C","Ⓓ":"D","Ｄ":"D","Ḋ":"D","Ď":"D","Ḍ":"D","Ḑ":"D","Ḓ":"D","Ḏ":"D","Đ":"D","Ɗ":"D","Ɖ":"D","ᴅ":"D","Ꝺ":"D","Ð":"Dh","Ǳ":"DZ","Ǆ":"DZ","ǲ":"Dz","ǅ":"Dz","ɛ":"E","Ⓔ":"E","Ｅ":"E","È":"E","É":"E","Ê":"E","Ề":"E","Ế":"E","Ễ":"E","Ể":"E","Ẽ":"E","Ē":"E","Ḕ":"E","Ḗ":"E","Ĕ":"E","Ė":"E","Ë":"E","Ẻ":"E","Ě":"E","Ȅ":"E","Ȇ":"E","Ẹ":"E","Ệ":"E","Ȩ":"E","Ḝ":"E","Ę":"E","Ḙ":"E","Ḛ":"E","Ɛ":"E","Ǝ":"E","ᴇ":"E","ꝼ":"F","Ⓕ":"F","Ｆ":"F","Ḟ":"F","Ƒ":"F","Ꝼ":"F","Ⓖ":"G","Ｇ":"G","Ǵ":"G","Ĝ":"G","Ḡ":"G","Ğ":"G","Ġ":"G","Ǧ":"G","Ģ":"G","Ǥ":"G","Ɠ":"G","Ꞡ":"G","Ᵹ":"G","Ꝿ":"G","ɢ":"G","Ⓗ":"H","Ｈ":"H","Ĥ":"H","Ḣ":"H","Ḧ":"H","Ȟ":"H","Ḥ":"H","Ḩ":"H","Ḫ":"H","Ħ":"H","Ⱨ":"H","Ⱶ":"H","Ɥ":"H","Ⓘ":"I","Ｉ":"I","Ì":"I","Í":"I","Î":"I","Ĩ":"I","Ī":"I","Ĭ":"I","İ":"I","Ï":"I","Ḯ":"I","Ỉ":"I","Ǐ":"I","Ȉ":"I","Ȋ":"I","Ị":"I","Į":"I","Ḭ":"I","Ɨ":"I","Ⓙ":"J","Ｊ":"J","Ĵ":"J","Ɉ":"J","ȷ":"J","Ⓚ":"K","Ｋ":"K","Ḱ":"K","Ǩ":"K","Ḳ":"K","Ķ":"K","Ḵ":"K","Ƙ":"K","Ⱪ":"K","Ꝁ":"K","Ꝃ":"K","Ꝅ":"K","Ꞣ":"K","Ⓛ":"L","Ｌ":"L","Ŀ":"L","Ĺ":"L","Ľ":"L","Ḷ":"L","Ḹ":"L","Ļ":"L","Ḽ":"L","Ḻ":"L","Ł":"L","Ƚ":"L","Ɫ":"L","Ⱡ":"L","Ꝉ":"L","Ꝇ":"L","Ꞁ":"L","Ǉ":"LJ","ǈ":"Lj","Ⓜ":"M","Ｍ":"M","Ḿ":"M","Ṁ":"M","Ṃ":"M","Ɱ":"M","Ɯ":"M","ϻ":"M","Ꞥ":"N","Ƞ":"N","Ⓝ":"N","Ｎ":"N","Ǹ":"N","Ń":"N","Ñ":"N","Ṅ":"N","Ň":"N","Ṇ":"N","Ņ":"N","Ṋ":"N","Ṉ":"N","Ɲ":"N","Ꞑ":"N","ᴎ":"N","Ǌ":"NJ","ǋ":"Nj","Ⓞ":"O","Ｏ":"O","Ò":"O","Ó":"O","Ô":"O","Ồ":"O","Ố":"O","Ỗ":"O","Ổ":"O","Õ":"O","Ṍ":"O","Ȭ":"O","Ṏ":"O","Ō":"O","Ṑ":"O","Ṓ":"O","Ŏ":"O","Ȯ":"O","Ȱ":"O","Ö":"O","Ȫ":"O","Ỏ":"O","Ő":"O","Ǒ":"O","Ȍ":"O","Ȏ":"O","Ơ":"O","Ờ":"O","Ớ":"O","Ỡ":"O","Ở":"O","Ợ":"O","Ọ":"O","Ộ":"O","Ǫ":"O","Ǭ":"O","Ø":"O","Ǿ":"O","Ɔ":"O","Ɵ":"O","Ꝋ":"O","Ꝍ":"O","Œ":"OE","Ƣ":"OI","Ꝏ":"OO","Ȣ":"OU","Ⓟ":"P","Ｐ":"P","Ṕ":"P","Ṗ":"P","Ƥ":"P","Ᵽ":"P","Ꝑ":"P","Ꝓ":"P","Ꝕ":"P","Ⓠ":"Q","Ｑ":"Q","Ꝗ":"Q","Ꝙ":"Q","Ɋ":"Q","Ⓡ":"R","Ｒ":"R","Ŕ":"R","Ṙ":"R","Ř":"R","Ȑ":"R","Ȓ":"R","Ṛ":"R","Ṝ":"R","Ŗ":"R","Ṟ":"R","Ɍ":"R","Ɽ":"R","Ꝛ":"R","Ꞧ":"R","Ꞃ":"R","Ⓢ":"S","Ｓ":"S","ẞ":"S","Ś":"S","Ṥ":"S","Ŝ":"S","Ṡ":"S","Š":"S","Ṧ":"S","Ṣ":"S","Ṩ":"S","Ș":"S","Ş":"S","Ȿ":"S","Ꞩ":"S","Ꞅ":"S","Ⓣ":"T","Ｔ":"T","Ṫ":"T","Ť":"T","Ṭ":"T","Ț":"T","Ţ":"T","Ṱ":"T","Ṯ":"T","Ŧ":"T","Ƭ":"T","Ʈ":"T","Ⱦ":"T","Ꞇ":"T","Þ":"Th","Ꜩ":"TZ","Ⓤ":"U","Ｕ":"U","Ù":"U","Ú":"U","Û":"U","Ũ":"U","Ṹ":"U","Ū":"U","Ṻ":"U","Ŭ":"U","Ü":"U","Ǜ":"U","Ǘ":"U","Ǖ":"U","Ǚ":"U","Ủ":"U","Ů":"U","Ű":"U","Ǔ":"U","Ȕ":"U","Ȗ":"U","Ư":"U","Ừ":"U","Ứ":"U","Ữ":"U","Ử":"U","Ự":"U","Ụ":"U","Ṳ":"U","Ų":"U","Ṷ":"U","Ṵ":"U","Ʉ":"U","Ⓥ":"V","Ｖ":"V","Ṽ":"V","Ṿ":"V","Ʋ":"V","Ꝟ":"V","Ʌ":"V","Ꝡ":"VY","Ⓦ":"W","Ｗ":"W","Ẁ":"W","Ẃ":"W","Ŵ":"W","Ẇ":"W","Ẅ":"W","Ẉ":"W","Ⱳ":"W","Ⓧ":"X","Ｘ":"X","Ẋ":"X","Ẍ":"X","Ⓨ":"Y","Ｙ":"Y","Ỳ":"Y","Ý":"Y","Ŷ":"Y","Ỹ":"Y","Ȳ":"Y","Ẏ":"Y","Ÿ":"Y","Ỷ":"Y","Ỵ":"Y","Ƴ":"Y","Ɏ":"Y","Ỿ":"Y","Ⓩ":"Z","Ｚ":"Z","Ź":"Z","Ẑ":"Z","Ż":"Z","Ž":"Z","Ẓ":"Z","Ẕ":"Z","Ƶ":"Z","Ȥ":"Z","Ɀ":"Z","Ⱬ":"Z","Ꝣ":"Z","ⓐ":"a","ａ":"a","ẚ":"a","à":"a","á":"a","â":"a","ầ":"a","ấ":"a","ẫ":"a","ẩ":"a","ã":"a","ā":"a","ă":"a","ằ":"a","ắ":"a","ẵ":"a","ẳ":"a","ȧ":"a","ǡ":"a","ä":"a","ǟ":"a","ả":"a","å":"a","ǻ":"a","ǎ":"a","ȁ":"a","ȃ":"a","ạ":"a","ậ":"a","ặ":"a","ḁ":"a","ą":"a","ⱥ":"a","ɐ":"a","ɑ":"a","ꜳ":"aa","æ":"ae","ǽ":"ae","ǣ":"ae","ꜵ":"ao","ꜷ":"au","ꜹ":"av","ꜻ":"av","ꜽ":"ay","ⓑ":"b","ｂ":"b","ḃ":"b","ḅ":"b","ḇ":"b","ƀ":"b","ƃ":"b","ɓ":"b","Ƃ":"b","ⓒ":"c","ć":"c","ĉ":"c","ċ":"c","č":"c","ç":"c","ḉ":"c","ƈ":"c","ȼ":"c","ꜿ":"c","ↄ":"c","C":"c","Ć":"c","Ĉ":"c","Ċ":"c","Č":"c","Ƈ":"c","Ȼ":"c","ⓓ":"d","ｄ":"d","ḋ":"d","ď":"d","ḍ":"d","ḑ":"d","ḓ":"d","ḏ":"d","đ":"d","ƌ":"d","ɖ":"d","ɗ":"d","Ƌ":"d","Ꮷ":"d","ԁ":"d","Ɦ":"d","ð":"dh","ǳ":"dz","ǆ":"dz","ⓔ":"e","ｅ":"e","è":"e","é":"e","ê":"e","ề":"e","ế":"e","ễ":"e","ể":"e","ẽ":"e","ē":"e","ḕ":"e","ḗ":"e","ĕ":"e","ė":"e","ë":"e","ẻ":"e","ě":"e","ȅ":"e","ȇ":"e","ẹ":"e","ệ":"e","ȩ":"e","ḝ":"e","ę":"e","ḙ":"e","ḛ":"e","ɇ":"e","ǝ":"e","ⓕ":"f","ｆ":"f","ḟ":"f","ƒ":"f","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ⓖ":"g","ｇ":"g","ǵ":"g","ĝ":"g","ḡ":"g","ğ":"g","ġ":"g","ǧ":"g","ģ":"g","ǥ":"g","ɠ":"g","ꞡ":"g","ꝿ":"g","ᵹ":"g","ⓗ":"h","ｈ":"h","ĥ":"h","ḣ":"h","ḧ":"h","ȟ":"h","ḥ":"h","ḩ":"h","ḫ":"h","ẖ":"h","ħ":"h","ⱨ":"h","ⱶ":"h","ɥ":"h","ƕ":"hv","ⓘ":"i","ｉ":"i","ì":"i","í":"i","î":"i","ĩ":"i","ī":"i","ĭ":"i","ï":"i","ḯ":"i","ỉ":"i","ǐ":"i","ȉ":"i","ȋ":"i","ị":"i","į":"i","ḭ":"i","ɨ":"i","ı":"i","ⓙ":"j","ｊ":"j","ĵ":"j","ǰ":"j","ɉ":"j","ⓚ":"k","ｋ":"k","ḱ":"k","ǩ":"k","ḳ":"k","ķ":"k","ḵ":"k","ƙ":"k","ⱪ":"k","ꝁ":"k","ꝃ":"k","ꝅ":"k","ꞣ":"k","ⓛ":"l","ｌ":"l","ŀ":"l","ĺ":"l","ľ":"l","ḷ":"l","ḹ":"l","ļ":"l","ḽ":"l","ḻ":"l","ſ":"l","ł":"l","ƚ":"l","ɫ":"l","ⱡ":"l","ꝉ":"l","ꞁ":"l","ꝇ":"l","ɭ":"l","ǉ":"lj","ⓜ":"m","ｍ":"m","ḿ":"m","ṁ":"m","ṃ":"m","ɱ":"m","ɯ":"m","ⓝ":"n","ｎ":"n","ǹ":"n","ń":"n","ñ":"n","ṅ":"n","ň":"n","ṇ":"n","ņ":"n","ṋ":"n","ṉ":"n","ƞ":"n","ɲ":"n","ŉ":"n","ꞑ":"n","ꞥ":"n","ԉ":"n","ǌ":"nj","ⓞ":"o","ｏ":"o","ò":"o","ó":"o","ô":"o","ồ":"o","ố":"o","ỗ":"o","ổ":"o","õ":"o","ṍ":"o","ȭ":"o","ṏ":"o","ō":"o","ṑ":"o","ṓ":"o","ŏ":"o","ȯ":"o","ȱ":"o","ö":"o","ȫ":"o","ỏ":"o","ő":"o","ǒ":"o","ȍ":"o","ȏ":"o","ơ":"o","ờ":"o","ớ":"o","ỡ":"o","ở":"o","ợ":"o","ọ":"o","ộ":"o","ǫ":"o","ǭ":"o","ø":"o","ǿ":"o","ꝋ":"o","ꝍ":"o","ɵ":"o","ɔ":"o","ᴑ":"o","œ":"oe","ƣ":"oi","ꝏ":"oo","ȣ":"ou","ⓟ":"p","ｐ":"p","ṕ":"p","ṗ":"p","ƥ":"p","ᵽ":"p","ꝑ":"p","ꝓ":"p","ꝕ":"p","ρ":"p","ⓠ":"q","ｑ":"q","ɋ":"q","ꝗ":"q","ꝙ":"q","ⓡ":"r","ｒ":"r","ŕ":"r","ṙ":"r","ř":"r","ȑ":"r","ȓ":"r","ṛ":"r","ṝ":"r","ŗ":"r","ṟ":"r","ɍ":"r","ɽ":"r","ꝛ":"r","ꞧ":"r","ꞃ":"r","ⓢ":"s","ｓ":"s","ś":"s","ṥ":"s","ŝ":"s","ṡ":"s","š":"s","ṧ":"s","ṣ":"s","ṩ":"s","ș":"s","ş":"s","ȿ":"s","ꞩ":"s","ꞅ":"s","ẛ":"s","ʂ":"s","ß":"ss","ⓣ":"t","ｔ":"t","ṫ":"t","ẗ":"t","ť":"t","ṭ":"t","ț":"t","ţ":"t","ṱ":"t","ṯ":"t","ŧ":"t","ƭ":"t","ʈ":"t","ⱦ":"t","ꞇ":"t","þ":"th","ꜩ":"tz","ⓤ":"u","ｕ":"u","ù":"u","ú":"u","û":"u","ũ":"u","ṹ":"u","ū":"u","ṻ":"u","ŭ":"u","ü":"u","ǜ":"u","ǘ":"u","ǖ":"u","ǚ":"u","ủ":"u","ů":"u","ű":"u","ǔ":"u","ȕ":"u","ȗ":"u","ư":"u","ừ":"u","ứ":"u","ữ":"u","ử":"u","ự":"u","ụ":"u","ṳ":"u","ų":"u","ṷ":"u","ṵ":"u","ʉ":"u","ⓥ":"v","ｖ":"v","ṽ":"v","ṿ":"v","ʋ":"v","ꝟ":"v","ʌ":"v","ꝡ":"vy","ⓦ":"w","ｗ":"w","ẁ":"w","ẃ":"w","ŵ":"w","ẇ":"w","ẅ":"w","ẘ":"w","ẉ":"w","ⱳ":"w","ⓧ":"x","ｘ":"x","ẋ":"x","ẍ":"x","ⓨ":"y","ｙ":"y","ỳ":"y","ý":"y","ŷ":"y","ỹ":"y","ȳ":"y","ẏ":"y","ÿ":"y","ỷ":"y","ẙ":"y","ỵ":"y","ƴ":"y","ɏ":"y","ỿ":"y","ⓩ":"z","ｚ":"z","ź":"z","ẑ":"z","ż":"z","ž":"z","ẓ":"z","ẕ":"z","ƶ":"z","ȥ":"z","ɀ":"z","ⱬ":"z","ꝣ":"z"}
+},{}],44:[function(require,module,exports){
+/*
+	String Kit
+
+	Copyright (c) 2014 - 2021 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const latinizeMap = require( './json-data/latinize-map.json' ) ;
+
+module.exports = function( str ) {
+	return str.replace( /[^\u0000-\u007e]/g , ( c ) => { return latinizeMap[ c ] || c ; } ) ;
+} ;
+
+
+
+},{"./json-data/latinize-map.json":43}],45:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Dom Kit
@@ -9726,7 +12323,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@cronvel/xmldom":25,"_process":62}],36:[function(require,module,exports){
+},{"@cronvel/xmldom":25,"_process":76}],46:[function(require,module,exports){
 /*
  * Copyright (C) 2007-2018 Diego Perini
  * All rights reserved.
@@ -11504,7 +14101,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
   return Dom;
 });
 
-},{}],37:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 (function (Buffer){(function (){
 /**
  * https://opentype.js.org v1.3.4 | (c) Frederik De Bleser and other contributors | MIT License | Uses tiny-inflate by Devon Govett and string.prototype.codepointat polyfill by Mathias Bynens
@@ -25985,7 +28582,1421 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":58,"fs":56}],38:[function(require,module,exports){
+},{"buffer":72,"fs":70}],48:[function(require,module,exports){
+/**
+ * chroma.js - JavaScript library for color conversions
+ *
+ * Copyright (c) 2011-2019, Gregor Aisch
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. The name Gregor Aisch may not be used to endorse or promote products
+ * derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL GREGOR AISCH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * -------------------------------------------------------
+ *
+ * chroma.js includes colors from colorbrewer2.org, which are released under
+ * the following license:
+ *
+ * Copyright (c) 2002 Cynthia Brewer, Mark Harrower,
+ * and The Pennsylvania State University.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific
+ * language governing permissions and limitations under the License.
+ *
+ * ------------------------------------------------------
+ *
+ * Named colors are taken from X11 Color Names.
+ * http://www.w3.org/TR/css3-color/#svg-color
+ *
+ * @preserve
+ */
+
+(function (global, factory) {
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+    typeof define === 'function' && define.amd ? define(factory) :
+    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.chroma = factory());
+})(this, (function () { 'use strict';
+
+    var limit$1 = function (x, min, max) {
+        if ( min === void 0 ) min=0;
+        if ( max === void 0 ) max=1;
+
+        return x < min ? min : x > max ? max : x;
+    };
+
+    var limit = limit$1;
+
+    var clip_rgb$1 = function (rgb) {
+        rgb._clipped = false;
+        rgb._unclipped = rgb.slice(0);
+        for (var i=0; i<=3; i++) {
+            if (i < 3) {
+                if (rgb[i] < 0 || rgb[i] > 255) { rgb._clipped = true; }
+                rgb[i] = limit(rgb[i], 0, 255);
+            } else if (i === 3) {
+                rgb[i] = limit(rgb[i], 0, 1);
+            }
+        }
+        return rgb;
+    };
+
+    // ported from jQuery's $.type
+    var classToType = {};
+    for (var i = 0, list = ['Boolean', 'Number', 'String', 'Function', 'Array', 'Date', 'RegExp', 'Undefined', 'Null']; i < list.length; i += 1) {
+        var name = list[i];
+
+        classToType[("[object " + name + "]")] = name.toLowerCase();
+    }
+    var type$9 = function(obj) {
+        return classToType[Object.prototype.toString.call(obj)] || "object";
+    };
+
+    var type$8 = type$9;
+
+    var unpack$a = function (args, keyOrder) {
+        if ( keyOrder === void 0 ) keyOrder=null;
+
+    	// if called with more than 3 arguments, we return the arguments
+        if (args.length >= 3) { return Array.prototype.slice.call(args); }
+        // with less than 3 args we check if first arg is object
+        // and use the keyOrder string to extract and sort properties
+    	if (type$8(args[0]) == 'object' && keyOrder) {
+    		return keyOrder.split('')
+    			.filter(function (k) { return args[0][k] !== undefined; })
+    			.map(function (k) { return args[0][k]; });
+    	}
+    	// otherwise we just return the first argument
+    	// (which we suppose is an array of args)
+        return args[0];
+    };
+
+    var type$7 = type$9;
+
+    var last$2 = function (args) {
+        if (args.length < 2) { return null; }
+        var l = args.length-1;
+        if (type$7(args[l]) == 'string') { return args[l].toLowerCase(); }
+        return null;
+    };
+
+    var PI = Math.PI;
+
+    var utils = {
+    	clip_rgb: clip_rgb$1,
+    	limit: limit$1,
+    	type: type$9,
+    	unpack: unpack$a,
+    	last: last$2,
+    	PI: PI,
+    	TWOPI: PI*2,
+    	PITHIRD: PI/3,
+    	DEG2RAD: PI / 180,
+    	RAD2DEG: 180 / PI
+    };
+
+    var input$3 = {
+    	format: {},
+    	autodetect: []
+    };
+
+    var last$1 = utils.last;
+    var clip_rgb = utils.clip_rgb;
+    var type$6 = utils.type;
+    var _input = input$3;
+
+    var Color$b = function Color() {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var me = this;
+        if (type$6(args[0]) === 'object' &&
+            args[0].constructor &&
+            args[0].constructor === this.constructor) {
+            // the argument is already a Color instance
+            return args[0];
+        }
+
+        // last argument could be the mode
+        var mode = last$1(args);
+        var autodetect = false;
+
+        if (!mode) {
+            autodetect = true;
+            if (!_input.sorted) {
+                _input.autodetect = _input.autodetect.sort(function (a,b) { return b.p - a.p; });
+                _input.sorted = true;
+            }
+            // auto-detect format
+            for (var i = 0, list = _input.autodetect; i < list.length; i += 1) {
+                var chk = list[i];
+
+                mode = chk.test.apply(chk, args);
+                if (mode) { break; }
+            }
+        }
+
+        if (_input.format[mode]) {
+            var rgb = _input.format[mode].apply(null, autodetect ? args : args.slice(0,-1));
+            me._rgb = clip_rgb(rgb);
+        } else {
+            throw new Error('unknown format: '+args);
+        }
+
+        // add alpha channel
+        if (me._rgb.length === 3) { me._rgb.push(1); }
+    };
+
+    Color$b.prototype.toString = function toString () {
+        if (type$6(this.hex) == 'function') { return this.hex(); }
+        return ("[" + (this._rgb.join(',')) + "]");
+    };
+
+    var Color_1 = Color$b;
+
+    var chroma$4 = function () {
+    	var args = [], len = arguments.length;
+    	while ( len-- ) args[ len ] = arguments[ len ];
+
+    	return new (Function.prototype.bind.apply( chroma$4.Color, [ null ].concat( args) ));
+    };
+
+    chroma$4.Color = Color_1;
+    chroma$4.version = '2.6.2';
+
+    var chroma_1 = chroma$4;
+
+    var unpack$9 = utils.unpack;
+    var last = utils.last;
+    var round$2 = Math.round;
+
+    var rgb2hex$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var ref = unpack$9(args, 'rgba');
+        var r = ref[0];
+        var g = ref[1];
+        var b = ref[2];
+        var a = ref[3];
+        var mode = last(args) || 'auto';
+        if (a === undefined) { a = 1; }
+        if (mode === 'auto') {
+            mode = a < 1 ? 'rgba' : 'rgb';
+        }
+        r = round$2(r);
+        g = round$2(g);
+        b = round$2(b);
+        var u = r << 16 | g << 8 | b;
+        var str = "000000" + u.toString(16); //#.toUpperCase();
+        str = str.substr(str.length - 6);
+        var hxa = '0' + round$2(a * 255).toString(16);
+        hxa = hxa.substr(hxa.length - 2);
+        switch (mode.toLowerCase()) {
+            case 'rgba': return ("#" + str + hxa);
+            case 'argb': return ("#" + hxa + str);
+            default: return ("#" + str);
+        }
+    };
+
+    var rgb2hex_1 = rgb2hex$1;
+
+    var RE_HEX = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+    var RE_HEXA = /^#?([A-Fa-f0-9]{8}|[A-Fa-f0-9]{4})$/;
+
+    var hex2rgb = function (hex) {
+        if (hex.match(RE_HEX)) {
+            // remove optional leading #
+            if (hex.length === 4 || hex.length === 7) {
+                hex = hex.substr(1);
+            }
+            // expand short-notation to full six-digit
+            if (hex.length === 3) {
+                hex = hex.split('');
+                hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            }
+            var u = parseInt(hex, 16);
+            var r = u >> 16;
+            var g = u >> 8 & 0xFF;
+            var b = u & 0xFF;
+            return [r,g,b,1];
+        }
+
+        // match rgba hex format, eg #FF000077
+        if (hex.match(RE_HEXA)) {
+            if (hex.length === 5 || hex.length === 9) {
+                // remove optional leading #
+                hex = hex.substr(1);
+            }
+            // expand short-notation to full eight-digit
+            if (hex.length === 4) {
+                hex = hex.split('');
+                hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3];
+            }
+            var u$1 = parseInt(hex, 16);
+            var r$1 = u$1 >> 24 & 0xFF;
+            var g$1 = u$1 >> 16 & 0xFF;
+            var b$1 = u$1 >> 8 & 0xFF;
+            var a = Math.round((u$1 & 0xFF) / 0xFF * 100) / 100;
+            return [r$1,g$1,b$1,a];
+        }
+
+        // we used to check for css colors here
+        // if _input.css? and rgb = _input.css hex
+        //     return rgb
+
+        throw new Error(("unknown hex color: " + hex));
+    };
+
+    var hex2rgb_1 = hex2rgb;
+
+    var chroma$3 = chroma_1;
+    var Color$a = Color_1;
+    var type$5 = utils.type;
+    var input$2 = input$3;
+
+    var rgb2hex = rgb2hex_1;
+
+    Color$a.prototype.hex = function(mode) {
+        return rgb2hex(this._rgb, mode);
+    };
+
+    chroma$3.hex = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        return new (Function.prototype.bind.apply( Color$a, [ null ].concat( args, ['hex']) ));
+    };
+
+    input$2.format.hex = hex2rgb_1;
+    input$2.autodetect.push({
+        p: 4,
+        test: function (h) {
+            var rest = [], len = arguments.length - 1;
+            while ( len-- > 0 ) rest[ len ] = arguments[ len + 1 ];
+
+            if (!rest.length && type$5(h) === 'string' && [3,4,5,6,7,8,9].indexOf(h.length) >= 0) {
+                return 'hex';
+            }
+        }
+    });
+
+    var labConstants = {
+        // Corresponds roughly to RGB brighter/darker
+        Kn: 18,
+
+        // D65 standard referent
+        Xn: 0.950470,
+        Yn: 1,
+        Zn: 1.088830,
+
+        t0: 0.137931034,  // 4 / 29
+        t1: 0.206896552,  // 6 / 29
+        t2: 0.12841855,   // 3 * t1 * t1
+        t3: 0.008856452,  // t1 * t1 * t1
+    };
+
+    var LAB_CONSTANTS$1 = labConstants;
+    var unpack$8 = utils.unpack;
+    var pow$1 = Math.pow;
+
+    var rgb2lab$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var ref = unpack$8(args, 'rgb');
+        var r = ref[0];
+        var g = ref[1];
+        var b = ref[2];
+        var ref$1 = rgb2xyz(r,g,b);
+        var x = ref$1[0];
+        var y = ref$1[1];
+        var z = ref$1[2];
+        var l = 116 * y - 16;
+        return [l < 0 ? 0 : l, 500 * (x - y), 200 * (y - z)];
+    };
+
+    var rgb_xyz = function (r) {
+        if ((r /= 255) <= 0.04045) { return r / 12.92; }
+        return pow$1((r + 0.055) / 1.055, 2.4);
+    };
+
+    var xyz_lab = function (t) {
+        if (t > LAB_CONSTANTS$1.t3) { return pow$1(t, 1 / 3); }
+        return t / LAB_CONSTANTS$1.t2 + LAB_CONSTANTS$1.t0;
+    };
+
+    var rgb2xyz = function (r,g,b) {
+        r = rgb_xyz(r);
+        g = rgb_xyz(g);
+        b = rgb_xyz(b);
+        var x = xyz_lab((0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / LAB_CONSTANTS$1.Xn);
+        var y = xyz_lab((0.2126729 * r + 0.7151522 * g + 0.0721750 * b) / LAB_CONSTANTS$1.Yn);
+        var z = xyz_lab((0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / LAB_CONSTANTS$1.Zn);
+        return [x,y,z];
+    };
+
+    var rgb2lab_1 = rgb2lab$1;
+
+    var unpack$7 = utils.unpack;
+    var RAD2DEG = utils.RAD2DEG;
+    var sqrt = Math.sqrt;
+    var atan2 = Math.atan2;
+    var round$1 = Math.round;
+
+    var lab2lch$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var ref = unpack$7(args, 'lab');
+        var l = ref[0];
+        var a = ref[1];
+        var b = ref[2];
+        var c = sqrt(a * a + b * b);
+        var h = (atan2(b, a) * RAD2DEG + 360) % 360;
+        if (round$1(c*10000) === 0) { h = Number.NaN; }
+        return [l, c, h];
+    };
+
+    var lab2lch_1 = lab2lch$1;
+
+    var unpack$6 = utils.unpack;
+    var rgb2lab = rgb2lab_1;
+    var lab2lch = lab2lch_1;
+
+    var rgb2lch$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var ref = unpack$6(args, 'rgb');
+        var r = ref[0];
+        var g = ref[1];
+        var b = ref[2];
+        var ref$1 = rgb2lab(r,g,b);
+        var l = ref$1[0];
+        var a = ref$1[1];
+        var b_ = ref$1[2];
+        return lab2lch(l,a,b_);
+    };
+
+    var rgb2lch_1 = rgb2lch$1;
+
+    var unpack$5 = utils.unpack;
+    var DEG2RAD = utils.DEG2RAD;
+    var sin = Math.sin;
+    var cos = Math.cos;
+
+    var lch2lab$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        /*
+        Convert from a qualitative parameter h and a quantitative parameter l to a 24-bit pixel.
+        These formulas were invented by David Dalrymple to obtain maximum contrast without going
+        out of gamut if the parameters are in the range 0-1.
+
+        A saturation multiplier was added by Gregor Aisch
+        */
+        var ref = unpack$5(args, 'lch');
+        var l = ref[0];
+        var c = ref[1];
+        var h = ref[2];
+        if (isNaN(h)) { h = 0; }
+        h = h * DEG2RAD;
+        return [l, cos(h) * c, sin(h) * c]
+    };
+
+    var lch2lab_1 = lch2lab$1;
+
+    var LAB_CONSTANTS = labConstants;
+    var unpack$4 = utils.unpack;
+    var pow = Math.pow;
+
+    /*
+     * L* [0..100]
+     * a [-100..100]
+     * b [-100..100]
+     */
+    var lab2rgb$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        args = unpack$4(args, 'lab');
+        var l = args[0];
+        var a = args[1];
+        var b = args[2];
+        var x,y,z, r,g,b_;
+
+        y = (l + 16) / 116;
+        x = isNaN(a) ? y : y + a / 500;
+        z = isNaN(b) ? y : y - b / 200;
+
+        y = LAB_CONSTANTS.Yn * lab_xyz(y);
+        x = LAB_CONSTANTS.Xn * lab_xyz(x);
+        z = LAB_CONSTANTS.Zn * lab_xyz(z);
+
+        r = xyz_rgb(3.2404542 * x - 1.5371385 * y - 0.4985314 * z);  // D65 -> sRGB
+        g = xyz_rgb(-0.9692660 * x + 1.8760108 * y + 0.0415560 * z);
+        b_ = xyz_rgb(0.0556434 * x - 0.2040259 * y + 1.0572252 * z);
+
+        return [r,g,b_,args.length > 3 ? args[3] : 1];
+    };
+
+    var xyz_rgb = function (r) {
+        return 255 * (r <= 0.00304 ? 12.92 * r : 1.055 * pow(r, 1 / 2.4) - 0.055)
+    };
+
+    var lab_xyz = function (t) {
+        return t > LAB_CONSTANTS.t1 ? t * t * t : LAB_CONSTANTS.t2 * (t - LAB_CONSTANTS.t0)
+    };
+
+    var lab2rgb_1 = lab2rgb$1;
+
+    var unpack$3 = utils.unpack;
+    var lch2lab = lch2lab_1;
+    var lab2rgb = lab2rgb_1;
+
+    var lch2rgb$1 = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        args = unpack$3(args, 'lch');
+        var l = args[0];
+        var c = args[1];
+        var h = args[2];
+        var ref = lch2lab (l,c,h);
+        var L = ref[0];
+        var a = ref[1];
+        var b_ = ref[2];
+        var ref$1 = lab2rgb (L,a,b_);
+        var r = ref$1[0];
+        var g = ref$1[1];
+        var b = ref$1[2];
+        return [r, g, b, args.length > 3 ? args[3] : 1];
+    };
+
+    var lch2rgb_1 = lch2rgb$1;
+
+    var unpack$2 = utils.unpack;
+    var lch2rgb = lch2rgb_1;
+
+    var hcl2rgb = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var hcl = unpack$2(args, 'hcl').reverse();
+        return lch2rgb.apply(void 0, hcl);
+    };
+
+    var hcl2rgb_1 = hcl2rgb;
+
+    var unpack$1 = utils.unpack;
+    var type$4 = utils.type;
+    var chroma$2 = chroma_1;
+    var Color$9 = Color_1;
+    var input$1 = input$3;
+
+    var rgb2lch = rgb2lch_1;
+
+    Color$9.prototype.lch = function() { return rgb2lch(this._rgb); };
+    Color$9.prototype.hcl = function() { return rgb2lch(this._rgb).reverse(); };
+
+    chroma$2.lch = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        return new (Function.prototype.bind.apply( Color$9, [ null ].concat( args, ['lch']) ));
+    };
+    chroma$2.hcl = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        return new (Function.prototype.bind.apply( Color$9, [ null ].concat( args, ['hcl']) ));
+    };
+
+    input$1.format.lch = lch2rgb_1;
+    input$1.format.hcl = hcl2rgb_1;
+
+    ['lch','hcl'].forEach(function (m) { return input$1.autodetect.push({
+        p: 2,
+        test: function () {
+            var args = [], len = arguments.length;
+            while ( len-- ) args[ len ] = arguments[ len ];
+
+            args = unpack$1(args, m);
+            if (type$4(args) === 'array' && args.length === 3) {
+                return m;
+            }
+        }
+    }); });
+
+    var chroma$1 = chroma_1;
+    var Color$8 = Color_1;
+    var input = input$3;
+    var unpack = utils.unpack;
+    var type$3 = utils.type;
+    var round = Math.round;
+
+    Color$8.prototype.rgb = function(rnd) {
+        if ( rnd === void 0 ) rnd=true;
+
+        if (rnd === false) { return this._rgb.slice(0,3); }
+        return this._rgb.slice(0,3).map(round);
+    };
+
+    Color$8.prototype.rgba = function(rnd) {
+        if ( rnd === void 0 ) rnd=true;
+
+        return this._rgb.slice(0,4).map(function (v,i) {
+            return i<3 ? (rnd === false ? v : round(v)) : v;
+        });
+    };
+
+    chroma$1.rgb = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        return new (Function.prototype.bind.apply( Color$8, [ null ].concat( args, ['rgb']) ));
+    };
+
+    input.format.rgb = function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var rgba = unpack(args, 'rgba');
+        if (rgba[3] === undefined) { rgba[3] = 1; }
+        return rgba;
+    };
+
+    input.autodetect.push({
+        p: 3,
+        test: function () {
+            var args = [], len = arguments.length;
+            while ( len-- ) args[ len ] = arguments[ len ];
+
+            args = unpack(args, 'rgba');
+            if (type$3(args) === 'array' && (args.length === 3 ||
+                args.length === 4 && type$3(args[3]) == 'number' && args[3] >= 0 && args[3] <= 1)) {
+                return 'rgb';
+            }
+        }
+    });
+
+    var Color$7 = Color_1;
+    var type$2 = utils.type;
+
+    Color$7.prototype.alpha = function(a, mutate) {
+        if ( mutate === void 0 ) mutate=false;
+
+        if (a !== undefined && type$2(a) === 'number') {
+            if (mutate) {
+                this._rgb[3] = a;
+                return this;
+            }
+            return new Color$7([this._rgb[0], this._rgb[1], this._rgb[2], a], 'rgb');
+        }
+        return this._rgb[3];
+    };
+
+    var Color$6 = Color_1;
+
+    Color$6.prototype.clipped = function() {
+        return this._rgb._clipped || false;
+    };
+
+    var Color$5 = Color_1;
+
+    Color$5.prototype.get = function (mc) {
+        var ref = mc.split('.');
+        var mode = ref[0];
+        var channel = ref[1];
+        var src = this[mode]();
+        if (channel) {
+            var i = mode.indexOf(channel) - (mode.substr(0, 2) === 'ok' ? 2 : 0);
+            if (i > -1) { return src[i]; }
+            throw new Error(("unknown channel " + channel + " in mode " + mode));
+        } else {
+            return src;
+        }
+    };
+
+    var interpolator$1 = {};
+
+    var Color$4 = Color_1;
+    var type$1 = utils.type;
+    var interpolator = interpolator$1;
+
+    var mix$1 = function (col1, col2, f) {
+        if ( f === void 0 ) f=0.5;
+        var rest = [], len = arguments.length - 3;
+        while ( len-- > 0 ) rest[ len ] = arguments[ len + 3 ];
+
+        var mode = rest[0] || 'lrgb';
+        if (!interpolator[mode] && !rest.length) {
+            // fall back to the first supported mode
+            mode = Object.keys(interpolator)[0];
+        }
+        if (!interpolator[mode]) {
+            throw new Error(("interpolation mode " + mode + " is not defined"));
+        }
+        if (type$1(col1) !== 'object') { col1 = new Color$4(col1); }
+        if (type$1(col2) !== 'object') { col2 = new Color$4(col2); }
+        return interpolator[mode](col1, col2, f)
+            .alpha(col1.alpha() + f * (col2.alpha() - col1.alpha()));
+    };
+
+    var Color$3 = Color_1;
+    var mix = mix$1;
+
+    Color$3.prototype.mix =
+    Color$3.prototype.interpolate = function(col2, f) {
+    	if ( f === void 0 ) f=0.5;
+    	var rest = [], len = arguments.length - 2;
+    	while ( len-- > 0 ) rest[ len ] = arguments[ len + 2 ];
+
+    	return mix.apply(void 0, [ this, col2, f ].concat( rest ));
+    };
+
+    var Color$2 = Color_1;
+    var type = utils.type;
+
+    Color$2.prototype.set = function (mc, value, mutate) {
+        if ( mutate === void 0 ) mutate = false;
+
+        var ref = mc.split('.');
+        var mode = ref[0];
+        var channel = ref[1];
+        var src = this[mode]();
+        if (channel) {
+            var i = mode.indexOf(channel) - (mode.substr(0, 2) === 'ok' ? 2 : 0);
+            if (i > -1) {
+                if (type(value) == 'string') {
+                    switch (value.charAt(0)) {
+                        case '+':
+                            src[i] += +value;
+                            break;
+                        case '-':
+                            src[i] += +value;
+                            break;
+                        case '*':
+                            src[i] *= +value.substr(1);
+                            break;
+                        case '/':
+                            src[i] /= +value.substr(1);
+                            break;
+                        default:
+                            src[i] = +value;
+                    }
+                } else if (type(value) === 'number') {
+                    src[i] = value;
+                } else {
+                    throw new Error("unsupported value for Color.set");
+                }
+                var out = new Color$2(src, mode);
+                if (mutate) {
+                    this._rgb = out._rgb;
+                    return this;
+                }
+                return out;
+            }
+            throw new Error(("unknown channel " + channel + " in mode " + mode));
+        } else {
+            return src;
+        }
+    };
+
+    var Color$1 = Color_1;
+
+    var rgb = function (col1, col2, f) {
+        var xyz0 = col1._rgb;
+        var xyz1 = col2._rgb;
+        return new Color$1(
+            xyz0[0] + f * (xyz1[0]-xyz0[0]),
+            xyz0[1] + f * (xyz1[1]-xyz0[1]),
+            xyz0[2] + f * (xyz1[2]-xyz0[2]),
+            'rgb'
+        )
+    };
+
+    // register interpolator
+    interpolator$1.rgb = rgb;
+
+    var Color = Color_1;
+
+    var _hsx = function (col1, col2, f, m) {
+        var assign, assign$1;
+
+        var xyz0, xyz1;
+        if (m === 'hsl') {
+            xyz0 = col1.hsl();
+            xyz1 = col2.hsl();
+        } else if (m === 'hsv') {
+            xyz0 = col1.hsv();
+            xyz1 = col2.hsv();
+        } else if (m === 'hcg') {
+            xyz0 = col1.hcg();
+            xyz1 = col2.hcg();
+        } else if (m === 'hsi') {
+            xyz0 = col1.hsi();
+            xyz1 = col2.hsi();
+        } else if (m === 'lch' || m === 'hcl') {
+            m = 'hcl';
+            xyz0 = col1.hcl();
+            xyz1 = col2.hcl();
+        } else if (m === 'oklch') {
+            xyz0 = col1.oklch().reverse();
+            xyz1 = col2.oklch().reverse();
+        }
+
+        var hue0, hue1, sat0, sat1, lbv0, lbv1;
+        if (m.substr(0, 1) === 'h' || m === 'oklch') {
+            (assign = xyz0, hue0 = assign[0], sat0 = assign[1], lbv0 = assign[2]);
+            (assign$1 = xyz1, hue1 = assign$1[0], sat1 = assign$1[1], lbv1 = assign$1[2]);
+        }
+
+        var sat, hue, lbv, dh;
+
+        if (!isNaN(hue0) && !isNaN(hue1)) {
+            // both colors have hue
+            if (hue1 > hue0 && hue1 - hue0 > 180) {
+                dh = hue1 - (hue0 + 360);
+            } else if (hue1 < hue0 && hue0 - hue1 > 180) {
+                dh = hue1 + 360 - hue0;
+            } else {
+                dh = hue1 - hue0;
+            }
+            hue = hue0 + f * dh;
+        } else if (!isNaN(hue0)) {
+            hue = hue0;
+            if ((lbv1 == 1 || lbv1 == 0) && m != 'hsv') { sat = sat0; }
+        } else if (!isNaN(hue1)) {
+            hue = hue1;
+            if ((lbv0 == 1 || lbv0 == 0) && m != 'hsv') { sat = sat1; }
+        } else {
+            hue = Number.NaN;
+        }
+
+        if (sat === undefined) { sat = sat0 + f * (sat1 - sat0); }
+        lbv = lbv0 + f * (lbv1 - lbv0);
+        return m === 'oklch' ? new Color([lbv, sat, hue], m) : new Color([hue, sat, lbv], m);
+    };
+
+    var interpolate_hsx = _hsx;
+
+    var lch = function (col1, col2, f) {
+    	return interpolate_hsx(col1, col2, f, 'lch');
+    };
+
+    // register interpolator
+    interpolator$1.lch = lch;
+    interpolator$1.hcl = lch;
+
+    var chroma = chroma_1;
+
+    // feel free to comment out anything to rollup
+    // a smaller chroma.js built
+
+    // io --> convert colors
+
+
+
+
+    // operators --> modify existing Colors
+    	// required by .mix()
+
+
+
+
+
+    // interpolators
+
+
+
+    // generators -- > create new colors
+    chroma.mix = chroma.interpolate = mix$1;
+
+    var indexCustom = chroma;
+
+    return indexCustom;
+
+}));
+
+},{}],49:[function(require,module,exports){
+/*
+	Palette Shade
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+function Color() {
+	this.baseName = '' ;
+	this.saturationLevel = 0 ;
+	this.lightnessLevel = 0 ;
+	this.opacityLevel = 0 ;
+	this.tintRate = 0 ;
+	this.toneRate = 0 ;
+	this.shadeRate = 0 ;
+}
+
+module.exports = Color ;
+
+
+
+Color.prototype.hasModifier = function() {
+	return this.saturationLevel || this.lightnessLevel || this.opacityLevel || this.tintRate || this.toneRate || this.shadeRate ;
+} ;
+
+
+
+Color.prototype.cname = function() {
+	var str = '' ;
+
+	if ( this.opacityLevel <= - 3 ) { str += 'dimmest-' ; }
+	else if ( this.opacityLevel <= - 2 ) { str += 'dimmer-' ; }
+	else if ( this.opacityLevel <= - 1 ) { str += 'dim-' ; }
+	else if ( this.opacityLevel <= - 0.5 ) { str += 'slightly-dim-' ; }
+	else if ( this.opacityLevel <= - 0.25 ) { str += 'subtly-dim-' ; }
+
+	if ( this.saturationLevel <= - 3 ) { str += 'dullest-' ; }
+	else if ( this.saturationLevel <= - 2 ) { str += 'duller-' ; }
+	else if ( this.saturationLevel <= - 1 ) { str += 'dull-' ; }
+	else if ( this.saturationLevel <= - 0.5 ) { str += 'slightly-dull-' ; }
+	else if ( this.saturationLevel <= - 0.25 ) { str += 'subtly-dull-' ; }
+	else if ( this.saturationLevel >= 3 ) { str += 'purest-' ; }
+	else if ( this.saturationLevel >= 2 ) { str += 'purer-' ; }
+	else if ( this.saturationLevel >= 1 ) { str += 'pure-' ; }
+	else if ( this.saturationLevel >= 0.5 ) { str += 'slightly-pure-' ; }
+	else if ( this.saturationLevel >= 0.25 ) { str += 'subtly-pure-' ; }
+
+	if ( this.lightnessLevel <= - 3 ) { str += 'darkest-' ; }
+	else if ( this.lightnessLevel <= - 2 ) { str += 'darker-' ; }
+	else if ( this.lightnessLevel <= - 1 ) { str += 'dark-' ; }
+	else if ( this.lightnessLevel <= - 0.5 ) { str += 'slightly-dark-' ; }
+	else if ( this.lightnessLevel <= - 0.25 ) { str += 'subtly-dark-' ; }
+	else if ( this.lightnessLevel >= 3 ) { str += 'brightest-' ; }
+	else if ( this.lightnessLevel >= 2 ) { str += 'brighter-' ; }
+	else if ( this.lightnessLevel >= 1 ) { str += 'bright-' ; }
+	else if ( this.lightnessLevel >= 0.5 ) { str += 'slightly-bright-' ; }
+	else if ( this.lightnessLevel >= 0.25 ) { str += 'subtly-bright-' ; }
+
+	str += this.baseName ;
+
+	if ( this.tintRate >= 0.5 ) { str += '-tint' ; }
+	else if ( this.tintRate >= 0.25 ) { str += '-slight-tint' ; }
+	else if ( this.tintRate >= 0.125 ) { str += '-subtle-tint' ; }
+
+	if ( this.toneRate >= 0.5 ) { str += '-tone' ; }
+	else if ( this.toneRate >= 0.25 ) { str += '-slight-tone' ; }
+	else if ( this.toneRate >= 0.125 ) { str += '-subtle-tone' ; }
+
+	if ( this.shadeRate >= 0.5 ) { str += '-shade' ; }
+	else if ( this.shadeRate >= 0.25 ) { str += '-slight-shade' ; }
+	else if ( this.shadeRate >= 0.125 ) { str += '-subtle-shade' ; }
+
+	return str ;
+} ;
+
+
+
+const MODIFIERS_KEYWORD = {
+	bright: { lightnessLevel: 1 } ,
+	brighter: { lightnessLevel: 2 } ,
+	brightest: { lightnessLevel: 3 } ,
+	dark: { lightnessLevel: - 1 } ,
+	darker: { lightnessLevel: - 2 } ,
+	darkest: { lightnessLevel: - 3 } ,
+
+	pale: { saturationLevel: - 1 } ,
+	dull: { saturationLevel: - 1 } ,
+	paler: { saturationLevel: - 2 } ,
+	duller: { saturationLevel: - 2 } ,
+	palest: { saturationLevel: - 3 } ,
+	dullest: { saturationLevel: - 3 } ,
+	pure: { saturationLevel: 1 } ,
+	bold: { saturationLevel: 1 } ,
+	vivid: { saturationLevel: 1 } ,
+	purer: { saturationLevel: 2 } ,
+	bolder: { saturationLevel: 2 } ,
+	vivider: { saturationLevel: 2 } ,
+	purest: { saturationLevel: 3 } ,
+	boldest: { saturationLevel: 3 } ,
+	vividest: { saturationLevel: 3 } ,
+
+	light: { lightnessLevel: 1 , saturationLevel: - 1 } ,
+	lighter: { lightnessLevel: 2 , saturationLevel: - 2 } ,
+	pastel: { lightnessLevel: 2 , saturationLevel: - 2 } ,
+	lightest: { lightnessLevel: 3 , saturationLevel: - 3 } ,
+	deep: { lightnessLevel: - 1 , saturationLevel: 1 } ,
+	deeper: { lightnessLevel: - 2 , saturationLevel: 2 } ,
+	royal: { lightnessLevel: - 2 , saturationLevel: 2 } ,
+	deepest: { lightnessLevel: - 3 , saturationLevel: 3 } ,
+
+	dim: { opacityLevel: - 1 } ,
+	faint: { opacityLevel: - 1 } ,
+	dimmer: { opacityLevel: - 2 } ,
+	fainter: { opacityLevel: - 2 } ,
+	dimmest: { opacityLevel: - 3 } ,
+	faintest: { opacityLevel: - 3 } ,
+
+	slightly: { rate: 0.65 } ,
+	slight: { rate: 0.65 } ,
+	subtly: { rate: 0.35 } ,
+	subtle: { rate: 0.35 } ,
+
+	tint: { tintRate: 0.5 } ,
+	tone: { toneRate: 0.5 } ,
+	shade: { shadeRate: 0.5 }
+} ;
+
+
+
+Color.parse = function( str ) {
+	var modRate = 1 ,
+		color = new Color() ;
+
+	for ( let colorPart of str.split( / +/g ) ) {
+		let mod = MODIFIERS_KEYWORD[ colorPart ] ;
+
+		if ( mod ) {
+			if ( mod.rate ) { modRate = mod.rate ; }
+
+			if ( mod.saturationLevel ) {
+				color.saturationLevel += Math.abs( mod.saturationLevel ) === 1 ? modRate * mod.saturationLevel : mod.saturationLevel ;
+			}
+
+			if ( mod.lightnessLevel ) {
+				color.lightnessLevel += Math.abs( mod.lightnessLevel ) === 1 ? modRate * mod.lightnessLevel : mod.lightnessLevel ;
+			}
+
+			if ( mod.opacityLevel ) {
+				color.opacityLevel += Math.abs( mod.opacityLevel ) === 1 ? modRate * mod.opacityLevel : mod.opacityLevel ;
+			}
+
+			if ( mod.tintRate ) {
+				color.tintRate += modRate * mod.tintRate ;
+			}
+
+			if ( mod.toneRate ) {
+				color.toneRate += modRate * mod.toneRate ;
+			}
+
+			if ( mod.shadeRate ) {
+				color.shadeRate += modRate * mod.shadeRate ;
+			}
+
+			// Rate modifiers only adjust the next modifier keyword
+			if ( ! mod.rate ) { modRate = 1 ; }
+		}
+		else {
+			color.baseName = colorPart ;
+		}
+	}
+
+	return color ;
+} ;
+
+
+},{}],50:[function(require,module,exports){
+/*
+	Palette Shade
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+//const chromajs = require( 'chroma-js' ) ;
+
+// Custom build of chroma-js, using the fork regorxxx/chroma.js, and a customized index-ultra-light.js,
+// dividing the size of the chroma-js lib by 4.5.
+const chromajs = require( '../extlib/chromajs.custom.js' ) ;
+
+
+
+const DEFAULT_COLORS = {
+	'black': '#24292e' ,
+	'white': '#ffffff' ,
+	'gray': '#74797e' ,
+
+	'red': '#e32322' ,
+	'orange': '#f18e1c' ,
+	'yellow-orange': '#fdc60b' ,
+	'yellow': '#f4e500' ,
+	'yellow-green': '#8cbb26' ,
+	'green': '#25ad28' ,
+	'blue-green': '#1bc17d' ,
+	'cyan': '#0dc0cd' ,
+	'blue': '#2a60b0' ,
+	'blue-violet': '#3b3ba2' ,
+	'violet': '#713795' ,
+	'red-violet': '#bd0a7d'
+} ;
+
+const DEFAULT_ALIASES = {
+	'grey': 'gray' ,
+	'orange-yellow': 'yellow-orange' ,
+	'amber': 'yellow-orange' ,
+	'gold': 'yellow-orange' ,
+	'green-yellow': 'yellow-green' ,
+	'chartreuse': 'yellow-green' ,
+	'green-blue': 'blue-green' ,
+	'turquoise': 'blue-green' ,
+	'turquoise-green': 'blue-green' ,
+	'teal': 'blue-green' ,
+	'turquoise-blue': 'cyan' ,
+	'violet-blue': 'blue-violet' ,
+	'indigo': 'blue-violet' ,
+	'purple': 'violet' ,
+	'violet-red': 'red-violet' ,
+	'magenta': 'red-violet'
+} ;
+
+const EXTRA_COLORS = {
+	'crimson': '#dc143c' ,
+	'vermilion': '#e34234' ,
+	'brown': '#a52a2a' ,
+	'bronze': '#cd7f32' ,
+	'coquelicot': '#ff3800' ,
+	//'flame': '#e25822' ,
+	//'salmon': '#ff8c69' ,
+	'coral-pink': '#f88379' ,
+	'see-green': '#2e8b57' ,
+	'medium-spring-green': '#00fa9a' ,
+	'olivine': '#9ab973' ,
+	'royal-blue': '#4169e1' ,
+	'purple': '#800080' ,
+	//'tyrian-purple': '#66023c' ,
+	//'purple-heart': '#69359c' ,
+	'lavender-purple': '#967bb6' ,
+	//'classic-rose' , 'light-pink': '#fbcce7' ,
+	'pink': '#ffc0cb'
+	//'lime': '#bfff00' ,
+} ;
+
+const EXTRA_ALIASES = {
+	'cinnabar': 'vermilion'
+	//'lemon-lime': 'lime'
+} ;
+
+
+
+function Palette( params = {} ) {
+	this.colors = {} ;
+	this.aliases = Object.assign( {} , DEFAULT_ALIASES ) ;
+
+	if ( params.aliases ) { this.addAliases( params.colors ) ; }
+
+	if ( params.colors ) { this.addColors( params.colors ) ; }
+	else if ( ! params.aliases ) { this.addColors( params ) ; }
+	this.addColors( DEFAULT_COLORS , true ) ;
+}
+
+module.exports = Palette ;
+
+
+
+Palette.prototype.addAliases = function( aliases ) {
+	if ( ! aliases || typeof aliases !== 'object' ) { return ; }
+	Object.assign( this.aliases , aliases ) ;
+} ;
+
+
+
+Palette.prototype.addColors = function( colors , ifNotExists = false ) {
+	if ( ! colors || typeof colors !== 'object' ) { return ; }
+
+	for ( let name in colors ) {
+		let colorDef = colors[ name ] ;
+		if ( this.aliases[ name ] ) { name = this.aliases[ name ] ; }
+
+		if ( colorDef && ( ! ifNotExists || ! this.colors[ name ] ) ) {
+			this.colors[ name ] = chromajs( colorDef ) ;
+		}
+	}
+} ;
+
+
+
+Palette.prototype.has = function( colorObject ) {
+	var name = colorObject.baseName ;
+	if ( this.aliases[ name ] ) { name = this.aliases[ name ] ; }
+	return !! this.colors[ name ] ;
+} ;
+
+
+
+Palette.prototype.getHex = function( colorObject ) {
+	var name = colorObject.baseName ;
+	if ( this.aliases[ name ] ) { name = this.aliases[ name ] ; }
+
+	var chromaColor = this.colors[ name ] ;
+	if ( ! chromaColor ) { return null ; }
+
+	if ( colorObject.hasModifier() ) {
+		chromaColor = Palette.adjust( chromaColor , colorObject ) ;
+	}
+
+	return chromaColor.hex() ;
+} ;
+
+
+
+Palette.prototype.getRgb = function( colorObject ) {
+	var name = colorObject.baseName ;
+	if ( this.aliases[ name ] ) { name = this.aliases[ name ] ; }
+
+	var chromaColor = this.colors[ name ] ;
+	if ( ! chromaColor ) { return null ; }
+
+	if ( colorObject.hasModifier() ) {
+		chromaColor = Palette.adjust( chromaColor , colorObject ) ;
+	}
+
+	var [ r , g , b ] = chromaColor.rgb() ;
+	return { r , g , b } ;
+} ;
+
+
+
+const LCH_L_STEP = 18 ;
+const LCH_C_STEP = 18 ;
+const LCH_C_RATE_STEP = 0.25 ;
+
+/*
+	Chroma-js .brighten()/.darken() uses a +/- 18 increment on L of the LCH colorspace,
+	while .saturate()/.desaturate() also uses +/- 18 on C of the LCH colorspace.
+*/
+Palette.adjust = function( chromaColor , colorObject ) {
+	if ( colorObject.tintRate ) { chromaColor = chromajs.mix( chromaColor , '#ffffff' , colorObject.tintRate ) ; }
+	else if ( colorObject.toneRate ) { chromaColor = chromajs.mix( chromaColor , '#808080' , colorObject.toneRate ) ; }
+	else if ( colorObject.shadeRate ) { chromaColor = chromajs.mix( chromaColor , '#000000' , colorObject.shadeRate ) ; }
+
+	var lch = chromaColor.lch() ;
+
+	if ( colorObject.lightnessLevel ) { lch[ 0 ] = Math.max( 0 , lch[ 0 ] + LCH_L_STEP * colorObject.lightnessLevel ) ; }
+	if ( colorObject.saturationLevel ) { lch[ 1 ] = Math.max( 0 , lch[ 1 ] * ( 1 + LCH_C_RATE_STEP * colorObject.saturationLevel ) ) ; }
+
+	//console.error( "Initial lch:" , lch ) ;
+	chromaColor = chromajs( ... lch , 'lch' ) ;
+
+	if ( chromaColor._rgb._clipped ) {
+		//console.error( "BF clip:" , chromaColor , lch ) ;
+		chromaColor = Palette.cleanClip( chromaColor , lch ) ;
+		//console.error( "AFT clip:" , chromaColor , lch ) ;
+	}
+
+	return chromaColor ;
+} ;
+
+
+
+// How much we sacrifice chroma over brightness, 1=reduce both with the same factor, 2=reduce twice the chroma relative to the lightness
+const CHROMA_FLEXIBILITY = 3 ;
+
+/*
+	Max LCH's L is 100.
+	Max LCH's C is 134 for pure blue (120 for pure green and 105 for pure red)
+*/
+Palette.cleanClip = function( chromaColor , lch ) {
+	if ( ! chromaColor._rgb._clipped ) { return chromaColor ; }
+
+	var lcRatio , currentLcRatio ,
+		lchClipped = false ;
+
+	// First, non-sensical or excessive LCH values...
+	if ( lch[ 0 ] < 0 ) { lch[ 0 ] = 0 ; }
+	if ( lch[ 1 ] < 0 ) { lch[ 1 ] = 0 ; }
+	lcRatio = lch[ 0 ] / lch[ 1 ] ;
+
+	if ( lch[ 0 ] > 100 ) { lch[ 0 ] = 100 ; lchClipped = true ; }
+	if ( lch[ 1 ] > 134 ) { lch[ 1 ] = 134 ; lchClipped = true ; }
+
+	if ( lchClipped ) {
+		currentLcRatio = lch[ 0 ] / lch[ 1 ] ;
+		if ( lch[ 0 ] > 0.5 && lch[ 1 ] > 0.5 && Number.isFinite( lcRatio ) && Number.isFinite( currentLcRatio ) ) {
+			if ( currentLcRatio > lcRatio ) {
+				lch[ 0 ] = lch[ 1 ] * lcRatio ;
+			}
+			else {
+				lch[ 1 ] = lch[ 0 ] / lcRatio ;
+			}
+		}
+		chromaColor = chromajs( ... lch , 'lch' ) ;
+		//console.error( "After excessive pass:" , chromaColor , lch ) ;
+		if ( ! chromaColor._rgb._clipped ) { return chromaColor ; }
+	}
+
+	for ( let pass = 0 ; pass < 5 ; pass ++ ) {
+		let rgb = chromaColor._rgb._unclipped ;
+		let average = ( rgb[ 0 ] + rgb[ 1 ] + rgb[ 2 ] ) / 3 ;
+		let max = Math.max( rgb[ 0 ] , rgb[ 1 ] , rgb[ 2 ] ) ;
+		let min = Math.min( rgb[ 0 ] , rgb[ 1 ] , rgb[ 2 ] ) ;
+		let reverseAverage = 255 - average ;
+		let reverseMax = 255 - max ;
+		let reverseMin = 255 - min ;
+
+
+		if (
+			max > 256
+			&& ( min >= - 10 || max - 255 > - min / 4 )	// <-- hacky part, see the "else" for the explanation
+		) {
+			let rgbSaturation = max - average ;
+
+			// Compute the rates and apply it, it will change both the average values (lightness) and the rgb saturation
+			let lRate = 255 / max ;
+			let cRate = lRate ** CHROMA_FLEXIBILITY ;
+			let average2 = average * lRate ;
+			let rgbSaturation2 = rgbSaturation * lRate * cRate ;
+			let max2 = average2 + rgbSaturation2 ;
+
+			// So the real rate that was applied to the max channel is
+			let lRate2 = max2 / max ;
+
+			// Correct the final rates
+			let powerCorrector = Math.log( lRate ) / Math.log( lRate2 ) ;
+			//let lRateFinal = lRate * lRate / lRate2 ;
+			let lRateFinal = lRate ** powerCorrector ;
+			let cRateFinal = lRateFinal ** CHROMA_FLEXIBILITY ;
+
+			lch[ 0 ] *= lRateFinal ;
+			lch[ 1 ] *= cRateFinal ;
+			//console.error( "Pass " + pass + ":" , { average , max , min , rgbSaturation , lRate , cRate , average2 , rgbSaturation2 , max2 , lRate2 , powerCorrector , lRateFinal , cRateFinal } ) ;
+		}
+		else if ( min < - 10 ) {
+			/*
+				Chroma-js has bugs with négative RGB values.
+				Negative values are so insane that it's impossible to reason with.
+				They grow up really quickly without any reason once the chroma exceed even slightly the limit for a specific hue.
+
+				So the only solution is a hack.
+				Just clip negative RGB values, get the resulting chroma and apply it.
+				We will also pretend being happy with values ranging from 0 to -10.
+			*/
+
+			let clipped = chromajs( ... rgb.map( e => Math.max( 1 , e ) ) ) ;
+			let c = lch[ 1 ] ;
+			let newC = chromajs( clipped ).get( 'lch.c' ) ;
+			//console.error( "Clip negative pass " + pass + ":" , clipped , { c , newC , lch: chromajs( clipped ).lch() } ) ;
+			lch[ 1 ] = newC - 0.5 ;	// Let another hack, because even after getting the new C, the hue changed, and we are back to silly negative values
+		}
+
+		chromaColor = chromajs( ... lch , 'lch' ) ;
+		//console.error( "After pass " + pass + ":" , chromaColor , lch ) ;
+		if ( ! chromaColor._rgb._clipped ) { return chromaColor ; }
+	}
+
+	return chromaColor ;
+} ;
+
+
+},{"../extlib/chromajs.custom.js":48}],51:[function(require,module,exports){
+/*
+	Palette Shade
+
+	Copyright (c) 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+exports.Color = require( './Color.js' ) ;
+exports.Palette = require( './Palette.js' ) ;
+
+
+},{"./Color.js":49,"./Palette.js":50}],52:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26399,7 +30410,7 @@ function arrayConcatSlice( intoArray , sourceArray , start = 0 , end = sourceArr
 }
 
 
-},{}],39:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26668,7 +30679,7 @@ ansi.parse = str => {
 } ;
 
 
-},{}],40:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26757,7 +30768,7 @@ camel.camelCaseToDash =
 camel.camelCaseToDashed = ( str ) => camel.camelCaseToSeparated( str , '-' , false ) ;
 
 
-},{}],41:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 /*
 	String Kit
 
@@ -26862,7 +30873,7 @@ exports.unicodePercentEncode = str => str.replace( /[\x00-\x1f\u0100-\uffff\x7f%
 exports.httpHeaderValue = str => exports.unicodePercentEncode( str ) ;
 
 
-},{}],42:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 (function (Buffer){(function (){
 /*
 	String Kit
@@ -28103,7 +32114,7 @@ function round( v , step ) {
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./StringNumber.js":38,"./ansi.js":39,"./escape.js":41,"./inspect.js":44,"./naturalSort.js":48,"./unicode.js":53,"buffer":58}],43:[function(require,module,exports){
+},{"./StringNumber.js":52,"./ansi.js":53,"./escape.js":55,"./inspect.js":58,"./naturalSort.js":62,"./unicode.js":67,"buffer":72}],57:[function(require,module,exports){
 /*
 	String Kit
 
@@ -28419,7 +32430,7 @@ fuzzy.levenshtein = ( left , right ) => {
 } ;
 
 
-},{}],44:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 (function (Buffer,process){(function (){
 /*
 	String Kit
@@ -29183,9 +33194,9 @@ inspectStyle.html = Object.assign( {} , inspectStyle.none , {
 
 
 }).call(this)}).call(this,{"isBuffer":require("../../../../../../../../opt/node-v16.16.0/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../opt/node-v16.16.0/lib/node_modules/browserify/node_modules/is-buffer/index.js":60,"./ansi.js":39,"./escape.js":41,"_process":62}],45:[function(require,module,exports){
-module.exports={"߀":"0","́":""," ":" ","Ⓐ":"A","Ａ":"A","À":"A","Á":"A","Â":"A","Ầ":"A","Ấ":"A","Ẫ":"A","Ẩ":"A","Ã":"A","Ā":"A","Ă":"A","Ằ":"A","Ắ":"A","Ẵ":"A","Ẳ":"A","Ȧ":"A","Ǡ":"A","Ä":"A","Ǟ":"A","Ả":"A","Å":"A","Ǻ":"A","Ǎ":"A","Ȁ":"A","Ȃ":"A","Ạ":"A","Ậ":"A","Ặ":"A","Ḁ":"A","Ą":"A","Ⱥ":"A","Ɐ":"A","Ꜳ":"AA","Æ":"AE","Ǽ":"AE","Ǣ":"AE","Ꜵ":"AO","Ꜷ":"AU","Ꜹ":"AV","Ꜻ":"AV","Ꜽ":"AY","Ⓑ":"B","Ｂ":"B","Ḃ":"B","Ḅ":"B","Ḇ":"B","Ƀ":"B","Ɓ":"B","ｃ":"C","Ⓒ":"C","Ｃ":"C","Ꜿ":"C","Ḉ":"C","Ç":"C","Ⓓ":"D","Ｄ":"D","Ḋ":"D","Ď":"D","Ḍ":"D","Ḑ":"D","Ḓ":"D","Ḏ":"D","Đ":"D","Ɗ":"D","Ɖ":"D","ᴅ":"D","Ꝺ":"D","Ð":"Dh","Ǳ":"DZ","Ǆ":"DZ","ǲ":"Dz","ǅ":"Dz","ɛ":"E","Ⓔ":"E","Ｅ":"E","È":"E","É":"E","Ê":"E","Ề":"E","Ế":"E","Ễ":"E","Ể":"E","Ẽ":"E","Ē":"E","Ḕ":"E","Ḗ":"E","Ĕ":"E","Ė":"E","Ë":"E","Ẻ":"E","Ě":"E","Ȅ":"E","Ȇ":"E","Ẹ":"E","Ệ":"E","Ȩ":"E","Ḝ":"E","Ę":"E","Ḙ":"E","Ḛ":"E","Ɛ":"E","Ǝ":"E","ᴇ":"E","ꝼ":"F","Ⓕ":"F","Ｆ":"F","Ḟ":"F","Ƒ":"F","Ꝼ":"F","Ⓖ":"G","Ｇ":"G","Ǵ":"G","Ĝ":"G","Ḡ":"G","Ğ":"G","Ġ":"G","Ǧ":"G","Ģ":"G","Ǥ":"G","Ɠ":"G","Ꞡ":"G","Ᵹ":"G","Ꝿ":"G","ɢ":"G","Ⓗ":"H","Ｈ":"H","Ĥ":"H","Ḣ":"H","Ḧ":"H","Ȟ":"H","Ḥ":"H","Ḩ":"H","Ḫ":"H","Ħ":"H","Ⱨ":"H","Ⱶ":"H","Ɥ":"H","Ⓘ":"I","Ｉ":"I","Ì":"I","Í":"I","Î":"I","Ĩ":"I","Ī":"I","Ĭ":"I","İ":"I","Ï":"I","Ḯ":"I","Ỉ":"I","Ǐ":"I","Ȉ":"I","Ȋ":"I","Ị":"I","Į":"I","Ḭ":"I","Ɨ":"I","Ⓙ":"J","Ｊ":"J","Ĵ":"J","Ɉ":"J","ȷ":"J","Ⓚ":"K","Ｋ":"K","Ḱ":"K","Ǩ":"K","Ḳ":"K","Ķ":"K","Ḵ":"K","Ƙ":"K","Ⱪ":"K","Ꝁ":"K","Ꝃ":"K","Ꝅ":"K","Ꞣ":"K","Ⓛ":"L","Ｌ":"L","Ŀ":"L","Ĺ":"L","Ľ":"L","Ḷ":"L","Ḹ":"L","Ļ":"L","Ḽ":"L","Ḻ":"L","Ł":"L","Ƚ":"L","Ɫ":"L","Ⱡ":"L","Ꝉ":"L","Ꝇ":"L","Ꞁ":"L","Ǉ":"LJ","ǈ":"Lj","Ⓜ":"M","Ｍ":"M","Ḿ":"M","Ṁ":"M","Ṃ":"M","Ɱ":"M","Ɯ":"M","ϻ":"M","Ꞥ":"N","Ƞ":"N","Ⓝ":"N","Ｎ":"N","Ǹ":"N","Ń":"N","Ñ":"N","Ṅ":"N","Ň":"N","Ṇ":"N","Ņ":"N","Ṋ":"N","Ṉ":"N","Ɲ":"N","Ꞑ":"N","ᴎ":"N","Ǌ":"NJ","ǋ":"Nj","Ⓞ":"O","Ｏ":"O","Ò":"O","Ó":"O","Ô":"O","Ồ":"O","Ố":"O","Ỗ":"O","Ổ":"O","Õ":"O","Ṍ":"O","Ȭ":"O","Ṏ":"O","Ō":"O","Ṑ":"O","Ṓ":"O","Ŏ":"O","Ȯ":"O","Ȱ":"O","Ö":"O","Ȫ":"O","Ỏ":"O","Ő":"O","Ǒ":"O","Ȍ":"O","Ȏ":"O","Ơ":"O","Ờ":"O","Ớ":"O","Ỡ":"O","Ở":"O","Ợ":"O","Ọ":"O","Ộ":"O","Ǫ":"O","Ǭ":"O","Ø":"O","Ǿ":"O","Ɔ":"O","Ɵ":"O","Ꝋ":"O","Ꝍ":"O","Œ":"OE","Ƣ":"OI","Ꝏ":"OO","Ȣ":"OU","Ⓟ":"P","Ｐ":"P","Ṕ":"P","Ṗ":"P","Ƥ":"P","Ᵽ":"P","Ꝑ":"P","Ꝓ":"P","Ꝕ":"P","Ⓠ":"Q","Ｑ":"Q","Ꝗ":"Q","Ꝙ":"Q","Ɋ":"Q","Ⓡ":"R","Ｒ":"R","Ŕ":"R","Ṙ":"R","Ř":"R","Ȑ":"R","Ȓ":"R","Ṛ":"R","Ṝ":"R","Ŗ":"R","Ṟ":"R","Ɍ":"R","Ɽ":"R","Ꝛ":"R","Ꞧ":"R","Ꞃ":"R","Ⓢ":"S","Ｓ":"S","ẞ":"S","Ś":"S","Ṥ":"S","Ŝ":"S","Ṡ":"S","Š":"S","Ṧ":"S","Ṣ":"S","Ṩ":"S","Ș":"S","Ş":"S","Ȿ":"S","Ꞩ":"S","Ꞅ":"S","Ⓣ":"T","Ｔ":"T","Ṫ":"T","Ť":"T","Ṭ":"T","Ț":"T","Ţ":"T","Ṱ":"T","Ṯ":"T","Ŧ":"T","Ƭ":"T","Ʈ":"T","Ⱦ":"T","Ꞇ":"T","Þ":"Th","Ꜩ":"TZ","Ⓤ":"U","Ｕ":"U","Ù":"U","Ú":"U","Û":"U","Ũ":"U","Ṹ":"U","Ū":"U","Ṻ":"U","Ŭ":"U","Ü":"U","Ǜ":"U","Ǘ":"U","Ǖ":"U","Ǚ":"U","Ủ":"U","Ů":"U","Ű":"U","Ǔ":"U","Ȕ":"U","Ȗ":"U","Ư":"U","Ừ":"U","Ứ":"U","Ữ":"U","Ử":"U","Ự":"U","Ụ":"U","Ṳ":"U","Ų":"U","Ṷ":"U","Ṵ":"U","Ʉ":"U","Ⓥ":"V","Ｖ":"V","Ṽ":"V","Ṿ":"V","Ʋ":"V","Ꝟ":"V","Ʌ":"V","Ꝡ":"VY","Ⓦ":"W","Ｗ":"W","Ẁ":"W","Ẃ":"W","Ŵ":"W","Ẇ":"W","Ẅ":"W","Ẉ":"W","Ⱳ":"W","Ⓧ":"X","Ｘ":"X","Ẋ":"X","Ẍ":"X","Ⓨ":"Y","Ｙ":"Y","Ỳ":"Y","Ý":"Y","Ŷ":"Y","Ỹ":"Y","Ȳ":"Y","Ẏ":"Y","Ÿ":"Y","Ỷ":"Y","Ỵ":"Y","Ƴ":"Y","Ɏ":"Y","Ỿ":"Y","Ⓩ":"Z","Ｚ":"Z","Ź":"Z","Ẑ":"Z","Ż":"Z","Ž":"Z","Ẓ":"Z","Ẕ":"Z","Ƶ":"Z","Ȥ":"Z","Ɀ":"Z","Ⱬ":"Z","Ꝣ":"Z","ⓐ":"a","ａ":"a","ẚ":"a","à":"a","á":"a","â":"a","ầ":"a","ấ":"a","ẫ":"a","ẩ":"a","ã":"a","ā":"a","ă":"a","ằ":"a","ắ":"a","ẵ":"a","ẳ":"a","ȧ":"a","ǡ":"a","ä":"a","ǟ":"a","ả":"a","å":"a","ǻ":"a","ǎ":"a","ȁ":"a","ȃ":"a","ạ":"a","ậ":"a","ặ":"a","ḁ":"a","ą":"a","ⱥ":"a","ɐ":"a","ɑ":"a","ꜳ":"aa","æ":"ae","ǽ":"ae","ǣ":"ae","ꜵ":"ao","ꜷ":"au","ꜹ":"av","ꜻ":"av","ꜽ":"ay","ⓑ":"b","ｂ":"b","ḃ":"b","ḅ":"b","ḇ":"b","ƀ":"b","ƃ":"b","ɓ":"b","Ƃ":"b","ⓒ":"c","ć":"c","ĉ":"c","ċ":"c","č":"c","ç":"c","ḉ":"c","ƈ":"c","ȼ":"c","ꜿ":"c","ↄ":"c","C":"c","Ć":"c","Ĉ":"c","Ċ":"c","Č":"c","Ƈ":"c","Ȼ":"c","ⓓ":"d","ｄ":"d","ḋ":"d","ď":"d","ḍ":"d","ḑ":"d","ḓ":"d","ḏ":"d","đ":"d","ƌ":"d","ɖ":"d","ɗ":"d","Ƌ":"d","Ꮷ":"d","ԁ":"d","Ɦ":"d","ð":"dh","ǳ":"dz","ǆ":"dz","ⓔ":"e","ｅ":"e","è":"e","é":"e","ê":"e","ề":"e","ế":"e","ễ":"e","ể":"e","ẽ":"e","ē":"e","ḕ":"e","ḗ":"e","ĕ":"e","ė":"e","ë":"e","ẻ":"e","ě":"e","ȅ":"e","ȇ":"e","ẹ":"e","ệ":"e","ȩ":"e","ḝ":"e","ę":"e","ḙ":"e","ḛ":"e","ɇ":"e","ǝ":"e","ⓕ":"f","ｆ":"f","ḟ":"f","ƒ":"f","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ⓖ":"g","ｇ":"g","ǵ":"g","ĝ":"g","ḡ":"g","ğ":"g","ġ":"g","ǧ":"g","ģ":"g","ǥ":"g","ɠ":"g","ꞡ":"g","ꝿ":"g","ᵹ":"g","ⓗ":"h","ｈ":"h","ĥ":"h","ḣ":"h","ḧ":"h","ȟ":"h","ḥ":"h","ḩ":"h","ḫ":"h","ẖ":"h","ħ":"h","ⱨ":"h","ⱶ":"h","ɥ":"h","ƕ":"hv","ⓘ":"i","ｉ":"i","ì":"i","í":"i","î":"i","ĩ":"i","ī":"i","ĭ":"i","ï":"i","ḯ":"i","ỉ":"i","ǐ":"i","ȉ":"i","ȋ":"i","ị":"i","į":"i","ḭ":"i","ɨ":"i","ı":"i","ⓙ":"j","ｊ":"j","ĵ":"j","ǰ":"j","ɉ":"j","ⓚ":"k","ｋ":"k","ḱ":"k","ǩ":"k","ḳ":"k","ķ":"k","ḵ":"k","ƙ":"k","ⱪ":"k","ꝁ":"k","ꝃ":"k","ꝅ":"k","ꞣ":"k","ⓛ":"l","ｌ":"l","ŀ":"l","ĺ":"l","ľ":"l","ḷ":"l","ḹ":"l","ļ":"l","ḽ":"l","ḻ":"l","ſ":"l","ł":"l","ƚ":"l","ɫ":"l","ⱡ":"l","ꝉ":"l","ꞁ":"l","ꝇ":"l","ɭ":"l","ǉ":"lj","ⓜ":"m","ｍ":"m","ḿ":"m","ṁ":"m","ṃ":"m","ɱ":"m","ɯ":"m","ⓝ":"n","ｎ":"n","ǹ":"n","ń":"n","ñ":"n","ṅ":"n","ň":"n","ṇ":"n","ņ":"n","ṋ":"n","ṉ":"n","ƞ":"n","ɲ":"n","ŉ":"n","ꞑ":"n","ꞥ":"n","ԉ":"n","ǌ":"nj","ⓞ":"o","ｏ":"o","ò":"o","ó":"o","ô":"o","ồ":"o","ố":"o","ỗ":"o","ổ":"o","õ":"o","ṍ":"o","ȭ":"o","ṏ":"o","ō":"o","ṑ":"o","ṓ":"o","ŏ":"o","ȯ":"o","ȱ":"o","ö":"o","ȫ":"o","ỏ":"o","ő":"o","ǒ":"o","ȍ":"o","ȏ":"o","ơ":"o","ờ":"o","ớ":"o","ỡ":"o","ở":"o","ợ":"o","ọ":"o","ộ":"o","ǫ":"o","ǭ":"o","ø":"o","ǿ":"o","ꝋ":"o","ꝍ":"o","ɵ":"o","ɔ":"o","ᴑ":"o","œ":"oe","ƣ":"oi","ꝏ":"oo","ȣ":"ou","ⓟ":"p","ｐ":"p","ṕ":"p","ṗ":"p","ƥ":"p","ᵽ":"p","ꝑ":"p","ꝓ":"p","ꝕ":"p","ρ":"p","ⓠ":"q","ｑ":"q","ɋ":"q","ꝗ":"q","ꝙ":"q","ⓡ":"r","ｒ":"r","ŕ":"r","ṙ":"r","ř":"r","ȑ":"r","ȓ":"r","ṛ":"r","ṝ":"r","ŗ":"r","ṟ":"r","ɍ":"r","ɽ":"r","ꝛ":"r","ꞧ":"r","ꞃ":"r","ⓢ":"s","ｓ":"s","ś":"s","ṥ":"s","ŝ":"s","ṡ":"s","š":"s","ṧ":"s","ṣ":"s","ṩ":"s","ș":"s","ş":"s","ȿ":"s","ꞩ":"s","ꞅ":"s","ẛ":"s","ʂ":"s","ß":"ss","ⓣ":"t","ｔ":"t","ṫ":"t","ẗ":"t","ť":"t","ṭ":"t","ț":"t","ţ":"t","ṱ":"t","ṯ":"t","ŧ":"t","ƭ":"t","ʈ":"t","ⱦ":"t","ꞇ":"t","þ":"th","ꜩ":"tz","ⓤ":"u","ｕ":"u","ù":"u","ú":"u","û":"u","ũ":"u","ṹ":"u","ū":"u","ṻ":"u","ŭ":"u","ü":"u","ǜ":"u","ǘ":"u","ǖ":"u","ǚ":"u","ủ":"u","ů":"u","ű":"u","ǔ":"u","ȕ":"u","ȗ":"u","ư":"u","ừ":"u","ứ":"u","ữ":"u","ử":"u","ự":"u","ụ":"u","ṳ":"u","ų":"u","ṷ":"u","ṵ":"u","ʉ":"u","ⓥ":"v","ｖ":"v","ṽ":"v","ṿ":"v","ʋ":"v","ꝟ":"v","ʌ":"v","ꝡ":"vy","ⓦ":"w","ｗ":"w","ẁ":"w","ẃ":"w","ŵ":"w","ẇ":"w","ẅ":"w","ẘ":"w","ẉ":"w","ⱳ":"w","ⓧ":"x","ｘ":"x","ẋ":"x","ẍ":"x","ⓨ":"y","ｙ":"y","ỳ":"y","ý":"y","ŷ":"y","ỹ":"y","ȳ":"y","ẏ":"y","ÿ":"y","ỷ":"y","ẙ":"y","ỵ":"y","ƴ":"y","ɏ":"y","ỿ":"y","ⓩ":"z","ｚ":"z","ź":"z","ẑ":"z","ż":"z","ž":"z","ẓ":"z","ẕ":"z","ƶ":"z","ȥ":"z","ɀ":"z","ⱬ":"z","ꝣ":"z"}
-},{}],46:[function(require,module,exports){
+},{"../../../../../../../../opt/node-v16.16.0/lib/node_modules/browserify/node_modules/is-buffer/index.js":74,"./ansi.js":53,"./escape.js":55,"_process":76}],59:[function(require,module,exports){
+arguments[4][43][0].apply(exports,arguments)
+},{"dup":43}],60:[function(require,module,exports){
 /*
 	String Kit
 
@@ -29224,7 +33235,7 @@ module.exports = function( str ) {
 
 
 
-},{"./latinize-map.json":45}],47:[function(require,module,exports){
+},{"./latinize-map.json":59}],61:[function(require,module,exports){
 /*
 	String Kit
 
@@ -29284,7 +33295,7 @@ exports.occurrenceCount = function( str , subStr , overlap = false ) {
 } ;
 
 
-},{}],48:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 /*
 	String Kit
 
@@ -29431,7 +33442,7 @@ function naturalSort( a , b ) {
 module.exports = naturalSort ;
 
 
-},{}],49:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 /*
 	String Kit
 
@@ -29488,7 +33499,7 @@ exports.regexp.array2alternatives = function array2alternatives( array ) {
 
 
 
-},{"./escape.js":41}],50:[function(require,module,exports){
+},{"./escape.js":55}],64:[function(require,module,exports){
 /*
 	String Kit
 
@@ -29581,7 +33592,7 @@ stringKit.installPolyfills = function installPolyfills() {
 //*/
 
 
-},{"./StringNumber.js":38,"./ansi.js":39,"./camel.js":40,"./escape.js":41,"./format.js":42,"./fuzzy.js":43,"./inspect.js":44,"./latinize.js":46,"./misc.js":47,"./naturalSort.js":48,"./regexp.js":49,"./toTitleCase.js":51,"./unicode.js":53,"./wordwrap.js":54}],51:[function(require,module,exports){
+},{"./StringNumber.js":52,"./ansi.js":53,"./camel.js":54,"./escape.js":55,"./format.js":56,"./fuzzy.js":57,"./inspect.js":58,"./latinize.js":60,"./misc.js":61,"./naturalSort.js":62,"./regexp.js":63,"./toTitleCase.js":65,"./unicode.js":67,"./wordwrap.js":68}],65:[function(require,module,exports){
 /*
 	String Kit
 
@@ -29670,10 +33681,10 @@ module.exports = ( str , options = DEFAULT_OPTIONS ) => {
 } ;
 
 
-},{}],52:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 module.exports=[{"s":9728,"e":9747,"w":1},{"s":9748,"e":9749,"w":2},{"s":9750,"e":9799,"w":1},{"s":9800,"e":9811,"w":2},{"s":9812,"e":9854,"w":1},{"s":9855,"e":9855,"w":2},{"s":9856,"e":9874,"w":1},{"s":9875,"e":9875,"w":2},{"s":9876,"e":9888,"w":1},{"s":9889,"e":9889,"w":2},{"s":9890,"e":9897,"w":1},{"s":9898,"e":9899,"w":2},{"s":9900,"e":9916,"w":1},{"s":9917,"e":9918,"w":2},{"s":9919,"e":9923,"w":1},{"s":9924,"e":9925,"w":2},{"s":9926,"e":9933,"w":1},{"s":9934,"e":9934,"w":2},{"s":9935,"e":9939,"w":1},{"s":9940,"e":9940,"w":2},{"s":9941,"e":9961,"w":1},{"s":9962,"e":9962,"w":2},{"s":9963,"e":9969,"w":1},{"s":9970,"e":9971,"w":2},{"s":9972,"e":9972,"w":1},{"s":9973,"e":9973,"w":2},{"s":9974,"e":9977,"w":1},{"s":9978,"e":9978,"w":2},{"s":9979,"e":9980,"w":1},{"s":9981,"e":9981,"w":2},{"s":9982,"e":9983,"w":1},{"s":9984,"e":9988,"w":1},{"s":9989,"e":9989,"w":2},{"s":9990,"e":9993,"w":1},{"s":9994,"e":9995,"w":2},{"s":9996,"e":10023,"w":1},{"s":10024,"e":10024,"w":2},{"s":10025,"e":10059,"w":1},{"s":10060,"e":10060,"w":2},{"s":10061,"e":10061,"w":1},{"s":10062,"e":10062,"w":2},{"s":10063,"e":10066,"w":1},{"s":10067,"e":10069,"w":2},{"s":10070,"e":10070,"w":1},{"s":10071,"e":10071,"w":2},{"s":10072,"e":10132,"w":1},{"s":10133,"e":10135,"w":2},{"s":10136,"e":10159,"w":1},{"s":10160,"e":10160,"w":2},{"s":10161,"e":10174,"w":1},{"s":10175,"e":10175,"w":2},{"s":126976,"e":126979,"w":1},{"s":126980,"e":126980,"w":2},{"s":126981,"e":127182,"w":1},{"s":127183,"e":127183,"w":2},{"s":127184,"e":127373,"w":1},{"s":127374,"e":127374,"w":2},{"s":127375,"e":127376,"w":1},{"s":127377,"e":127386,"w":2},{"s":127387,"e":127487,"w":1},{"s":127744,"e":127776,"w":2},{"s":127777,"e":127788,"w":1},{"s":127789,"e":127797,"w":2},{"s":127798,"e":127798,"w":1},{"s":127799,"e":127868,"w":2},{"s":127869,"e":127869,"w":1},{"s":127870,"e":127891,"w":2},{"s":127892,"e":127903,"w":1},{"s":127904,"e":127946,"w":2},{"s":127947,"e":127950,"w":1},{"s":127951,"e":127955,"w":2},{"s":127956,"e":127967,"w":1},{"s":127968,"e":127984,"w":2},{"s":127985,"e":127987,"w":1},{"s":127988,"e":127988,"w":2},{"s":127989,"e":127991,"w":1},{"s":127992,"e":127994,"w":2},{"s":128000,"e":128062,"w":2},{"s":128063,"e":128063,"w":1},{"s":128064,"e":128064,"w":2},{"s":128065,"e":128065,"w":1},{"s":128066,"e":128252,"w":2},{"s":128253,"e":128254,"w":1},{"s":128255,"e":128317,"w":2},{"s":128318,"e":128330,"w":1},{"s":128331,"e":128334,"w":2},{"s":128335,"e":128335,"w":1},{"s":128336,"e":128359,"w":2},{"s":128360,"e":128377,"w":1},{"s":128378,"e":128378,"w":2},{"s":128379,"e":128404,"w":1},{"s":128405,"e":128406,"w":2},{"s":128407,"e":128419,"w":1},{"s":128420,"e":128420,"w":2},{"s":128421,"e":128506,"w":1},{"s":128507,"e":128591,"w":2},{"s":128592,"e":128639,"w":1},{"s":128640,"e":128709,"w":2},{"s":128710,"e":128715,"w":1},{"s":128716,"e":128716,"w":2},{"s":128717,"e":128719,"w":1},{"s":128720,"e":128722,"w":2},{"s":128723,"e":128724,"w":1},{"s":128725,"e":128727,"w":2},{"s":128728,"e":128746,"w":1},{"s":128747,"e":128748,"w":2},{"s":128749,"e":128755,"w":1},{"s":128756,"e":128764,"w":2},{"s":128765,"e":128991,"w":1},{"s":128992,"e":129003,"w":2},{"s":129004,"e":129291,"w":1},{"s":129292,"e":129338,"w":2},{"s":129339,"e":129339,"w":1},{"s":129340,"e":129349,"w":2},{"s":129350,"e":129350,"w":1},{"s":129351,"e":129400,"w":2},{"s":129401,"e":129401,"w":1},{"s":129402,"e":129483,"w":2},{"s":129484,"e":129484,"w":1},{"s":129485,"e":129535,"w":2},{"s":129536,"e":129647,"w":1},{"s":129648,"e":129652,"w":2},{"s":129653,"e":129655,"w":1},{"s":129656,"e":129658,"w":2},{"s":129659,"e":129663,"w":1},{"s":129664,"e":129670,"w":2},{"s":129671,"e":129679,"w":1},{"s":129680,"e":129704,"w":2},{"s":129705,"e":129711,"w":1},{"s":129712,"e":129718,"w":2},{"s":129719,"e":129727,"w":1},{"s":129728,"e":129730,"w":2},{"s":129731,"e":129743,"w":1},{"s":129744,"e":129750,"w":2},{"s":129751,"e":129791,"w":1}]
 
-},{}],53:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 /*
 	String Kit
 
@@ -30021,7 +34032,7 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./unicode-emoji-width-ranges.json":52}],54:[function(require,module,exports){
+},{"./unicode-emoji-width-ranges.json":66}],68:[function(require,module,exports){
 /*
 	String Kit
 
@@ -30225,11 +34236,11 @@ module.exports = function wordwrap( str , options ) {
 } ;
 
 
-},{"./unicode.js":53}],55:[function(require,module,exports){
+},{"./unicode.js":67}],69:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
   "version": "0.5.1",
-  "description": "A small SVG toolkit.",
+  "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
     "test": "test"
@@ -30237,6 +34248,7 @@ module.exports={
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "array-kit": "^0.2.4",
+    "book-source": "^0.2.0",
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "opentype.js": "^1.3.4",
@@ -30250,7 +34262,11 @@ module.exports={
     "url": "https://github.com/cronvel/svg-kit.git"
   },
   "keywords": [
-    "svg"
+    "svg",
+    "vector",
+    "graphic",
+    "flowing",
+    "text"
   ],
   "author": "Cédric Ronvel",
   "license": "MIT",
@@ -30264,12 +34280,15 @@ module.exports={
       2023
     ],
     "owner": "Cédric Ronvel"
+  },
+  "engines": {
+    "node": ">=14.15.0"
   }
 }
 
-},{}],56:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
 
-},{}],57:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -30421,7 +34440,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],58:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * The buffer module from node.js, for the browser.
@@ -32202,7 +36221,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":57,"buffer":58,"ieee754":59}],59:[function(require,module,exports){
+},{"base64-js":71,"buffer":72,"ieee754":73}],73:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -32289,7 +36308,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],60:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -32312,7 +36331,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],61:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -32845,7 +36864,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":62}],62:[function(require,module,exports){
+},{"_process":76}],76:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
