@@ -42,7 +42,8 @@ async function flowTest() {
 			//lineColor: '#559'
 		} ,
 		//structuredText: { text: "Bob?" } ,
-		quickMarkupText: "^=Title :^:\n^.Sub-title :^:\nGrigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		//quickMarkupText: "^=Title :^:\n^.Sub-title :^:\nGrigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: rawDoc ,
 		//quickMarkupText: "Hum:   Grigrigredin-menufretin !   Hello   my  friend,   stay   awhile   and   listen..." ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;

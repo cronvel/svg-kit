@@ -19,6 +19,9 @@ build: browser
 # Build the browser lib
 browser: browser/svg-kit.js browser/svg-kit.min.js
 
+# Build only the non-minified browser lib
+dev-browser: browser/svg-kit.js
+
 # This run the JsHint & Mocha BDD test, display it to STDOUT & save it to log/mocha.log and log/jshint.log
 test: log/jshint.log log/mocha.log
 
