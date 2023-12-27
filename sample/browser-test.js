@@ -33,7 +33,8 @@ async function bookSourceFlowTest() {
 		//textVerticalAlignment: 'bottom' ,
 		//textHorizontalAlignment: 'center' ,
 		attr: {
-			fontSize: 28 , color: '#777' ,
+			fontSize: 20 ,
+			color: '#555' ,
 			//outline: true ,
 			//frameCornerRadius: '0.2em' ,
 			//frameOutlineWidth: '0.1em' ,
@@ -41,10 +42,7 @@ async function bookSourceFlowTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
-		//structuredText: { text: "Bob?" } ,
-		//quickMarkupText: "^=Title :^:\n^.Sub-title :^:\nGrigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
 		markupText: rawDoc ,
-		//quickMarkupText: "Hum:   Grigrigredin-menufretin !   Hello   my  friend,   stay   awhile   and   listen..." ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
