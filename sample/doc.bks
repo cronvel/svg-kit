@@ -2,6 +2,8 @@
 This is *some* [Book Source]<dark cyan> [text]<bg:yellow>. This should be _underlined_! Nice!
 
 And this is the **2nd** ***paragraph***.
+Now some inline images ![smiley](smiley-mini.png) ![smiley](smiley-mini.png) ![smiley](smiley-mini.png)
+Nice x2 !
 
 * item 1
 * item 2

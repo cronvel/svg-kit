@@ -1839,7 +1839,10 @@ StructuredTextRenderer.prototype.styledText = function( data ) {
 
 
 
-//StructuredTextRenderer.prototype.image = function( data ) {} ;
+StructuredTextRenderer.prototype.image = function( data ) {
+	return { imageUrl: data.href } ;
+} ;
+
 //StructuredTextRenderer.prototype.pictogram = function( data ) {} ;
 //StructuredTextRenderer.prototype.anchor = function( data ) {} ;
 
