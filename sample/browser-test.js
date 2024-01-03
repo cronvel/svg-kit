@@ -87,7 +87,7 @@ async function flowTest() {
 		textVerticalAlignment: 'bottom' ,
 		textHorizontalAlignment: 'center' ,
 		attr: {
-			fontSize: 28 , color: '#777' ,
+			fontSize: 28 , color: '#555' ,
 			//outline: true ,
 			//frameCornerRadius: '0.2em' ,
 			//frameOutlineWidth: '0.1em' ,
@@ -96,9 +96,8 @@ async function flowTest() {
 			//lineColor: '#559'
 		} ,
 		//structuredText: { text: "Bob?" } ,
-		quickMarkupText: "^=Title :^:\n^.Sub-title :^:\nGrigrigredin-menufretin ! ^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: "Grigrigredin-menufretin ! [Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:light blue> and _listen_..." ,
 		//markupText: rawDoc ,
-		//quickMarkupText: "Hum:   Grigrigredin-menufretin !   Hello   my  friend,   stay   awhile   and   listen..." ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
@@ -308,7 +307,7 @@ async function test() {
 		//textWrapping: 'ellipsis' ,
 		textWrapping: 'wordWrap' ,
 		attr: {
-			fontSize: 30 , color: '#777' ,
+			fontSize: 30 , color: '#555' ,
 			outline: true ,
 			frameCornerRadius: '0.2em' ,
 			frameOutlineWidth: '0.1em' ,
@@ -317,7 +316,7 @@ async function test() {
 			//lineColor: '#559'
 		} ,
 		_text: "Hello my friend, stay awhile and listen..." ,
-		quickMarkupText: "^GHello^ ^/my^ ^+friend^:, ^+^/stay^ ^[bgBlue]awhile^ and ^_listen^:..." ,
+		markupText: "[Hello]<green> *my* **friend**, ***stay*** [awhile]<[bg:blue> and _listen_..." ,
 		_structuredText: [
 			{ text: "Hello\nworld!\nWhat " } ,
 			{ text: "a wonderful " , attr: { fontSize: '0.7em' , color: '#933' } } ,
@@ -368,7 +367,7 @@ async function test() {
 	$svgText.appendChild( anchor ) ;
 }
 
-//svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( test ) ;
 //svgKit.domKit.ready( flowTest ) ;
-svgKit.domKit.ready( bookSourceFlowTest ) ;
+//svgKit.domKit.ready( bookSourceFlowTest ) ;
 

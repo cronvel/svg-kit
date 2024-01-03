@@ -68,19 +68,34 @@ const FRAGMENT = {} ;
 
 FRAGMENT.string = {
 	new: () => '' ,
-	append: ( stack_ , str ) => stack_ + ( str || '' ) ,
-	concat: ( a , b ) => a + ( b || '' )
+	append: ( stack_ , part ) => stack_ + ( part || '' ) ,
+	concat: ( stack_ , parts ) => stack_ + ( parts || '' )
 } ;
 
-FRAGMENT.object = {
+FRAGMENT.flatStructure = {
+	new: () => [] ,
+	append: ( stack_ , part ) => {
+		if ( part ) {
+			if ( Array.isArray( part ) ) { stack_.push( ... part ) ; }
+			else { stack_.push( part ) ; }
+		}
+		return stack_ ;
+	} ,
+	concat: ( stack_ , parts ) => {
+		if ( parts && parts.length ) { stack_.push( ... parts ) ; }
+		return stack_ ;
+	}
+} ;
+
+FRAGMENT.structure = {
 	new: () => [] ,
 	append: ( stack_ , part ) => {
 		if ( part ) { stack_.push( part ) ; }
 		return stack_ ;
 	} ,
-	concat: ( a , b ) => {
-		if ( b ) { a.concat( b ) ; }
-		return a ;
+	concat: ( stack_ , parts ) => {
+		if ( parts && parts.length ) { stack_.push( ... parts ) ; }
+		return stack_ ;
 	}
 } ;
 
@@ -102,18 +117,18 @@ StructuredDocument.prototype.renderParts = function( renderer , parts , partStac
 				for ( let group of groupList ) {
 					if ( renderer.group[ part.type ][ group.type ] ) {
 						partStack.push( part ) ;
-						let groupStr = this.renderParts( renderer , group.parts , partStack ) ;
+						let groupOutput = this.renderParts( renderer , group.parts , partStack ) ;
 						partStack.pop() ;
-						partsOutput = fragment.append(
+						partsOutput = fragment.concat(
 							partsOutput ,
-							renderer.group[ part.type ][ group.type ]( part , groupStr , partStack )
+							renderer.group[ part.type ][ group.type ]( part , groupOutput , partStack )
 						) ;
 					}
 				}
 			}
 			else {
 				partStack.push( part ) ;
-				partsOutput = fragment.append(
+				partsOutput = fragment.concat(
 					partsOutput ,
 					this.renderParts( renderer , part.parts , [ ... partStack , part ] )
 				) ;
@@ -122,7 +137,7 @@ StructuredDocument.prototype.renderParts = function( renderer , parts , partStac
 		}
 
 		if ( renderer[ part.type ] ) {
-			output = fragment.concat(
+			output = fragment.append(
 				output ,
 				renderer[ part.type ]( part , partsOutput , partStack , index )
 			) ;
@@ -4850,7 +4865,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":85,"./VGContainer.js":21,"palette-shade":75}],20:[function(require,module,exports){
+},{"../package.json":77,"./VGContainer.js":21,"palette-shade":74}],20:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4959,7 +4974,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":85,"./VGContainer.js":21,"./VGEntity.js":23,"./svg-kit.js":41,"array-kit":63}],21:[function(require,module,exports){
+},{"../package.json":77,"./VGContainer.js":21,"./VGEntity.js":23,"./svg-kit.js":40,"array-kit":62}],21:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5154,7 +5169,7 @@ VGContainer.prototype.morphSvgDom = function() {
 } ;
 
 
-},{"../package.json":85,"./VGEntity.js":23,"./svg-kit.js":41,"array-kit":63}],22:[function(require,module,exports){
+},{"../package.json":77,"./VGEntity.js":23,"./svg-kit.js":40,"array-kit":62}],22:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5274,7 +5289,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":85,"./VGEntity.js":23,"./canvas.js":36}],23:[function(require,module,exports){
+},{"../package.json":77,"./VGEntity.js":23,"./canvas.js":35}],23:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -5884,7 +5899,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; }
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":85,"./fontLib.js":37,"./misc.js":39,"_process":92,"dom-kit":69,"string-kit/lib/camel":78,"string-kit/lib/escape":79}],24:[function(require,module,exports){
+},{"../package.json":77,"./fontLib.js":36,"./misc.js":38,"_process":84,"dom-kit":68,"string-kit/lib/camel":75,"string-kit/lib/escape":76}],24:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6127,7 +6142,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 } ;
 
 
-},{"./TextAttribute.js":27,"./TextMetrics.js":28,"string-kit/lib/escape.js":79}],26:[function(require,module,exports){
+},{"./TextAttribute.js":27,"./TextMetrics.js":28,"string-kit/lib/escape.js":76}],26:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6165,12 +6180,13 @@ module.exports = StructuredTextRenderer ;
 
 
 
-StructuredTextRenderer.prototype.type = 'object' ;
+StructuredTextRenderer.prototype.type = 'flatStructure' ;
 
 
 
 // Render the full document, called last with all content rendered
 StructuredTextRenderer.prototype.document = function( meta , renderedChildren ) {
+	console.warn( "document:" , renderedChildren ) ;
 	return renderedChildren ;
 } ;
 
@@ -6181,6 +6197,7 @@ StructuredTextRenderer.prototype.document = function( meta , renderedChildren ) 
 
 
 StructuredTextRenderer.prototype.paragraph = function( data , renderedChildren ) {
+	console.warn( "paragraph:" , renderedChildren ) ;
 	renderedChildren.push( { text: "\n\n" } ) ;
 	return renderedChildren ;
 } ;
@@ -6216,7 +6233,7 @@ StructuredTextRenderer.prototype.list = function( data , renderedChildren ) {
 
 
 StructuredTextRenderer.prototype.listItem = function( data , renderedChildren ) {
-	renderedChildren.unshift( { text: "*" } ) ;
+	renderedChildren.unshift( { text: '• ' } ) ;
 	renderedChildren.push( { text: "\n" } ) ;
 	return renderedChildren ;
 } ;
@@ -6230,8 +6247,8 @@ StructuredTextRenderer.prototype.orderedList = function( data , renderedChildren
 
 
 
-StructuredTextRenderer.prototype.orderedListItem = function( data , renderedChildren ) {
-	renderedChildren.unshift( { text: "*" } ) ;
+StructuredTextRenderer.prototype.orderedListItem = function( data , renderedChildren , stack , index ) {
+	renderedChildren.unshift( { text: '' + ( index + 1 ) + '. ' } ) ;
 	renderedChildren.push( { text: "\n" } ) ;
 	return renderedChildren ;
 } ;
@@ -6243,6 +6260,7 @@ StructuredTextRenderer.prototype.orderedListItem = function( data , renderedChil
 
 
 StructuredTextRenderer.prototype.text = function( data ) {
+	console.warn( "text:" , data ) ;
 	return { text: data.text } ;
 } ;
 
@@ -6331,6 +6349,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 		part.frame = true ;
 		part.frameColor = style.backgroundColor ;
 		part.frameOutlineColor = "#777" ;   // <-- TEMP
+		part.frameCornerRadius = 5 ;   // <-- TEMP
 	}
 } ;
 
@@ -6911,7 +6930,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 } ;
 
 
-},{"../Metric.js":18,"palette-shade":75}],28:[function(require,module,exports){
+},{"../Metric.js":18,"palette-shade":74}],28:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7028,7 +7047,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 } ;
 
 
-},{"../fontLib.js":37}],29:[function(require,module,exports){
+},{"../fontLib.js":36}],29:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7067,9 +7086,11 @@ const TextAttribute = require( './TextAttribute.js' ) ;
 const TextMetrics = require( './TextMetrics.js' ) ;
 const BoundingBox = require( '../BoundingBox.js' ) ;
 
+const bookSource = require( 'book-source' ) ;
+const StructuredTextRenderer = require( './StructuredTextRenderer.js' ) ;
+
 const fontLib = require( '../fontLib.js' ) ;
 const canvas = require( '../canvas.js' ) ;
-const structuredText = require( './structuredText.js' ) ;
 
 
 
@@ -7137,7 +7158,6 @@ VGFlowingText.prototype.set = function( params ) {
 
 	if ( params.structuredText ) { this.setStructuredText( params.structuredText ) ; }
 	else if ( params.markupText ) { this.setMarkupText( params.markupText ) ; }
-	else if ( params.quickMarkupText ) { this.setQuickMarkupText( params.quickMarkupText ) ; }
 	else if ( params.text ) { this.setText( params.text ) ; }
 
 	if ( params.attr ) { this.attr = new TextAttribute( params.attr ) ; this.areLinesComputed = false ; }
@@ -7195,23 +7215,11 @@ VGFlowingText.prototype.setStructuredText = function( structuredText_ ) {
 
 
 VGFlowingText.prototype.setMarkupText = function( markupText ) {
-	var parsed = structuredText.parseMarkup( markupText ) ; return this.setStructuredText( parsed ) ;
-
-	const bookSource = require( 'book-source' ) ;
-	const StructuredTextRenderer = require( './StructuredTextRenderer.js' ) ;
-
 	var structuredTextRenderer = new StructuredTextRenderer() ;
 	var structuredDocument = bookSource.parse( markupText ) ;
 	var parsed = structuredDocument.render( structuredTextRenderer ) ;
-	console.warn( parsed ) ;
+	console.warn( "PARSED:" , parsed ) ;
 
-	return this.setStructuredText( parsed ) ;
-} ;
-
-
-
-VGFlowingText.prototype.setQuickMarkupText = function( quickMarkupText ) {
-	var parsed = structuredText.parseQuickMarkup( quickMarkupText ) ;
 	return this.setStructuredText( parsed ) ;
 } ;
 
@@ -8006,335 +8014,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":85,"../BoundingBox.js":17,"../VGEntity.js":23,"../canvas.js":36,"../fontLib.js":37,"./StructuredTextLine.js":24,"./StructuredTextPart.js":25,"./StructuredTextRenderer.js":26,"./TextAttribute.js":27,"./TextMetrics.js":28,"./structuredText.js":30,"book-source":4}],30:[function(require,module,exports){
-/*
-	SVG Kit
-
-	Copyright (c) 2017 - 2023 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-
-
-const misc = require( '../misc.js' ) ;
-const format = require( 'string-kit/lib/format.js' ) ;
-const bookSource = require( 'book-source' ) ;
-
-
-
-const structuredText = {} ;
-module.exports = structuredText ;
-
-
-
-structuredText.parseMarkup = function( sourceText ) {
-	var structuredTextParts = [] ,
-		structuredDocument = bookSource.parse( sourceText ) ;
-	
-	for ( let part of structuredDocument.parts ) {
-		if ( part.type !== 'paragraph' ) { continue ; }
-
-		for ( let child of part.parts ) {
-			// Don't convert unsupported stuff ATM
-			if ( ! ( child instanceof bookSource.InlineTextPart ) ) { continue ; }
-
-			var outputPart = { text: child.text } ;
-
-			if ( child.type === 'emphasisText' ) {
-				if ( child.level === 1 ) {
-					outputPart.fontStyle = 'italic' ;
-				}
-				else if ( child.level === 2 ) {
-					outputPart.fontWeight = 'bold' ;
-				}
-				else if ( child.level >= 2 ) {
-					outputPart.fontStyle = 'italic' ;
-					outputPart.fontWeight = 'bold' ;
-				}
-			}
-
-			if ( child.type === 'decoratedText' ) {
-				// child.level can be 1 or 2, should modify thickness or produce double lines
-				outputPart.underline = true ;
-			}
-			
-			if ( child.style ) {
-				structuredText.populateStyle( child.style , outputPart ) ;
-			}
-
-			structuredTextParts.push( outputPart ) ;
-		}
-
-		structuredTextParts.push( { text: "\n\n" } ) ;
-	}
-	
-	return structuredTextParts ;
-} ;
-
-
-
-structuredText.populateStyle = function( style , part ) {
-	if ( style.italic ) { part.fontStyle = 'italic' ; }
-	if ( style.bold ) { part.fontWeight = 'bold' ; }
-	if ( style.underline ) { part.underline = true ; }
-
-	if ( style.textColor ) { part.color = style.textColor ; }
-
-	if ( style.backgroundColor ) {
-		part.frame = true ;
-		part.frameColor = style.backgroundColor ;
-		part.frameOutlineColor = "#777" ;	// <-- TEMP
-	}
-} ;
-
-
-
-
-
-// Old (deprecated?) Quick-Markup
-
-
-
-const MARKUP_COLOR_CODE = {
-	black: '#000000' ,
-	brightBlack: '#555753' ,
-	red: '#cc0000' ,
-	brightRed: '#ef2929' ,
-	green: '#4e9a06' ,
-	brightGreen: '#8ae234' ,
-	yellow: '#c4a000' ,
-	brightYellow: '#fce94f' ,
-	blue: '#3465a4' ,
-	brightBlue: '#729fcf' ,
-	magenta: '#75507b' ,
-	brightMagenta: '#ad7fa8' ,
-	cyan: '#06989a' ,
-	brightCyan: '#34e2e2' ,
-	white: '#d3d7cf' ,
-	brightWhite: '#eeeeec'
-} ;
-
-MARKUP_COLOR_CODE.grey = MARKUP_COLOR_CODE.gray = MARKUP_COLOR_CODE.brightBlack ;
-
-
-
-structuredText.parseQuickMarkup = function( text ) {
-	return structuredText.parseStringKitMarkup( text ).map( input => {
-		var part = { text: input.text } ;
-
-		if ( input.color ) {
-			part.color = input.color[ 0 ] === '#' ? input.color : MARKUP_COLOR_CODE[ input.color ] ;
-		}
-
-		if ( input.italic ) { part.fontStyle = 'italic' ; }
-		if ( input.bold ) { part.fontWeight = 'bold' ; }
-		if ( input.underline ) { part.underline = true ; }
-		if ( input.strike ) { part.lineThrough = true ; }
-		if ( input.big ) { part.fontSize = '1.4em' ; }
-		if ( input.small ) { part.fontSize = '0.7em' ; }
-
-		if ( input.bgColor ) {
-			part.frame = true ;
-			part.frameColor = input.bgColor[ 0 ] === '#' ? input.bgColor : MARKUP_COLOR_CODE[ input.bgColor ] ;
-			part.frameOutlineColor = misc.getContrastColorCode( part.frameColor , 0.7 ) ;
-		}
-
-		return part ;
-	} ) ;
-} ;
-
-
-
-// Catch-all keywords to key:value
-const CATCH_ALL_KEYWORDS = {
-	// Foreground colors
-	defaultColor: [ 'color' , 'default' ] ,
-	black: [ 'color' , 'black' ] ,
-	red: [ 'color' , 'red' ] ,
-	green: [ 'color' , 'green' ] ,
-	yellow: [ 'color' , 'yellow' ] ,
-	blue: [ 'color' , 'blue' ] ,
-	magenta: [ 'color' , 'magenta' ] ,
-	cyan: [ 'color' , 'cyan' ] ,
-	white: [ 'color' , 'white' ] ,
-	grey: [ 'color' , 'grey' ] ,
-	gray: [ 'color' , 'gray' ] ,
-	brightBlack: [ 'color' , 'brightBlack' ] ,
-	brightRed: [ 'color' , 'brightRed' ] ,
-	brightGreen: [ 'color' , 'brightGreen' ] ,
-	brightYellow: [ 'color' , 'brightYellow' ] ,
-	brightBlue: [ 'color' , 'brightBlue' ] ,
-	brightMagenta: [ 'color' , 'brightMagenta' ] ,
-	brightCyan: [ 'color' , 'brightCyan' ] ,
-	brightWhite: [ 'color' , 'brightWhite' ] ,
-
-	// Background colors
-	defaultBgColor: [ 'bgColor' , 'default' ] ,
-	bgBlack: [ 'bgColor' , 'black' ] ,
-	bgRed: [ 'bgColor' , 'red' ] ,
-	bgGreen: [ 'bgColor' , 'green' ] ,
-	bgYellow: [ 'bgColor' , 'yellow' ] ,
-	bgBlue: [ 'bgColor' , 'blue' ] ,
-	bgMagenta: [ 'bgColor' , 'magenta' ] ,
-	bgCyan: [ 'bgColor' , 'cyan' ] ,
-	bgWhite: [ 'bgColor' , 'white' ] ,
-	bgGrey: [ 'bgColor' , 'grey' ] ,
-	bgGray: [ 'bgColor' , 'gray' ] ,
-	bgBrightBlack: [ 'bgColor' , 'brightBlack' ] ,
-	bgBrightRed: [ 'bgColor' , 'brightRed' ] ,
-	bgBrightGreen: [ 'bgColor' , 'brightGreen' ] ,
-	bgBrightYellow: [ 'bgColor' , 'brightYellow' ] ,
-	bgBrightBlue: [ 'bgColor' , 'brightBlue' ] ,
-	bgBrightMagenta: [ 'bgColor' , 'brightMagenta' ] ,
-	bgBrightCyan: [ 'bgColor' , 'brightCyan' ] ,
-	bgBrightWhite: [ 'bgColor' , 'brightWhite' ] ,
-
-	// Other styles
-	dim: [ 'dim' , true ] ,
-	bold: [ 'bold' , true ] ,
-	underline: [ 'underline' , true ] ,
-	italic: [ 'italic' , true ] ,
-	inverse: [ 'inverse' , true ] ,
-	strike: [ 'strike' , true ]
-} ;
-
-
-
-const parseStringKitMarkupConfig = {
-	parse: true ,
-	markupReset: markupStack => {
-		markupStack.length = 0 ;
-	} ,
-	//shiftMarkup: { '#': 'background' } ,
-	markup: {
-		":": null ,
-		" ": markupStack => {
-			markupStack.length = 0 ;
-			return [ null , ' ' ] ;
-		} ,
-
-		"-": { dim: true } ,
-		"+": { bold: true } ,
-		"_": { underline: true } ,
-		"/": { italic: true } ,
-		"!": { inverse: true } ,
-		"~": { strike: true } ,
-		"=": { big: true } ,
-		".": { small: true } ,
-
-		"b": { color: "blue" } ,
-		"B": { color: "brightBlue" } ,
-		"c": { color: "cyan" } ,
-		"C": { color: "brightCyan" } ,
-		"g": { color: "green" } ,
-		"G": { color: "brightGreen" } ,
-		"k": { color: "black" } ,
-		"K": { color: "grey" } ,
-		"m": { color: "magenta" } ,
-		"M": { color: "brightMagenta" } ,
-		"r": { color: "red" } ,
-		"R": { color: "brightRed" } ,
-		"w": { color: "white" } ,
-		"W": { color: "brightWhite" } ,
-		"y": { color: "yellow" } ,
-		"Y": { color: "brightYellow" }
-	} ,
-	shiftedMarkup: {
-		background: {
-			/*
-			':': [ null , { defaultColor: true , bgDefaultColor: true } ] ,
-			' ': markupStack => {
-				markupStack.length = 0 ;
-				return [ null , { defaultColor: true , bgDefaultColor: true } , ' ' ] ;
-			} ,
-			*/
-			":": null ,
-			" ": markupStack => {
-				markupStack.length = 0 ;
-				return [ null , ' ' ] ;
-			} ,
-
-			"b": { bgColor: "blue" } ,
-			"B": { bgColor: "brightBlue" } ,
-			"c": { bgColor: "cyan" } ,
-			"C": { bgColor: "brightCyan" } ,
-			"g": { bgColor: "green" } ,
-			"G": { bgColor: "brightGreen" } ,
-			"k": { bgColor: "black" } ,
-			"K": { bgColor: "grey" } ,
-			"m": { bgColor: "magenta" } ,
-			"M": { bgColor: "brightMagenta" } ,
-			"r": { bgColor: "red" } ,
-			"R": { bgColor: "brightRed" } ,
-			"w": { bgColor: "white" } ,
-			"W": { bgColor: "brightWhite" } ,
-			"y": { bgColor: "yellow" } ,
-			"Y": { bgColor: "brightYellow" }
-		}
-	} ,
-	dataMarkup: {
-		color: 'color' ,
-		fgColor: 'color' ,
-		fg: 'color' ,
-		c: 'color' ,
-		bgColor: 'bgColor' ,
-		bg: 'bgColor' ,
-		fx: 'fx'
-	} ,
-	markupCatchAll: ( markupStack , key , value ) => {
-		var attr = {} ;
-
-		if ( value === undefined ) {
-			if ( key[ 0 ] === '#' ) {
-				attr.color = key ;
-			}
-			else if ( CATCH_ALL_KEYWORDS[ key ] ) {
-				attr[ CATCH_ALL_KEYWORDS[ key ][ 0 ] ] = CATCH_ALL_KEYWORDS[ key ][ 1 ] ;
-			}
-			else {
-				// Fallback: it's a foreground color
-				attr.color = key ;
-			}
-		}
-
-		markupStack.push( attr ) ;
-		return attr || {} ;
-	}
-} ;
-
-
-
-structuredText.parseStringKitMarkup = ( ... args ) => {
-	return format.markupMethod.apply( parseStringKitMarkupConfig , args ) ;
-} ;
-
-
-
-structuredText.stripMarkup = format.stripMarkup ;
-
-
-},{"../misc.js":39,"book-source":4,"string-kit/lib/format.js":80}],31:[function(require,module,exports){
+},{"../../package.json":77,"../BoundingBox.js":17,"../VGEntity.js":23,"../canvas.js":35,"../fontLib.js":36,"./StructuredTextLine.js":24,"./StructuredTextPart.js":25,"./StructuredTextRenderer.js":26,"./TextAttribute.js":27,"./TextMetrics.js":28,"book-source":4}],30:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8391,7 +8071,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":85,"./VGContainer.js":21,"./svg-kit.js":41}],32:[function(require,module,exports){
+},{"../package.json":77,"./VGContainer.js":21,"./svg-kit.js":40}],31:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8973,7 +8653,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":85,"./VGEntity.js":23,"./canvas.js":36,"./getImageSize.js":38,"dom-kit":69}],33:[function(require,module,exports){
+},{"../package.json":77,"./VGEntity.js":23,"./canvas.js":35,"./getImageSize.js":37,"dom-kit":68}],32:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9666,7 +9346,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 } ;
 
 
-},{"../package.json":85,"./VGEntity.js":23,"./canvas.js":36}],34:[function(require,module,exports){
+},{"../package.json":77,"./VGEntity.js":23,"./canvas.js":35}],33:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9808,7 +9488,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":85,"./VGEntity.js":23,"./canvas.js":36}],35:[function(require,module,exports){
+},{"../package.json":77,"./VGEntity.js":23,"./canvas.js":35}],34:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9983,7 +9663,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , mast
 } ;
 
 
-},{"../package.json":85,"./VGEntity.js":23}],36:[function(require,module,exports){
+},{"../package.json":77,"./VGEntity.js":23}],35:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -10066,7 +9746,7 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , palette , path2d = nul
 } ;
 
 
-},{"./misc.js":39}],37:[function(require,module,exports){
+},{"./misc.js":38}],36:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -10445,7 +10125,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":92,"fs":86,"opentype.js":71,"path":91}],38:[function(require,module,exports){
+},{"_process":84,"fs":78,"opentype.js":70,"path":83}],37:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -10503,7 +10183,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":92,"image-size":86}],39:[function(require,module,exports){
+},{"_process":84,"image-size":78}],38:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -10644,7 +10324,7 @@ misc.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 } ;
 
 
-},{"palette-shade":75}],40:[function(require,module,exports){
+},{"palette-shade":74}],39:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -10692,7 +10372,7 @@ path.dFromPoints = ( points , invertY ) => {
 } ;
 
 
-},{}],41:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -10736,7 +10416,6 @@ module.exports = svgKit ;
 Object.assign( svgKit , require( './misc.js' ) ) ;
 svgKit.path = require( './path.js' ) ;
 svgKit.canvas = require( './canvas.js' ) ;
-svgKit.structuredText = require( './VGFlowingText/structuredText.js' ) ;
 
 svgKit.VG = require( './VG.js' ) ;
 svgKit.VGEntity = require( './VGEntity.js' ) ;
@@ -11191,7 +10870,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"./BoundingBox.js":17,"./VG.js":19,"./VGClip.js":20,"./VGContainer.js":21,"./VGEllipse.js":22,"./VGEntity.js":23,"./VGFlowingText/StructuredTextLine.js":24,"./VGFlowingText/StructuredTextPart.js":25,"./VGFlowingText/TextAttribute.js":27,"./VGFlowingText/TextMetrics.js":28,"./VGFlowingText/VGFlowingText.js":29,"./VGFlowingText/structuredText.js":30,"./VGGroup.js":31,"./VGImage.js":32,"./VGPath.js":33,"./VGRect.js":34,"./VGText.js":35,"./canvas.js":36,"./fontLib.js":37,"./misc.js":39,"./path.js":40,"_process":92,"dom-kit":69,"fs":86,"opentype.js":71,"string-kit/lib/escape.js":79}],42:[function(require,module,exports){
+},{"./BoundingBox.js":17,"./VG.js":19,"./VGClip.js":20,"./VGContainer.js":21,"./VGEllipse.js":22,"./VGEntity.js":23,"./VGFlowingText/StructuredTextLine.js":24,"./VGFlowingText/StructuredTextPart.js":25,"./VGFlowingText/TextAttribute.js":27,"./VGFlowingText/TextMetrics.js":28,"./VGFlowingText/VGFlowingText.js":29,"./VGGroup.js":30,"./VGImage.js":31,"./VGPath.js":32,"./VGRect.js":33,"./VGText.js":34,"./canvas.js":35,"./fontLib.js":36,"./misc.js":38,"./path.js":39,"_process":84,"dom-kit":68,"fs":78,"opentype.js":70,"string-kit/lib/escape.js":76}],41:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -11445,7 +11124,7 @@ exports.XMLSerializer = require('./dom').XMLSerializer ;
 exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":43,"./entities":44,"./sax":62}],43:[function(require,module,exports){
+},{"./dom":42,"./entities":43,"./sax":61}],42:[function(require,module,exports){
 
 "use strict" ;
 
@@ -12853,7 +12532,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{"nwmatcher":70,"string-kit":57}],44:[function(require,module,exports){
+},{"nwmatcher":69,"string-kit":56}],43:[function(require,module,exports){
 exports.entityMap = {
        lt: '<',
        gt: '>',
@@ -13098,7 +12777,7 @@ exports.entityMap = {
        diams: "♦"
 };
 //for(var  n in exports.entityMap){console.log(exports.entityMap[n].charCodeAt())}
-},{}],45:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 /*
 	String Kit
 
@@ -13512,7 +13191,7 @@ function arrayConcatSlice( intoArray , sourceArray , start = 0 , end = sourceArr
 }
 
 
-},{}],46:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 /*
 	String Kit
 
@@ -13781,7 +13460,7 @@ ansi.parse = str => {
 } ;
 
 
-},{}],47:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 /*
 	String Kit
 
@@ -13870,7 +13549,7 @@ camel.camelCaseToDash =
 camel.camelCaseToDashed = ( str ) => camel.camelCaseToSeparated( str , '-' , false ) ;
 
 
-},{}],48:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 /*
 	String Kit
 
@@ -13975,7 +13654,7 @@ exports.unicodePercentEncode = str => str.replace( /[\x00-\x1f\u0100-\uffff\x7f%
 exports.httpHeaderValue = str => exports.unicodePercentEncode( str ) ;
 
 
-},{}],49:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 (function (Buffer){(function (){
 /*
 	String Kit
@@ -15216,7 +14895,7 @@ function round( v , step ) {
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./StringNumber.js":45,"./ansi.js":46,"./escape.js":48,"./inspect.js":51,"./naturalSort.js":55,"./unicode.js":60,"buffer":88}],50:[function(require,module,exports){
+},{"./StringNumber.js":44,"./ansi.js":45,"./escape.js":47,"./inspect.js":50,"./naturalSort.js":54,"./unicode.js":59,"buffer":80}],49:[function(require,module,exports){
 /*
 	String Kit
 
@@ -15532,7 +15211,7 @@ fuzzy.levenshtein = ( left , right ) => {
 } ;
 
 
-},{}],51:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 (function (Buffer,process){(function (){
 /*
 	String Kit
@@ -16296,9 +15975,9 @@ inspectStyle.html = Object.assign( {} , inspectStyle.none , {
 
 
 }).call(this)}).call(this,{"isBuffer":require("../../../../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":90,"./ansi.js":46,"./escape.js":48,"_process":92}],52:[function(require,module,exports){
+},{"../../../../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":82,"./ansi.js":45,"./escape.js":47,"_process":84}],51:[function(require,module,exports){
 arguments[4][15][0].apply(exports,arguments)
-},{"dup":15}],53:[function(require,module,exports){
+},{"dup":15}],52:[function(require,module,exports){
 /*
 	String Kit
 
@@ -16337,7 +16016,7 @@ module.exports = function( str ) {
 
 
 
-},{"./latinize-map.json":52}],54:[function(require,module,exports){
+},{"./latinize-map.json":51}],53:[function(require,module,exports){
 /*
 	String Kit
 
@@ -16397,7 +16076,7 @@ exports.occurrenceCount = function( str , subStr , overlap = false ) {
 } ;
 
 
-},{}],55:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /*
 	String Kit
 
@@ -16544,7 +16223,7 @@ function naturalSort( a , b ) {
 module.exports = naturalSort ;
 
 
-},{}],56:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 /*
 	String Kit
 
@@ -16601,7 +16280,7 @@ exports.regexp.array2alternatives = function array2alternatives( array ) {
 
 
 
-},{"./escape.js":48}],57:[function(require,module,exports){
+},{"./escape.js":47}],56:[function(require,module,exports){
 /*
 	String Kit
 
@@ -16694,7 +16373,7 @@ stringKit.installPolyfills = function installPolyfills() {
 //*/
 
 
-},{"./StringNumber.js":45,"./ansi.js":46,"./camel.js":47,"./escape.js":48,"./format.js":49,"./fuzzy.js":50,"./inspect.js":51,"./latinize.js":53,"./misc.js":54,"./naturalSort.js":55,"./regexp.js":56,"./toTitleCase.js":58,"./unicode.js":60,"./wordwrap.js":61}],58:[function(require,module,exports){
+},{"./StringNumber.js":44,"./ansi.js":45,"./camel.js":46,"./escape.js":47,"./format.js":48,"./fuzzy.js":49,"./inspect.js":50,"./latinize.js":52,"./misc.js":53,"./naturalSort.js":54,"./regexp.js":55,"./toTitleCase.js":57,"./unicode.js":59,"./wordwrap.js":60}],57:[function(require,module,exports){
 /*
 	String Kit
 
@@ -16783,10 +16462,10 @@ module.exports = ( str , options = DEFAULT_OPTIONS ) => {
 } ;
 
 
-},{}],59:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 module.exports=[{"s":9728,"e":9747,"w":1},{"s":9748,"e":9749,"w":2},{"s":9750,"e":9799,"w":1},{"s":9800,"e":9811,"w":2},{"s":9812,"e":9854,"w":1},{"s":9855,"e":9855,"w":2},{"s":9856,"e":9874,"w":1},{"s":9875,"e":9875,"w":2},{"s":9876,"e":9888,"w":1},{"s":9889,"e":9889,"w":2},{"s":9890,"e":9897,"w":1},{"s":9898,"e":9899,"w":2},{"s":9900,"e":9916,"w":1},{"s":9917,"e":9918,"w":2},{"s":9919,"e":9923,"w":1},{"s":9924,"e":9925,"w":2},{"s":9926,"e":9933,"w":1},{"s":9934,"e":9934,"w":2},{"s":9935,"e":9939,"w":1},{"s":9940,"e":9940,"w":2},{"s":9941,"e":9961,"w":1},{"s":9962,"e":9962,"w":2},{"s":9963,"e":9969,"w":1},{"s":9970,"e":9971,"w":2},{"s":9972,"e":9972,"w":1},{"s":9973,"e":9973,"w":2},{"s":9974,"e":9977,"w":1},{"s":9978,"e":9978,"w":2},{"s":9979,"e":9980,"w":1},{"s":9981,"e":9981,"w":2},{"s":9982,"e":9983,"w":1},{"s":9984,"e":9988,"w":1},{"s":9989,"e":9989,"w":2},{"s":9990,"e":9993,"w":1},{"s":9994,"e":9995,"w":2},{"s":9996,"e":10023,"w":1},{"s":10024,"e":10024,"w":2},{"s":10025,"e":10059,"w":1},{"s":10060,"e":10060,"w":2},{"s":10061,"e":10061,"w":1},{"s":10062,"e":10062,"w":2},{"s":10063,"e":10066,"w":1},{"s":10067,"e":10069,"w":2},{"s":10070,"e":10070,"w":1},{"s":10071,"e":10071,"w":2},{"s":10072,"e":10132,"w":1},{"s":10133,"e":10135,"w":2},{"s":10136,"e":10159,"w":1},{"s":10160,"e":10160,"w":2},{"s":10161,"e":10174,"w":1},{"s":10175,"e":10175,"w":2},{"s":126976,"e":126979,"w":1},{"s":126980,"e":126980,"w":2},{"s":126981,"e":127182,"w":1},{"s":127183,"e":127183,"w":2},{"s":127184,"e":127373,"w":1},{"s":127374,"e":127374,"w":2},{"s":127375,"e":127376,"w":1},{"s":127377,"e":127386,"w":2},{"s":127387,"e":127487,"w":1},{"s":127744,"e":127776,"w":2},{"s":127777,"e":127788,"w":1},{"s":127789,"e":127797,"w":2},{"s":127798,"e":127798,"w":1},{"s":127799,"e":127868,"w":2},{"s":127869,"e":127869,"w":1},{"s":127870,"e":127891,"w":2},{"s":127892,"e":127903,"w":1},{"s":127904,"e":127946,"w":2},{"s":127947,"e":127950,"w":1},{"s":127951,"e":127955,"w":2},{"s":127956,"e":127967,"w":1},{"s":127968,"e":127984,"w":2},{"s":127985,"e":127987,"w":1},{"s":127988,"e":127988,"w":2},{"s":127989,"e":127991,"w":1},{"s":127992,"e":127994,"w":2},{"s":128000,"e":128062,"w":2},{"s":128063,"e":128063,"w":1},{"s":128064,"e":128064,"w":2},{"s":128065,"e":128065,"w":1},{"s":128066,"e":128252,"w":2},{"s":128253,"e":128254,"w":1},{"s":128255,"e":128317,"w":2},{"s":128318,"e":128330,"w":1},{"s":128331,"e":128334,"w":2},{"s":128335,"e":128335,"w":1},{"s":128336,"e":128359,"w":2},{"s":128360,"e":128377,"w":1},{"s":128378,"e":128378,"w":2},{"s":128379,"e":128404,"w":1},{"s":128405,"e":128406,"w":2},{"s":128407,"e":128419,"w":1},{"s":128420,"e":128420,"w":2},{"s":128421,"e":128506,"w":1},{"s":128507,"e":128591,"w":2},{"s":128592,"e":128639,"w":1},{"s":128640,"e":128709,"w":2},{"s":128710,"e":128715,"w":1},{"s":128716,"e":128716,"w":2},{"s":128717,"e":128719,"w":1},{"s":128720,"e":128722,"w":2},{"s":128723,"e":128724,"w":1},{"s":128725,"e":128727,"w":2},{"s":128728,"e":128746,"w":1},{"s":128747,"e":128748,"w":2},{"s":128749,"e":128755,"w":1},{"s":128756,"e":128764,"w":2},{"s":128765,"e":128991,"w":1},{"s":128992,"e":129003,"w":2},{"s":129004,"e":129291,"w":1},{"s":129292,"e":129338,"w":2},{"s":129339,"e":129339,"w":1},{"s":129340,"e":129349,"w":2},{"s":129350,"e":129350,"w":1},{"s":129351,"e":129400,"w":2},{"s":129401,"e":129401,"w":1},{"s":129402,"e":129483,"w":2},{"s":129484,"e":129484,"w":1},{"s":129485,"e":129535,"w":2},{"s":129536,"e":129647,"w":1},{"s":129648,"e":129652,"w":2},{"s":129653,"e":129655,"w":1},{"s":129656,"e":129658,"w":2},{"s":129659,"e":129663,"w":1},{"s":129664,"e":129670,"w":2},{"s":129671,"e":129679,"w":1},{"s":129680,"e":129704,"w":2},{"s":129705,"e":129711,"w":1},{"s":129712,"e":129718,"w":2},{"s":129719,"e":129727,"w":1},{"s":129728,"e":129730,"w":2},{"s":129731,"e":129743,"w":1},{"s":129744,"e":129750,"w":2},{"s":129751,"e":129791,"w":1}]
 
-},{}],60:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 /*
 	String Kit
 
@@ -17134,7 +16813,7 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./unicode-emoji-width-ranges.json":59}],61:[function(require,module,exports){
+},{"./unicode-emoji-width-ranges.json":58}],60:[function(require,module,exports){
 /*
 	String Kit
 
@@ -17338,7 +17017,7 @@ module.exports = function wordwrap( str , options ) {
 } ;
 
 
-},{"./unicode.js":60}],62:[function(require,module,exports){
+},{"./unicode.js":59}],61:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -17956,7 +17635,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],63:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -18004,7 +17683,7 @@ arrayKit.shuffle = array => arrayKit.sample( array , array.length , true ) ;
 arrayKit.randomSampleSize = ( array , min , max , inPlace ) => arrayKit.sample( array , arrayKit.randomInteger( min , max ) , inPlace ) ;
 
 
-},{"./delete.js":64,"./deleteValue.js":65,"./inPlaceFilter.js":66,"./range.js":67,"./sample.js":68}],64:[function(require,module,exports){
+},{"./delete.js":63,"./deleteValue.js":64,"./inPlaceFilter.js":65,"./range.js":66,"./sample.js":67}],63:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -18056,7 +17735,7 @@ module.exports = ( src , index ) => {
 } ;
 
 
-},{}],65:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -18120,9 +17799,9 @@ module.exports = ( src , value ) => {
 } ;
 
 
-},{}],66:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 arguments[4][6][0].apply(exports,arguments)
-},{"dup":6}],67:[function(require,module,exports){
+},{"dup":6}],66:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -18189,7 +17868,7 @@ module.exports = function( start , end , step ) {
 } ;
 
 
-},{}],68:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -18246,7 +17925,7 @@ module.exports = ( array , count = Infinity , inPlace = false ) => {
 } ;
 
 
-},{}],69:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Dom Kit
@@ -18821,7 +18500,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@cronvel/xmldom":42,"_process":92}],70:[function(require,module,exports){
+},{"@cronvel/xmldom":41,"_process":84}],69:[function(require,module,exports){
 /*
  * Copyright (C) 2007-2018 Diego Perini
  * All rights reserved.
@@ -20599,7 +20278,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
   return Dom;
 });
 
-},{}],71:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
 (function (Buffer){(function (){
 /**
  * https://opentype.js.org v1.3.4 | (c) Frederik De Bleser and other contributors | MIT License | Uses tiny-inflate by Devon Govett and string.prototype.codepointat polyfill by Mathias Bynens
@@ -35080,1141 +34759,19 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":88,"fs":86}],72:[function(require,module,exports){
+},{"buffer":80,"fs":78}],71:[function(require,module,exports){
 arguments[4][7][0].apply(exports,arguments)
-},{"dup":7}],73:[function(require,module,exports){
+},{"dup":7}],72:[function(require,module,exports){
 arguments[4][8][0].apply(exports,arguments)
-},{"dup":8}],74:[function(require,module,exports){
+},{"dup":8}],73:[function(require,module,exports){
 arguments[4][9][0].apply(exports,arguments)
-},{"../extlib/chromajs.custom.js":72,"dup":9}],75:[function(require,module,exports){
+},{"../extlib/chromajs.custom.js":71,"dup":9}],74:[function(require,module,exports){
 arguments[4][10][0].apply(exports,arguments)
-},{"./Color.js":73,"./Palette.js":74,"dup":10}],76:[function(require,module,exports){
-arguments[4][45][0].apply(exports,arguments)
-},{"dup":45}],77:[function(require,module,exports){
+},{"./Color.js":72,"./Palette.js":73,"dup":10}],75:[function(require,module,exports){
 arguments[4][46][0].apply(exports,arguments)
-},{"dup":46}],78:[function(require,module,exports){
+},{"dup":46}],76:[function(require,module,exports){
 arguments[4][47][0].apply(exports,arguments)
-},{"dup":47}],79:[function(require,module,exports){
-arguments[4][48][0].apply(exports,arguments)
-},{"dup":48}],80:[function(require,module,exports){
-arguments[4][49][0].apply(exports,arguments)
-},{"./StringNumber.js":76,"./ansi.js":77,"./escape.js":79,"./inspect.js":81,"./naturalSort.js":83,"./unicode.js":84,"buffer":88,"dup":49}],81:[function(require,module,exports){
-(function (Buffer,process){(function (){
-/*
-	String Kit
-
-	Copyright (c) 2014 - 2021 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-/*
-	Variable inspector.
-*/
-
-"use strict" ;
-
-
-
-const escape = require( './escape.js' ) ;
-const ansi = require( './ansi.js' ) ;
-
-const EMPTY = {} ;
-const TRIVIAL_CONSTRUCTOR = new Set( [ Object , Array ] ) ;
-
-
-
-/*
-	Inspect a variable, return a string ready to be displayed with console.log(), or even as an HTML output.
-
-	Options:
-		* style:
-			* 'none': (default) normal output suitable for console.log() or writing in a file
-			* 'inline': like 'none', but without newlines
-			* 'color': colorful output suitable for terminal
-			* 'html': html output
-			* any object: full controle, inheriting from 'none'
-		* tab: `string` override the tab of the style
-		* depth: depth limit, default: 3
-		* maxLength: length limit for strings, default: 250
-		* outputMaxLength: length limit for the inspect output string, default: 5000
-		* noFunc: do not display functions
-		* noDescriptor: do not display descriptor information
-		* noArrayProperty: do not display array properties
-		* noIndex: do not display array indexes
-		* bulletIndex: do not display array indexes, instead display a bullet: *
-		* noType: do not display type and constructor
-		* noTypeButConstructor: do not display type, display non-trivial constructor (not Object or Array, but all others)
-		* enumOnly: only display enumerable properties
-		* funcDetails: display function's details
-		* proto: display object's prototype
-		* sort: sort the keys
-		* noMarkup: don't add Javascript/JSON markup: {}[],"
-		* minimal: imply noFunc: true, noDescriptor: true, noType: true, noArrayProperty: true, enumOnly: true, proto: false and funcDetails: false.
-		  Display a minimal JSON-like output
-		* minimalPlusConstructor: like minimal, but output non-trivial constructor
-		* protoBlackList: `Set` of blacklisted object prototype (will not recurse inside it)
-		* propertyBlackList: `Set` of blacklisted property names (will not even display it)
-		* useInspect: use .inspect() method when available on an object (default to false)
-		* useInspectPropertyBlackList: if set and if the object to be inspected has an 'inspectPropertyBlackList' property which value is a `Set`,
-		  use it like the 'propertyBlackList' option
-*/
-
-function inspect( options , variable ) {
-	if ( arguments.length < 2 ) { variable = options ; options = {} ; }
-	else if ( ! options || typeof options !== 'object' ) { options = {} ; }
-
-	var runtime = { depth: 0 , ancestors: [] } ;
-
-	if ( ! options.style ) { options.style = inspectStyle.none ; }
-	else if ( typeof options.style === 'string' ) { options.style = inspectStyle[ options.style ] ; }
-	// Too slow:
-	//else { options.style = Object.assign( {} , inspectStyle.none , options.style ) ; }
-
-	if ( options.depth === undefined ) { options.depth = 3 ; }
-	if ( options.maxLength === undefined ) { options.maxLength = 250 ; }
-	if ( options.outputMaxLength === undefined ) { options.outputMaxLength = 5000 ; }
-
-	// /!\ nofunc is deprecated
-	if ( options.nofunc ) { options.noFunc = true ; }
-
-	if ( options.minimal ) {
-		options.noFunc = true ;
-		options.noDescriptor = true ;
-		options.noType = true ;
-		options.noArrayProperty = true ;
-		options.enumOnly = true ;
-		options.proto = false ;
-		options.funcDetails = false ;
-	}
-
-	if ( options.minimalPlusConstructor ) {
-		options.noFunc = true ;
-		options.noDescriptor = true ;
-		options.noTypeButConstructor = true ;
-		options.noArrayProperty = true ;
-		options.enumOnly = true ;
-		options.proto = false ;
-		options.funcDetails = false ;
-	}
-
-	var str = inspect_( runtime , options , variable ) ;
-
-	if ( str.length > options.outputMaxLength ) {
-		str = options.style.truncate( str , options.outputMaxLength ) ;
-	}
-
-	return str ;
-}
-
-exports.inspect = inspect ;
-
-
-
-function inspect_( runtime , options , variable ) {
-	var i , funcName , length , proto , propertyList , isTrivialConstructor , constructor , keyIsProperty ,
-		type , pre , isArray , isFunc , specialObject ,
-		str = '' , key = '' , descriptorStr = '' , indent = '' ,
-		descriptor , nextAncestors ;
-
-	// Prepare things (indentation, key, descriptor, ... )
-
-	type = typeof variable ;
-
-	if ( runtime.depth ) {
-		indent = ( options.tab ?? options.style.tab ).repeat( options.noMarkup ? runtime.depth - 1 : runtime.depth ) ;
-	}
-
-	if ( type === 'function' && options.noFunc ) { return '' ; }
-
-	if ( runtime.key !== undefined ) {
-		if ( runtime.descriptor ) {
-			descriptorStr = [] ;
-
-			if ( runtime.descriptor.error ) {
-				descriptorStr = '[' + runtime.descriptor.error + ']' ;
-			}
-			else {
-				if ( ! runtime.descriptor.configurable ) { descriptorStr.push( '-conf' ) ; }
-				if ( ! runtime.descriptor.enumerable ) { descriptorStr.push( '-enum' ) ; }
-
-				// Already displayed by runtime.forceType
-				//if ( runtime.descriptor.get || runtime.descriptor.set ) { descriptorStr.push( 'getter/setter' ) ; } else
-				if ( ! runtime.descriptor.writable ) { descriptorStr.push( '-w' ) ; }
-
-				//if ( descriptorStr.length ) { descriptorStr = '(' + descriptorStr.join( ' ' ) + ')' ; }
-				if ( descriptorStr.length ) { descriptorStr = descriptorStr.join( ' ' ) ; }
-				else { descriptorStr = '' ; }
-			}
-		}
-
-		if ( runtime.keyIsProperty ) {
-			if ( ! options.noMarkup && keyNeedingQuotes( runtime.key ) ) {
-				key = '"' + options.style.key( runtime.key ) + '": ' ;
-			}
-			else {
-				key = options.style.key( runtime.key ) + ': ' ;
-			}
-		}
-		else if ( options.bulletIndex ) {
-			key = ( typeof options.bulletIndex === 'string' ? options.bulletIndex : '*' ) + ' ' ;
-		}
-		else if ( ! options.noIndex ) {
-			key = options.style.index( runtime.key ) ;
-		}
-
-		if ( descriptorStr ) { descriptorStr = ' ' + options.style.type( descriptorStr ) ; }
-	}
-
-	pre = runtime.noPre ? '' : indent + key ;
-
-
-	// Describe the current variable
-
-	if ( variable === undefined ) {
-		str += pre + options.style.constant( 'undefined' ) + descriptorStr + options.style.newline ;
-	}
-	else if ( variable === EMPTY ) {
-		str += pre + options.style.constant( '[empty]' ) + descriptorStr + options.style.newline ;
-	}
-	else if ( variable === null ) {
-		str += pre + options.style.constant( 'null' ) + descriptorStr + options.style.newline ;
-	}
-	else if ( variable === false ) {
-		str += pre + options.style.constant( 'false' ) + descriptorStr + options.style.newline ;
-	}
-	else if ( variable === true ) {
-		str += pre + options.style.constant( 'true' ) + descriptorStr + options.style.newline ;
-	}
-	else if ( type === 'number' ) {
-		str += pre + options.style.number( variable.toString() ) +
-			( options.noType || options.noTypeButConstructor ? '' : ' ' + options.style.type( 'number' ) ) +
-			descriptorStr + options.style.newline ;
-	}
-	else if ( type === 'string' ) {
-		if ( variable.length > options.maxLength ) {
-			str += pre + ( options.noMarkup ? '' : '"' ) + options.style.string( escape.control( variable.slice( 0 , options.maxLength - 1 ) ) ) + '…' + ( options.noMarkup ? '' : '"' ) +
-				( options.noType || options.noTypeButConstructor ? '' : ' ' + options.style.type( 'string' ) + options.style.length( '(' + variable.length + ' - TRUNCATED)' ) ) +
-				descriptorStr + options.style.newline ;
-		}
-		else {
-			str += pre + ( options.noMarkup ? '' : '"' ) + options.style.string( escape.control( variable ) ) + ( options.noMarkup ? '' : '"' ) +
-				( options.noType || options.noTypeButConstructor ? '' : ' ' + options.style.type( 'string' ) + options.style.length( '(' + variable.length + ')' ) ) +
-				descriptorStr + options.style.newline ;
-		}
-	}
-	else if ( Buffer.isBuffer( variable ) ) {
-		str += pre + options.style.inspect( variable.inspect() ) +
-			( options.noType ? '' : ' ' + options.style.type( 'Buffer' ) + options.style.length( '(' + variable.length + ')' ) ) +
-			descriptorStr + options.style.newline ;
-	}
-	else if ( type === 'object' || type === 'function' ) {
-		funcName = length = '' ;
-		isFunc = false ;
-
-		if ( type === 'function' ) {
-			isFunc = true ;
-			funcName = ' ' + options.style.funcName( ( variable.name ? variable.name : '(anonymous)' ) ) ;
-			length = options.style.length( '(' + variable.length + ')' ) ;
-		}
-
-		isArray = false ;
-
-		if ( Array.isArray( variable ) ) {
-			isArray = true ;
-			length = options.style.length( '(' + variable.length + ')' ) ;
-		}
-
-		if ( ! variable.constructor ) { constructor = '(no constructor)' ; }
-		else if ( ! variable.constructor.name ) { constructor = '(anonymous)' ; }
-		else { constructor = variable.constructor.name ; }
-
-		isTrivialConstructor = ! variable.constructor || TRIVIAL_CONSTRUCTOR.has( variable.constructor ) ;
-
-		constructor = options.style.constructorName( constructor ) ;
-		proto = Object.getPrototypeOf( variable ) ;
-
-		str += pre ;
-
-		if ( ! options.noType && ( ! options.noTypeButConstructor || ! isTrivialConstructor ) ) {
-			if ( runtime.forceType && ! options.noType && ! options.noTypeButConstructor ) {
-				str += options.style.type( runtime.forceType ) ;
-			}
-			else if ( options.noTypeButConstructor ) {
-				str += constructor ;
-			}
-			else {
-				str += constructor + funcName + length + ' ' + options.style.type( type ) + descriptorStr ;
-			}
-
-			if ( ! isFunc || options.funcDetails ) { str += ' ' ; }	// if no funcDetails imply no space here
-		}
-
-		if ( isArray && options.noArrayProperty ) {
-			propertyList = [ ... Array( variable.length ).keys() ] ;
-		}
-		else {
-			propertyList = Object.getOwnPropertyNames( variable ) ;
-		}
-
-		if ( options.sort ) { propertyList.sort() ; }
-
-		// Special Objects
-		specialObject = specialObjectSubstitution( variable , runtime , options ) ;
-
-		if ( options.protoBlackList && options.protoBlackList.has( proto ) ) {
-			str += options.style.limit( '[skip]' ) + options.style.newline ;
-		}
-		else if ( specialObject !== undefined ) {
-			if ( typeof specialObject === 'string' ) {
-				str += '=> ' + specialObject + options.style.newline ;
-			}
-			else {
-				str += '=> ' + inspect_(
-					{
-						depth: runtime.depth ,
-						ancestors: runtime.ancestors ,
-						noPre: true
-					} ,
-					options ,
-					specialObject
-				) ;
-			}
-		}
-		else if ( isFunc && ! options.funcDetails ) {
-			str += options.style.newline ;
-		}
-		else if ( ! propertyList.length && ! options.proto ) {
-			str += ( options.noMarkup ? '' : isArray ? '[]' : '{}' ) + options.style.newline ;
-		}
-		else if ( runtime.depth >= options.depth ) {
-			str += options.style.limit( '[depth limit]' ) + options.style.newline ;
-		}
-		else if ( runtime.ancestors.indexOf( variable ) !== -1 ) {
-			str += options.style.limit( '[circular]' ) + options.style.newline ;
-		}
-		else {
-			/*
-			str +=
-				options.noMarkup ? ( isArray && options.noIndex && ! runtime.keyIsProperty ? '' : options.style.newline ) :
-				( isArray ? '[' : '{' ) + options.style.newline ;
-			//*/
-			//*
-			str += ( options.noMarkup ? '' : isArray ? '[' : '{'  ) + options.style.newline ;
-			//*/
-
-			// Do not use .concat() here, it doesn't works as expected with arrays...
-			nextAncestors = runtime.ancestors.slice() ;
-			nextAncestors.push( variable ) ;
-
-			for ( i = 0 ; i < propertyList.length && str.length < options.outputMaxLength ; i ++ ) {
-				if ( ! isArray && (
-					( options.propertyBlackList && options.propertyBlackList.has( propertyList[ i ] ) )
-					|| ( options.useInspectPropertyBlackList && ( variable.inspectPropertyBlackList instanceof Set ) && variable.inspectPropertyBlackList.has( propertyList[ i ] ) )
-				) ) {
-					//str += options.style.limit( '[skip]' ) + options.style.newline ;
-					continue ;
-				}
-
-				if ( isArray && options.noArrayProperty && ! ( propertyList[ i ] in variable ) ) {
-					// Hole in the array (sparse array, item deleted, ...)
-					str += inspect_(
-						{
-							depth: runtime.depth + 1 ,
-							ancestors: nextAncestors ,
-							key: propertyList[ i ] ,
-							keyIsProperty: false
-						} ,
-						options ,
-						EMPTY
-					) ;
-				}
-				else {
-					try {
-						descriptor = Object.getOwnPropertyDescriptor( variable , propertyList[ i ] ) ;
-						// Note: descriptor can be undefined, this happens when the object is a Proxy with a bad implementation:
-						// it reports that key (Object.keys()) but doesn't give the descriptor for it.
-
-						if ( descriptor && ! descriptor.enumerable && options.enumOnly ) { continue ; }
-						keyIsProperty = ! isArray || ! descriptor.enumerable || isNaN( propertyList[ i ] ) ;
-
-						if ( ! options.noDescriptor && descriptor && ( descriptor.get || descriptor.set ) ) {
-							str += inspect_(
-								{
-									depth: runtime.depth + 1 ,
-									ancestors: nextAncestors ,
-									key: propertyList[ i ] ,
-									keyIsProperty: keyIsProperty ,
-									descriptor: descriptor ,
-									forceType: 'getter/setter'
-								} ,
-								options ,
-								{ get: descriptor.get , set: descriptor.set }
-							) ;
-						}
-						else {
-							str += inspect_(
-								{
-									depth: runtime.depth + 1 ,
-									ancestors: nextAncestors ,
-									key: propertyList[ i ] ,
-									keyIsProperty: keyIsProperty ,
-									descriptor: options.noDescriptor ? undefined : descriptor || { error: "Bad Proxy Descriptor" }
-								} ,
-								options ,
-								variable[ propertyList[ i ] ]
-							) ;
-						}
-					}
-					catch ( error ) {
-						str += inspect_(
-							{
-								depth: runtime.depth + 1 ,
-								ancestors: nextAncestors ,
-								key: propertyList[ i ] ,
-								keyIsProperty: keyIsProperty ,
-								descriptor: options.noDescriptor ? undefined : descriptor
-							} ,
-							options ,
-							error
-						) ;
-					}
-				}
-
-				if ( i < propertyList.length - 1 ) { str += options.style.comma ; }
-			}
-
-			if ( options.proto ) {
-				str += inspect_(
-					{
-						depth: runtime.depth + 1 ,
-						ancestors: nextAncestors ,
-						key: '__proto__' ,
-						keyIsProperty: true
-					} ,
-					options ,
-					proto
-				) ;
-			}
-
-			str += options.noMarkup ? '' : indent + ( isArray ? ']' : '}' ) + options.style.newline ;
-		}
-	}
-
-
-	// Finalizing
-
-
-	if ( runtime.depth === 0 ) {
-		if ( options.style.trim ) { str = str.trim() ; }
-		if ( options.style === 'html' ) { str = escape.html( str ) ; }
-	}
-
-	return str ;
-}
-
-
-
-function keyNeedingQuotes( key ) {
-	if ( ! key.length ) { return true ; }
-	return false ;
-}
-
-
-
-var promiseStates = [ 'pending' , 'fulfilled' , 'rejected' ] ;
-
-
-
-// Some special object are better written down when substituted by something else
-function specialObjectSubstitution( object , runtime , options ) {
-	if ( typeof object.constructor !== 'function' ) {
-		// Some objects have no constructor, e.g.: Object.create(null)
-		//console.error( object ) ;
-		return ;
-	}
-
-	if ( object instanceof String ) {
-		return object.toString() ;
-	}
-
-	if ( object instanceof RegExp ) {
-		return object.toString() ;
-	}
-
-	if ( object instanceof Date ) {
-		return object.toString() + ' [' + object.getTime() + ']' ;
-	}
-
-	if ( typeof Set === 'function' && object instanceof Set ) {
-		// This is an ES6 'Set' Object
-		return Array.from( object ) ;
-	}
-
-	if ( typeof Map === 'function' && object instanceof Map ) {
-		// This is an ES6 'Map' Object
-		return Array.from( object ) ;
-	}
-
-	if ( object instanceof Promise ) {
-		if ( process && process.binding && process.binding( 'util' ) && process.binding( 'util' ).getPromiseDetails ) {
-			let details = process.binding( 'util' ).getPromiseDetails( object ) ;
-			let state =  promiseStates[ details[ 0 ] ] ;
-			let str = 'Promise <' + state + '>' ;
-
-			if ( state === 'fulfilled' ) {
-				str += ' ' + inspect_(
-					{
-						depth: runtime.depth ,
-						ancestors: runtime.ancestors ,
-						noPre: true
-					} ,
-					options ,
-					details[ 1 ]
-				) ;
-			}
-			else if ( state === 'rejected' ) {
-				if ( details[ 1 ] instanceof Error ) {
-					str += ' ' + inspectError(
-						{
-							style: options.style ,
-							noErrorStack: true
-						} ,
-						details[ 1 ]
-					) ;
-				}
-				else {
-					str += ' ' + inspect_(
-						{
-							depth: runtime.depth ,
-							ancestors: runtime.ancestors ,
-							noPre: true
-						} ,
-						options ,
-						details[ 1 ]
-					) ;
-				}
-			}
-
-			return str ;
-		}
-	}
-
-	if ( object._bsontype ) {
-		// This is a MongoDB ObjectID, rather boring to display in its original form
-		// due to esoteric characters that confuse both the user and the terminal displaying it.
-		// Substitute it to its string representation
-		return object.toString() ;
-	}
-
-	if ( options.useInspect && typeof object.inspect === 'function' ) {
-		return object.inspect() ;
-	}
-
-	return ;
-}
-
-
-
-/*
-	Options:
-		noErrorStack: set to true if the stack should not be displayed
-*/
-function inspectError( options , error ) {
-	var str = '' , stack , type , code ;
-
-	if ( arguments.length < 2 ) { error = options ; options = {} ; }
-	else if ( ! options || typeof options !== 'object' ) { options = {} ; }
-
-	if ( ! options.style ) { options.style = inspectStyle.none ; }
-	else if ( typeof options.style === 'string' ) { options.style = inspectStyle[ options.style ] ; }
-
-	if ( ! ( error instanceof Error ) ) {
-		str += '[not an Error] ' ;
-
-		if ( typeof error === 'string' ) {
-			let maxLength = 5000 ;
-
-			if ( error.length > maxLength ) {
-				str += options.style.errorMessage( escape.control( error.slice( 0 , maxLength - 1 ) , true ) ) + '…'
-					+ options.style.length( '(' + error.length + ' - TRUNCATED)' )
-					+ options.style.newline ;
-			}
-			else {
-				str += options.style.errorMessage( escape.control( error , true ) )
-					+ options.style.newline ;
-			}
-
-			return str ;
-		}
-		else if ( ! error || typeof error !== 'object' || ! error.name || typeof error.name !== 'string' || ! error.message || typeof error.message !== 'string' ) {
-			str += inspect( options , error ) ;
-			return str ;
-		}
-
-		// It's an object, but it's compatible with Error, so we can move on...
-	}
-
-	if ( error.stack && ! options.noErrorStack ) { stack = inspectStack( options , error.stack ) ; }
-
-	type = error.type || error.constructor.name ;
-	code = error.code || error.name || error.errno || error.number ;
-
-	str += options.style.errorType( type ) +
-		( code ? ' [' + options.style.errorType( code ) + ']' : '' ) + ': ' ;
-	str += options.style.errorMessage( error.message ) + '\n' ;
-
-	if ( stack ) { str += options.style.errorStack( stack ) + '\n' ; }
-
-	if ( error.from ) {
-		str += options.style.newline + options.style.errorFromMessage( 'From error:' ) + options.style.newline + inspectError( options , error.from ) ;
-	}
-
-	return str ;
-}
-
-exports.inspectError = inspectError ;
-
-
-
-function inspectStack( options , stack ) {
-	if ( arguments.length < 2 ) { stack = options ; options = {} ; }
-	else if ( ! options || typeof options !== 'object' ) { options = {} ; }
-
-	if ( ! options.style ) { options.style = inspectStyle.none ; }
-	else if ( typeof options.style === 'string' ) { options.style = inspectStyle[ options.style ] ; }
-
-	if ( ! stack ) { return ; }
-
-	if ( ( options.browser || process.browser ) && stack.indexOf( '@' ) !== -1 ) {
-		// Assume a Firefox-compatible stack-trace here...
-		stack = stack
-			.replace( /[</]*(?=@)/g , '' )	// Firefox output some WTF </</</</< stuff in its stack trace -- removing that
-			.replace(
-				/^\s*([^@]*)\s*@\s*([^\n]*)(?::([0-9]+):([0-9]+))?$/mg ,
-				( matches , method , file , line , column ) => {
-					return options.style.errorStack( '    at ' ) +
-						( method ? options.style.errorStackMethod( method ) + ' ' : '' ) +
-						options.style.errorStack( '(' ) +
-						( file ? options.style.errorStackFile( file ) : options.style.errorStack( 'unknown' ) ) +
-						( line ? options.style.errorStack( ':' ) + options.style.errorStackLine( line ) : '' ) +
-						( column ? options.style.errorStack( ':' ) + options.style.errorStackColumn( column ) : '' ) +
-						options.style.errorStack( ')' ) ;
-				}
-			) ;
-	}
-	else {
-		stack = stack.replace( /^[^\n]*\n/ , '' ) ;
-		stack = stack.replace(
-			/^\s*(at)\s+(?:(?:(async|new)\s+)?([^\s:()[\]\n]+(?:\([^)]+\))?)\s)?(?:\[as ([^\s:()[\]\n]+)\]\s)?(?:\(?([^:()[\]\n]+):([0-9]+):([0-9]+)\)?)?$/mg ,
-			( matches , at , keyword , method , as , file , line , column ) => {
-				return options.style.errorStack( '    at ' ) +
-					( keyword ? options.style.errorStackKeyword( keyword ) + ' ' : '' ) +
-					( method ? options.style.errorStackMethod( method ) + ' ' : '' ) +
-					( as ? options.style.errorStack( '[as ' ) + options.style.errorStackMethodAs( as ) + options.style.errorStack( '] ' ) : '' ) +
-					options.style.errorStack( '(' ) +
-					( file ? options.style.errorStackFile( file ) : options.style.errorStack( 'unknown' ) ) +
-					( line ? options.style.errorStack( ':' ) + options.style.errorStackLine( line ) : '' ) +
-					( column ? options.style.errorStack( ':' ) + options.style.errorStackColumn( column ) : '' ) +
-					options.style.errorStack( ')' ) ;
-			}
-		) ;
-	}
-
-	return stack ;
-}
-
-exports.inspectStack = inspectStack ;
-
-
-
-// Inspect's styles
-
-var inspectStyle = {} ;
-
-var inspectStyleNoop = str => str ;
-
-
-
-inspectStyle.none = {
-	trim: false ,
-	tab: '    ' ,
-	newline: '\n' ,
-	comma: '' ,
-	limit: inspectStyleNoop ,
-	type: str => '<' + str + '>' ,
-	constant: inspectStyleNoop ,
-	funcName: inspectStyleNoop ,
-	constructorName: str => '<' + str + '>' ,
-	length: inspectStyleNoop ,
-	key: inspectStyleNoop ,
-	index: str => '[' + str + '] ' ,
-	number: inspectStyleNoop ,
-	inspect: inspectStyleNoop ,
-	string: inspectStyleNoop ,
-	errorType: inspectStyleNoop ,
-	errorMessage: inspectStyleNoop ,
-	errorStack: inspectStyleNoop ,
-	errorStackKeyword: inspectStyleNoop ,
-	errorStackMethod: inspectStyleNoop ,
-	errorStackMethodAs: inspectStyleNoop ,
-	errorStackFile: inspectStyleNoop ,
-	errorStackLine: inspectStyleNoop ,
-	errorStackColumn: inspectStyleNoop ,
-	errorFromMessage: inspectStyleNoop ,
-	truncate: ( str , maxLength ) => str.slice( 0 , maxLength - 1 ) + '…'
-} ;
-
-
-
-inspectStyle.inline = Object.assign( {} , inspectStyle.none , {
-	trim: true ,
-	tab: '' ,
-	newline: ' ' ,
-	comma: ', ' ,
-	length: () => '' ,
-	index: () => ''
-	//type: () => '' ,
-} ) ;
-
-
-
-inspectStyle.color = Object.assign( {} , inspectStyle.none , {
-	limit: str => ansi.bold + ansi.brightRed + str + ansi.reset ,
-	type: str => ansi.italic + ansi.brightBlack + str + ansi.reset ,
-	constant: str => ansi.cyan + str + ansi.reset ,
-	funcName: str => ansi.italic + ansi.magenta + str + ansi.reset ,
-	constructorName: str => ansi.magenta + str + ansi.reset ,
-	length: str => ansi.italic + ansi.brightBlack + str + ansi.reset ,
-	key: str => ansi.green + str + ansi.reset ,
-	index: str => ansi.blue + '[' + str + ']' + ansi.reset + ' ' ,
-	number: str => ansi.cyan + str + ansi.reset ,
-	inspect: str => ansi.cyan + str + ansi.reset ,
-	string: str => ansi.blue + str + ansi.reset ,
-	errorType: str => ansi.red + ansi.bold + str + ansi.reset ,
-	errorMessage: str => ansi.red + ansi.italic + str + ansi.reset ,
-	errorStack: str => ansi.brightBlack + str + ansi.reset ,
-	errorStackKeyword: str => ansi.italic + ansi.bold + str + ansi.reset ,
-	errorStackMethod: str => ansi.brightYellow + str + ansi.reset ,
-	errorStackMethodAs: str => ansi.yellow + str + ansi.reset ,
-	errorStackFile: str => ansi.brightCyan + str + ansi.reset ,
-	errorStackLine: str => ansi.blue + str + ansi.reset ,
-	errorStackColumn: str => ansi.magenta + str + ansi.reset ,
-	errorFromMessage: str => ansi.yellow + ansi.underline + str + ansi.reset ,
-	truncate: ( str , maxLength ) => {
-		var trail = ansi.gray + '…' + ansi.reset ;
-		str = str.slice( 0 , maxLength - trail.length ) ;
-
-		// Search for an ansi escape sequence at the end, that could be truncated.
-		// The longest one is '\x1b[107m': 6 characters.
-		var lastEscape = str.lastIndexOf( '\x1b' ) ;
-		if ( lastEscape >= str.length - 6 ) { str = str.slice( 0 , lastEscape ) ; }
-
-		return str + trail ;
-	}
-} ) ;
-
-
-
-inspectStyle.html = Object.assign( {} , inspectStyle.none , {
-	tab: '&nbsp;&nbsp;&nbsp;&nbsp;' ,
-	newline: '<br />' ,
-	limit: str => '<span style="color:red">' + str + '</span>' ,
-	type: str => '<i style="color:gray">' + str + '</i>' ,
-	constant: str => '<span style="color:cyan">' + str + '</span>' ,
-	funcName: str => '<i style="color:magenta">' + str + '</i>' ,
-	constructorName: str => '<span style="color:magenta">' + str + '</span>' ,
-	length: str => '<i style="color:gray">' + str + '</i>' ,
-	key: str => '<span style="color:green">' + str + '</span>' ,
-	index: str => '<span style="color:blue">[' + str + ']</span> ' ,
-	number: str => '<span style="color:cyan">' + str + '</span>' ,
-	inspect: str => '<span style="color:cyan">' + str + '</span>' ,
-	string: str => '<span style="color:blue">' + str + '</span>' ,
-	errorType: str => '<span style="color:red">' + str + '</span>' ,
-	errorMessage: str => '<span style="color:red">' + str + '</span>' ,
-	errorStack: str => '<span style="color:gray">' + str + '</span>' ,
-	errorStackKeyword: str => '<i>' + str + '</i>' ,
-	errorStackMethod: str => '<span style="color:yellow">' + str + '</span>' ,
-	errorStackMethodAs: str => '<span style="color:yellow">' + str + '</span>' ,
-	errorStackFile: str => '<span style="color:cyan">' + str + '</span>' ,
-	errorStackLine: str => '<span style="color:blue">' + str + '</span>' ,
-	errorStackColumn: str => '<span style="color:gray">' + str + '</span>' ,
-	errorFromMessage: str => '<span style="color:yellow">' + str + '</span>'
-} ) ;
-
-
-}).call(this)}).call(this,{"isBuffer":require("../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":90,"./ansi.js":77,"./escape.js":79,"_process":92}],82:[function(require,module,exports){
-arguments[4][59][0].apply(exports,arguments)
-},{"dup":59}],83:[function(require,module,exports){
-arguments[4][55][0].apply(exports,arguments)
-},{"dup":55}],84:[function(require,module,exports){
-/*
-	String Kit
-
-	Copyright (c) 2014 - 2021 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-
-
-/*
-	Javascript does not use UTF-8 but UCS-2.
-	The purpose of this module is to process correctly strings containing UTF-8 characters that take more than 2 bytes.
-
-	Since the punycode module is deprecated in Node.js v8.x, this is an adaptation of punycode.ucs2.x
-	as found on Aug 16th 2017 at: https://github.com/bestiejs/punycode.js/blob/master/punycode.js.
-
-	2021 note -- Modern Javascript is way more unicode friendly since many years, e.g. `Array.from( string )` and `for ( char of string )` are unicode aware.
-	Some methods here are now useless, but have been modernized to use the correct ES features.
-*/
-
-
-
-// Create the module and export it
-const unicode = {} ;
-module.exports = unicode ;
-
-
-
-unicode.encode = array => String.fromCodePoint( ... array ) ;
-
-// Decode a string into an array of unicode codepoints.
-// The 2nd argument of Array.from() is a map function, it avoids creating intermediate array.
-unicode.decode = str => Array.from( str , c => c.codePointAt( 0 ) ) ;
-
-// DEPRECATED: This function is totally useless now, with modern JS.
-unicode.firstCodePoint = str => str.codePointAt( 0 ) ;
-
-// Extract only the first char.
-unicode.firstChar = str => str.length ? String.fromCodePoint( str.codePointAt( 0 ) ) : undefined ;
-
-// DEPRECATED: This function is totally useless now, with modern JS.
-unicode.toArray = str => Array.from( str ) ;
-
-
-
-// Decode a string into an array of Cell (used by Terminal-kit).
-// Wide chars have an additionnal filler cell, so position is correct
-unicode.toCells = ( Cell , str , tabWidth = 4 , linePosition = 0 , ... extraCellArgs ) => {
-	var char , code , fillSize , width ,
-		output = [] ;
-
-	for ( char of str ) {
-		code = char.codePointAt( 0 ) ;
-
-		if ( code === 0x0a ) {	// New line
-			linePosition = 0 ;
-		}
-		else if ( code === 0x09 ) {	// Tab
-			// Depends upon the next tab-stop
-			fillSize = tabWidth - ( linePosition % tabWidth ) - 1 ;
-			//output.push( new Cell( '\t' , ... extraCellArgs ) ) ;
-			output.push( new Cell( '\t' , 1 , ... extraCellArgs ) ) ;
-			linePosition += 1 + fillSize ;
-
-			// Add a filler cell
-			while ( fillSize -- ) { output.push( new Cell( ' ' , -2 , ... extraCellArgs ) ) ; }
-		}
-		else {
-			width = unicode.codePointWidth( code ) ,
-			output.push( new Cell( char , width , ... extraCellArgs ) ) ;
-			linePosition += width ;
-
-			// Add an anti-filler cell (a cell with 0 width, following a wide char)
-			while ( -- width > 0 ) { output.push( new Cell( ' ' , -1 , ... extraCellArgs ) ) ; }
-		}
-	}
-
-	return output ;
-} ;
-
-
-
-unicode.fromCells = ( cells ) => {
-	var cell , str = '' ;
-
-	for ( cell of cells ) {
-		if ( ! cell.filler ) { str += cell.char ; }
-	}
-
-	return str ;
-} ;
-
-
-
-// Get the length of an unicode string
-// Mostly an adaptation of .decode(), not factorized for performance's sake (used by Terminal-kit)
-// /!\ Use Array.from().length instead??? Not using it is potentially faster, but it needs benchmark to be sure.
-unicode.length = str => {
-	// for ... of is unicode-aware
-	var char , length = 0 ;
-	for ( char of str ) { length ++ ; }		/* eslint-disable-line no-unused-vars */
-	return length ;
-} ;
-
-
-
-// Return the width of a string in a terminal/monospace font
-unicode.width = str => {
-	// for ... of is unicode-aware
-	var char , count = 0 ;
-	for ( char of str ) { count += unicode.codePointWidth( char.codePointAt( 0 ) ) ; }
-	return count ;
-} ;
-
-
-
-// Return the width of an array of string in a terminal/monospace font
-unicode.arrayWidth = ( array , limit ) => {
-	var index , count = 0 ;
-
-	if ( limit === undefined ) { limit = array.length ; }
-
-	for ( index = 0 ; index < limit ; index ++ ) {
-		count += unicode.isFullWidth( array[ index ] ) ? 2 : 1 ;
-	}
-
-	return count ;
-} ;
-
-
-
-// Userland may use this, it is more efficient than .truncateWidth() + .width(),
-// and BTW even more than testing .width() then .truncateWidth() + .width()
-var lastTruncateWidth = 0 ;
-unicode.getLastTruncateWidth = () => lastTruncateWidth ;
-
-
-
-// Return a string that does not exceed the limit.
-unicode.widthLimit =	// DEPRECATED
-unicode.truncateWidth = ( str , limit ) => {
-	var char , charWidth , position = 0 ;
-
-	// Module global:
-	lastTruncateWidth = 0 ;
-
-	for ( char of str ) {
-		charWidth = unicode.codePointWidth( char.codePointAt( 0 ) ) ;
-
-		if ( lastTruncateWidth + charWidth > limit ) {
-			return str.slice( 0 , position ) ;
-		}
-
-		lastTruncateWidth += charWidth ;
-		position += char.length ;
-	}
-
-	// The string remains unchanged
-	return str ;
-} ;
-
-
-
-/*
-	** PROBABLY DEPRECATED **
-
-	Check if a UCS2 char is a surrogate pair.
-
-	Returns:
-		0: single char
-		1: leading surrogate
-		-1: trailing surrogate
-
-	Note: it does not check input, to gain perfs.
-*/
-unicode.surrogatePair = char => {
-	var code = char.charCodeAt( 0 ) ;
-
-	if ( code < 0xd800 || code >= 0xe000 ) { return 0 ; }
-	else if ( code < 0xdc00 ) { return 1 ; }
-	return -1 ;
-} ;
-
-
-
-// Check if a character is a full-width char or not
-unicode.isFullWidth = char => unicode.isFullWidthCodePoint( char.codePointAt( 0 ) ) ;
-
-// Return the width of a char, leaner than .width() for one char
-unicode.charWidth = char => unicode.codePointWidth( char.codePointAt( 0 ) ) ;
-
-
-
-/*
-	Build the Emoji width lookup.
-	The ranges file (./lib/unicode-emoji-width-ranges.json) is produced by a Terminal-Kit script ([terminal-kit]/utilities/build-emoji-width-lookup.js),
-	that writes each emoji and check the cursor location.
-*/
-const emojiWidthLookup = new Map() ;
-
-( function() {
-	var ranges = require( './json-data/unicode-emoji-width-ranges.json' ) ;
-	for ( let range of ranges ) {
-		for ( let i = range.s ; i <= range.e ; i ++ ) {
-			emojiWidthLookup.set( i , range.w ) ;
-		}
-	}
-} )() ;
-
-/*
-	Check if a codepoint represent a full-width char or not.
-*/
-unicode.codePointWidth = code => {
-	// Assuming all emoji are wide here
-	if ( unicode.isEmojiCodePoint( code ) ) {
-		return emojiWidthLookup.get( code ) ?? 2 ;
-	}
-
-	// Code points are derived from:
-	// http://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt
-	if ( code >= 0x1100 && (
-		code <= 0x115f ||	// Hangul Jamo
-		code === 0x2329 || // LEFT-POINTING ANGLE BRACKET
-		code === 0x232a || // RIGHT-POINTING ANGLE BRACKET
-		// CJK Radicals Supplement .. Enclosed CJK Letters and Months
-		( 0x2e80 <= code && code <= 0x3247 && code !== 0x303f ) ||
-		// Enclosed CJK Letters and Months .. CJK Unified Ideographs Extension A
-		( 0x3250 <= code && code <= 0x4dbf ) ||
-		// CJK Unified Ideographs .. Yi Radicals
-		( 0x4e00 <= code && code <= 0xa4c6 ) ||
-		// Hangul Jamo Extended-A
-		( 0xa960 <= code && code <= 0xa97c ) ||
-		// Hangul Syllables
-		( 0xac00 <= code && code <= 0xd7a3 ) ||
-		// CJK Compatibility Ideographs
-		( 0xf900 <= code && code <= 0xfaff ) ||
-		// Vertical Forms
-		( 0xfe10 <= code && code <= 0xfe19 ) ||
-		// CJK Compatibility Forms .. Small Form Variants
-		( 0xfe30 <= code && code <= 0xfe6b ) ||
-		// Halfwidth and Fullwidth Forms
-		( 0xff01 <= code && code <= 0xff60 ) ||
-		( 0xffe0 <= code && code <= 0xffe6 ) ||
-		// Kana Supplement
-		( 0x1b000 <= code && code <= 0x1b001 ) ||
-		// Enclosed Ideographic Supplement
-		( 0x1f200 <= code && code <= 0x1f251 ) ||
-		// CJK Unified Ideographs Extension B .. Tertiary Ideographic Plane
-		( 0x20000 <= code && code <= 0x3fffd )
-	) ) {
-		return 2 ;
-	}
-
-	if (
-		unicode.isEmojiModifierCodePoint( code ) ||
-		unicode.isZeroWidthDiacriticCodePoint( code )
-	) {
-		return 0 ;
-	}
-
-	return 1 ;
-} ;
-
-// For a true/false type of result
-unicode.isFullWidthCodePoint = code => unicode.codePointWidth( code ) === 2 ;
-
-
-
-// Convert normal ASCII chars to their full-width counterpart
-unicode.toFullWidth = str => {
-	return String.fromCodePoint( ... Array.from( str , char => {
-		var code = char.codePointAt( 0 ) ;
-		return code >= 33 && code <= 126  ?  0xff00 + code - 0x20  :  code ;
-	} ) ) ;
-} ;
-
-
-
-// Check if a character is a diacritic with zero-width or not
-unicode.isZeroWidthDiacritic = char => unicode.isZeroWidthDiacriticCodePoint( char.codePointAt( 0 ) ) ;
-
-// Some doc found here: https://en.wikipedia.org/wiki/Combining_character
-// Diacritics and other characters that combines with previous one (zero-width)
-unicode.isZeroWidthDiacriticCodePoint = code =>
-	// Combining Diacritical Marks
-	( 0x300 <= code && code <= 0x36f ) ||
-	// Combining Diacritical Marks Extended
-	( 0x1ab0 <= code && code <= 0x1aff ) ||
-	// Combining Diacritical Marks Supplement
-	( 0x1dc0 <= code && code <= 0x1dff ) ||
-	// Combining Diacritical Marks for Symbols
-	( 0x20d0 <= code && code <= 0x20ff ) ||
-	// Combining Half Marks
-	( 0xfe20 <= code && code <= 0xfe2f ) ||
-	// Dakuten and handakuten (japanese)
-	code === 0x3099 || code === 0x309a ||
-	// Devanagari
-	( 0x900 <= code && code <= 0x903 ) ||
-	( 0x93a <= code && code <= 0x957 && code !== 0x93d && code !== 0x950 ) ||
-	code === 0x962 || code === 0x963 ||
-	// Thai
-	code === 0xe31 ||
-	( 0xe34 <= code && code <= 0xe3a ) ||
-	( 0xe47 <= code && code <= 0xe4e ) ;
-
-// Check if a character is an emoji or not
-unicode.isEmoji = char => unicode.isEmojiCodePoint( char.codePointAt( 0 ) ) ;
-
-// Some doc found here: https://stackoverflow.com/questions/30470079/emoji-value-range
-unicode.isEmojiCodePoint = code =>
-	// Miscellaneous symbols
-	( 0x2600 <= code && code <= 0x26ff ) ||
-	// Dingbats
-	( 0x2700 <= code && code <= 0x27bf ) ||
-	// Emoji
-	( 0x1f000 <= code && code <= 0x1f1ff ) ||
-	( 0x1f300 <= code && code <= 0x1f3fa ) ||
-	( 0x1f400 <= code && code <= 0x1faff ) ;
-
-// Emoji modifier
-unicode.isEmojiModifier = char => unicode.isEmojiModifierCodePoint( char.codePointAt( 0 ) ) ;
-unicode.isEmojiModifierCodePoint = code =>
-	( 0x1f3fb <= code && code <= 0x1f3ff ) ||	// (Fitzpatrick): https://en.wikipedia.org/wiki/Miscellaneous_Symbols_and_Pictographs#Emoji_modifiers
-	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
-
-
-},{"./json-data/unicode-emoji-width-ranges.json":82}],85:[function(require,module,exports){
+},{"dup":47}],77:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
   "version": "0.5.1",
@@ -36265,9 +34822,9 @@ module.exports={
   }
 }
 
-},{}],86:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 
-},{}],87:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -36419,7 +34976,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],88:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * The buffer module from node.js, for the browser.
@@ -38200,7 +36757,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":87,"buffer":88,"ieee754":89}],89:[function(require,module,exports){
+},{"base64-js":79,"buffer":80,"ieee754":81}],81:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -38287,7 +36844,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],90:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -38310,7 +36867,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],91:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -38843,7 +37400,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":92}],92:[function(require,module,exports){
+},{"_process":84}],84:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -39029,5 +37586,5 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[41])(41)
+},{}]},{},[40])(40)
 });
