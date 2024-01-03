@@ -2,19 +2,8 @@
 "use strict" ;
 
 async function bookSourceFlowTest() {
-	var $canvas = document.getElementById( 'canvas' ) ,
-		$svgDom = document.getElementById( 'svgDom' ) ,
-		$svgText = document.getElementById( 'svgText' ) ;
-
-	var ctx = $canvas.getContext( '2d' ) ;
-
 	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
 	console.log( rawDoc ) ;
-
-	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
 
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -46,9 +35,8 @@ async function bookSourceFlowTest() {
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
-	// Display using the Canvas renderer
-	$canvas.classList.remove( 'hidden' ) ;
-	await vg.renderCanvas( ctx ) ;
+	renderAll( vg ) ;
+
 	console.warn( "BoundingBox:" , vgFlowingText.getBoundingBox() ) ;
 	console.warn( "Content BoundingBox:" , await vgFlowingText.getContentBoundingBox() ) ;
 }
@@ -56,19 +44,8 @@ async function bookSourceFlowTest() {
 
 
 async function flowTest() {
-	var $canvas = document.getElementById( 'canvas' ) ,
-		$svgDom = document.getElementById( 'svgDom' ) ,
-		$svgText = document.getElementById( 'svgText' ) ;
-
-	var ctx = $canvas.getContext( '2d' ) ;
-
 	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
 	console.log( rawDoc ) ;
-
-	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
 
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -84,8 +61,8 @@ async function flowTest() {
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
 		textWrapping: 'wordWrap' ,
-		textVerticalAlignment: 'bottom' ,
-		textHorizontalAlignment: 'center' ,
+		//textVerticalAlignment: 'bottom' ,
+		//textHorizontalAlignment: 'center' ,
 		attr: {
 			fontSize: 28 , color: '#555' ,
 			//outline: true ,
@@ -95,42 +72,24 @@ async function flowTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
-		//structuredText: { text: "Bob?" } ,
-		markupText: "Grigrigredin-menufretin ! [Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:light blue> and _listen_..." ,
-		//markupText: rawDoc ,
+		//markupText: "Grigrigredin-menufretin ! [Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:light blue> and _listen_..." ,
+		structuredText: [
+			{ text: "Hello" , attr: { color: '#5e5' } } ,
+			{ text: " my friend, stay " } ,
+			{ text: "awhile" , attr: { frame: true , frameCornerRadius: '0.2em' , frameColor: '#afa' } } ,
+			{ text: " and " } ,
+			{ text: "listen" , attr: { underline: true , lineColor: '#599' } } ,
+			{ text: "..." } ,
+		] ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
-	// Display using the Canvas renderer
-	$canvas.classList.remove( 'hidden' ) ;
-	await vg.renderCanvas( ctx ) ;
-	console.warn( "BoundingBox:" , vgFlowingText.getBoundingBox() ) ;
-	console.warn( "Content BoundingBox:" , await vgFlowingText.getContentBoundingBox() ) ;
+	renderAll( vg ) ;
 }
 
 
 
 async function test() {
-	var $canvas = document.getElementById( 'canvas' ) ,
-		$svgDom = document.getElementById( 'svgDom' ) ,
-		$svgText = document.getElementById( 'svgText' ) ;
-
-	var ctx = $canvas.getContext( '2d' ) ;
-
-	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
-	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
-
-	// Preload everything...
-	//await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
-	/*
-	await svgKit.fontLib.getFontAsync( 'serif' ) ;
-	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
-	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' ) ;
-	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' , 'italic' ) ;
-	//*/
-
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
 		//invertY: true
@@ -347,6 +306,30 @@ async function test() {
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
+	renderAll( vg ) ;
+}
+
+async function renderAll( vg ) {
+	var $canvas = document.getElementById( 'canvas' ) ,
+		$svgDom = document.getElementById( 'svgDom' ) ,
+		$svgText = document.getElementById( 'svgText' ) ;
+
+	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+
+	// Preload everything...
+	//await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
+	/*
+	await svgKit.fontLib.getFontAsync( 'serif' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' , 'italic' ) ;
+	//*/
+
+	var ctx = $canvas.getContext( '2d' ) ;
+
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
 	await vg.renderCanvas( ctx ) ;
@@ -367,7 +350,7 @@ async function test() {
 	$svgText.appendChild( anchor ) ;
 }
 
-svgKit.domKit.ready( test ) ;
-//svgKit.domKit.ready( flowTest ) ;
+//svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
 
