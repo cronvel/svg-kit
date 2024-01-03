@@ -1439,30 +1439,32 @@ module.exports = StructuredTextLine ;
 StructuredTextLine.prototype.fuseEqualAttr = function() {
 	if ( this.parts.length <= 1 ) { return ; }
 
-	let last = this.parts[ 0 ] ; // IStructuredTextPart
-	let lastInserted = last ; // IStructuredTextPart
-	const outputParts = [ last ] ; // StructuredText
+	console.warn( "!!! BF .fuseEqualAttr()" , this.parts ) ;
+	let lastPart = this.parts[ 0 ] ; // IStructuredTextPart
+	let lastInsertedPart = lastPart ; // IStructuredTextPart
+	const outputParts = [ lastPart ] ; // StructuredText
 
 	for ( let index = 1 ; index < this.parts.length ; index ++ ) {
 		const part = this.parts[ index ] ;
 
-		if ( last.attr.isEqual( part.attr ) ) {
-			lastInserted.text += part.text ;
+		if ( ! part.imageUrl && ! lastPart.imageUrl && part.attr.isEqual( lastPart.attr ) ) {
+			lastInsertedPart.text += part.text ;
 
 			// Note that it's always defined at that point
-			if ( lastInserted.metrics && part.metrics ) {
-				lastInserted.metrics.fuseWithRightPart( part.metrics ) ;
+			if ( lastInsertedPart.metrics && part.metrics ) {
+				lastInsertedPart.metrics.fuseWithRightPart( part.metrics ) ;
 			}
 		}
 		else {
 			outputParts.push( part ) ;
-			lastInserted = part ;
+			lastInsertedPart = part ;
 		}
 
-		last = part ;
+		lastPart = part ;
 	}
 
 	this.parts = outputParts ;
+	console.warn( "!!! AFT .fuseEqualAttr()" , this.parts ) ;
 } ;
 
 
@@ -2616,6 +2618,8 @@ const StructuredTextRenderer = require( './StructuredTextRenderer.js' ) ;
 const fontLib = require( '../fontLib.js' ) ;
 const canvas = require( '../canvas.js' ) ;
 
+const dom = require( 'dom-kit' ) ;
+
 
 
 function VGFlowingText( params ) {
@@ -2885,6 +2889,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 	for ( let part of line ) {
 		part.splitIntoWords( outputParts ) ;
 	}
+	console.warn( "??? AFT splitIntoWords()" , outputParts.map( e => ( { text: e.text , imageUrl: e.imageUrl } ) ) ) ;
 
 	let lastTestLineMetrics = new TextMetrics() ;
 	let testLineMetrics = new TextMetrics() ;
@@ -2920,10 +2925,14 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 			lastTestLineMetrics = new TextMetrics() ;
 
 			// Create a new line with the current part as the first part.
-			// We have to left-trim it because it mays contain spaces.
+			// We have to left-trim it because it may contain spaces.
+			// It's a loop, because we can strip multiple space-only parts.
 			let indexOfNextLine = index - removed + 1 ;
 			for ( ; indexOfNextLine <= index ; indexOfNextLine ++ ) {
 				let nextLinePart = outputParts[ indexOfNextLine ] ;
+				
+				if ( nextLinePart.imageUrl ) { break ; }
+				
 				//console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ;
 				let trimmedText = nextLinePart.text.trimStart() ;
 
@@ -2946,11 +2955,11 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 		}
 
 		blockAdded ++ ;
-		let dbg = '' ;
+		//let dbg = '' ;
 		for ( let indexOfPartToAdd = lastIndex + 1 ; indexOfPartToAdd <= index ; indexOfPartToAdd ++ ) {
 			//console.log( "indexOfPartToAdd" , indexOfPartToAdd ) ;
 			lastTestLineMetrics.fuseWithRightPart( outputParts[ indexOfPartToAdd ].metrics ) ;
-			dbg += outputParts[ indexOfPartToAdd ].text ;
+			//dbg += outputParts[ indexOfPartToAdd ].text ;
 		}
 		//console.log( "added:" , lastIndex + 1 , index , "'" + dbg + "'" ) ;
 
@@ -3202,13 +3211,25 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( maste
 				str += ' />' ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
-			let pathData = path.toPathData() ;
+			if ( part.imageUrl ) {
+				str += '<image' ;
+				str += ' x="' + ( part.metrics.x ) + '"' ;
+				str += ' y="' + ( part.metrics.baselineY - part.metrics.ascender + yOffset ) + '"' ;
+				str += ' width="' + ( part.metrics.width ) + '"' ;
+				str += ' height="' + ( part.metrics.ascender ) + '"' ;
+				//str += ' preserveAspectRatio="none"' ;
+				str += ' xlink:href="' + part.imageUrl + '"' ;
+				str += ' />' ;
+			}
+			else {
+				let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
+				let pathData = path.toPathData() ;
 
-			str += '<path' ;
-			if ( textStyleStr ) { str += ' style="' + textStyleStr + '"' ; }
-			str += ' d="' + pathData + '"' ;
-			str += ' />' ;
+				str += '<path' ;
+				if ( textStyleStr ) { str += ' style="' + textStyleStr + '"' ; }
+				str += ' d="' + pathData + '"' ;
+				str += ' />' ;
+			}
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
@@ -3309,13 +3330,27 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( master
 				elementList.push( $line ) ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
-			let pathData = path.toPathData() ;
+			if ( part.imageUrl ) {
+				let $image = document.createElementNS( this.NS , 'image' ) ;
+				dom.attr( $image , {
+					x: part.metrics.x ,
+					y: part.metrics.baselineY - part.metrics.ascender + yOffset ,
+					width: part.metrics.width ,
+					height: part.metrics.ascender ,
+					//preserveAspectRatio: 'none' ,
+					href: part.imageUrl
+				} ) ;
+				elementList.push( $image ) ;
+			}
+			else {
+				let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
+				let pathData = path.toPathData() ;
 
-			let $textPath = document.createElementNS( this.NS , 'path' ) ;
-			if ( textStyleStr ) { $textPath.setAttribute( 'style' , textStyleStr ) ; }
-			$textPath.setAttribute( 'd' , pathData ) ;
-			elementList.push( $textPath ) ;
+				let $textPath = document.createElementNS( this.NS , 'path' ) ;
+				if ( textStyleStr ) { $textPath.setAttribute( 'style' , textStyleStr ) ; }
+				$textPath.setAttribute( 'd' , pathData ) ;
+				elementList.push( $textPath ) ;
+			}
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
@@ -3408,10 +3443,31 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle , master?.palette ) ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
-			let pathData = path.toPathData() ;
-			let path2D = new Path2D( pathData ) ;
-			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , master?.palette , path2D ) ;
+			if ( part.imageUrl ) {
+				canvasCtx.save() ;
+
+				let image = new Image() ;
+				image.src = part.imageUrl ;
+
+				await new Promise( resolve => {
+					image.onload = () => {
+						canvasCtx.drawImage(
+							image ,
+							part.metrics.x ,
+							part.metrics.baselineY - part.metrics.ascender + yOffset
+						) ;
+						resolve() ;
+					} ;
+				} ) ;
+
+				canvasCtx.restore() ;
+			}
+			else {
+				let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
+				let pathData = path.toPathData() ;
+				let path2D = new Path2D( pathData ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , master?.palette , path2D ) ;
+			}
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
@@ -3464,9 +3520,11 @@ VGFlowingText.prototype.renderHookForPath2D = async function( path2D , canvasCtx
 				path2D.rect( part.metrics.x , underlineY , part.metrics.width , lineThickness ) ;
 			}
 
-			let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
-			let pathData = path.toPathData() ;
-			path2D.addPath( new Path2D( pathData ) ) ;
+			if ( ! part.imageUrl ) {
+				let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
+				let pathData = path.toPathData() ;
+				path2D.addPath( new Path2D( pathData ) ) ;
+			}
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
@@ -3538,7 +3596,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":72,"../BoundingBox.js":1,"../VGEntity.js":7,"../canvas.js":19,"../fontLib.js":20,"./StructuredTextLine.js":8,"./StructuredTextPart.js":9,"./StructuredTextRenderer.js":10,"./TextAttribute.js":11,"./TextMetrics.js":12,"book-source":55}],14:[function(require,module,exports){
+},{"../../package.json":72,"../BoundingBox.js":1,"../VGEntity.js":7,"../canvas.js":19,"../fontLib.js":20,"./StructuredTextLine.js":8,"./StructuredTextPart.js":9,"./StructuredTextRenderer.js":10,"./TextAttribute.js":11,"./TextMetrics.js":12,"book-source":55,"dom-kit":57}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
