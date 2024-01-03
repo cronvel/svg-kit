@@ -44,9 +44,6 @@ async function bookSourceFlowTest() {
 
 
 async function flowTest() {
-	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
-	console.log( rawDoc ) ;
-
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
 		//invertY: false
@@ -75,7 +72,9 @@ async function flowTest() {
 		//markupText: "Grigrigredin-menufretin ! [Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:light blue> and _listen_..." ,
 		structuredText: [
 			{ text: "Hello" , attr: { color: '#5e5' } } ,
-			{ text: " my friend, stay " } ,
+			{ text: " my friend " } ,
+			{ image: './smiley-mini.png' } ,
+			{ text: " stay " } ,
 			{ text: "awhile" , attr: { frame: true , frameCornerRadius: '0.2em' , frameColor: '#afa' } } ,
 			{ text: " and " } ,
 			{ text: "listen" , attr: { underline: true , lineColor: '#599' } } ,
