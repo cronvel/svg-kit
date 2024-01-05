@@ -767,7 +767,7 @@ VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , m
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
 	canvasCtx.ellipse( this.x , this.y + yOffset , this.rx , this.ry , 0 , 0 , 2 * Math.PI ) ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , master?.palette ) ;
+	canvas.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette ) ;
 	canvasCtx.restore() ;
 } ;
 
@@ -1200,7 +1200,7 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , master = this )
 	// Inner content
 
 	if ( this.isRenderingContainer && this.renderingContainerHookForSvgDom ) {
-		let subElements = await this.renderingContainerHookForSvgDom() ;
+		let subElements = await this.renderingContainerHookForSvgDom( master ) ;
 		subElements.forEach( $subElement => this.$element.appendChild( $subElement ) ) ;
 	}
 
@@ -4345,7 +4345,7 @@ VGPath.prototype.toD = function() {
 VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
+	canvas.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
 	canvasCtx.restore() ;
 } ;
 
@@ -5055,7 +5055,7 @@ VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , mast
 		canvasCtx.rect( this.x , this.y + yOffset , this.width , this.height ) ;
 	}
 
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , this.style , master?.palette ) ;
+	canvas.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette ) ;
 	canvasCtx.restore() ;
 } ;
 
@@ -5279,17 +5279,41 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , mast
 
 
 
+const misc = require( './misc.js' ) ;
+
+
+
 const canvas = {} ;
 module.exports = canvas ;
 
 
 
-canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
+// Using SVG style
+canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) =>
+	canvas._fillAndStroke( canvasCtx , style , path2d , false ) ;
+
+// Using the lib style property and a palette
+canvas.fillAndStrokeUsingStyle = ( canvasCtx , style , palette , path2d = null ) =>
+	canvas._fillAndStroke( canvasCtx , style , path2d , true , palette ) ;
+
+canvas._fillAndStroke = ( canvasCtx , style , path2d = null , convertColor = false , palette = null ) => {
 	var fill = false ,
 		stroke = false ,
-		fillStyle = style.fill && style.fill !== 'none' ? style.fill : null ,
-		strokeStyle = style.stroke && style.stroke !== 'none' ? style.stroke : null ,
 		lineWidth = + ( style.strokeWidth ?? 1 ) || 0 ;
+
+	var fillStyle =
+			style.fill && style.fill !== 'none' ?
+				convertColor ?
+					misc.colorToString( style.fill , palette ) :
+					style.fill :
+				null ;
+
+	var strokeStyle =
+			style.stroke && style.stroke !== 'none' ?
+				convertColor ?
+					misc.colorToString( style.stroke , palette ) :
+					style.stroke :
+				null ;
 
 	if ( fillStyle ) {
 		fill = true ;
@@ -5327,7 +5351,7 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 } ;
 
 
-},{}],20:[function(require,module,exports){
+},{"./misc.js":22}],20:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit

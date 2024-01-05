@@ -102,7 +102,7 @@ async function test() {
 		height: 40 ,
 		style: {
 			//fill: '#779' ,
-			fill: '%light blue' ,
+			fill: '%lighter blue' ,
 			//stroke: '#c55'
 			stroke: '%red-violet'
 		}
