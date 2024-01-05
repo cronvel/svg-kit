@@ -1899,6 +1899,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 
 
 
+const misc = require( '../misc.js' ) ;
 const Metric = require( '../Metric.js' ) ;
 const Color = require( 'palette-shade' ).Color ;
 
@@ -2302,7 +2303,7 @@ TextAttribute.prototype.getFrameCornerRadius = function( inherit = null , relTo 
 
 // Utilities
 
-TextAttribute.prototype.getTextSvgStyleString = function( inherit = null , relTo = null ) {
+TextAttribute.prototype.getTextSvgStyleString = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
 	var str = '' ,
@@ -2310,12 +2311,12 @@ TextAttribute.prototype.getTextSvgStyleString = function( inherit = null , relTo
 		outline = this.getOutline( inherit ) ,
 		outlineWidth ;
 
-	str += 'fill:' + color + ';' ;
+	str += 'fill:' + misc.colorToString( color , palette ) + ';' ;
 
 	if ( outline && ( outlineWidth = this.getOutlineWidth( inherit , relTo ) ) ) {
 		let outlineColor = this.getOutlineColor( inherit ) ;
-		if ( outlineColor ) { str += 'stroke:' + outlineColor + ';' ; }
-		else { str += 'stroke:' + color + ';' ; }
+		if ( outlineColor ) { str += 'stroke:' + misc.colorToString( outlineColor , palette ) + ';' ; }
+		else { str += 'stroke:' + misc.colorToString( color , palette ) + ';' ; }
 
 		// It should force paint-order to stroke first, or some font will not be displayed as intended:
 		// some strokes can happen in the middle of a letter.
@@ -2327,7 +2328,7 @@ TextAttribute.prototype.getTextSvgStyleString = function( inherit = null , relTo
 	return str ;
 } ;
 
-TextAttribute.prototype.getTextSvgStyle = function( inherit = null , relTo = null ) {
+TextAttribute.prototype.getTextSvgStyle = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
 	var style = {} ,
@@ -2335,12 +2336,12 @@ TextAttribute.prototype.getTextSvgStyle = function( inherit = null , relTo = nul
 		outline = this.getOutline( inherit ) ,
 		outlineWidth ;
 
-	style.fill = color ;
+	style.fill = misc.colorToString( color , palette ) ;
 
 	if ( outline && ( outlineWidth = this.getOutlineWidth( inherit , relTo ) ) ) {
 		let outlineColor = this.getOutlineColor( inherit ) ;
-		if ( outlineColor ) { style.stroke = outlineColor ; }
-		else { style.stroke = color ; }
+		if ( outlineColor ) { style.stroke = misc.colorToString( outlineColor , palette ) ; }
+		else { style.stroke = misc.colorToString( color , palette ) ; }
 
 		style.strokeWidth = outlineWidth * 2 ;
 		style.paintOrder = 'stroke' ;
@@ -2351,7 +2352,7 @@ TextAttribute.prototype.getTextSvgStyle = function( inherit = null , relTo = nul
 
 
 
-TextAttribute.prototype.getLineSvgStyleString = function( inherit = null , relTo = null ) {
+TextAttribute.prototype.getLineSvgStyleString = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
 	var str = '' ,
@@ -2359,12 +2360,12 @@ TextAttribute.prototype.getLineSvgStyleString = function( inherit = null , relTo
 		outline = this.getLineOutline( inherit ) ,
 		outlineWidth ;
 
-	str += 'fill:' + color + ';' ;
+	str += 'fill:' + misc.colorToString( color , palette ) + ';' ;
 
 	if ( outline && ( outlineWidth = this.getLineOutlineWidth( inherit , relTo ) ) ) {
 		let outlineColor = this.getLineOutlineColor( inherit ) ;
-		if ( outlineColor ) { str += 'stroke:' + outlineColor + ';' ; }
-		else { str += 'stroke:' + color + ';' ; }
+		if ( outlineColor ) { str += 'stroke:' + misc.colorToString( outlineColor , palette ) + ';' ; }
+		else { str += 'stroke:' + misc.colorToString( color , palette ) + ';' ; }
 
 		// It should force paint-order to stroke first, so the outline is out of the content.
 		// As a result, outline width is multiplied by 2 because half of the stroke width is overwritten by the fill pass.
@@ -2375,7 +2376,7 @@ TextAttribute.prototype.getLineSvgStyleString = function( inherit = null , relTo
 	return str ;
 } ;
 
-TextAttribute.prototype.getLineSvgStyle = function( inherit = null , relTo = null ) {
+TextAttribute.prototype.getLineSvgStyle = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
 	var style = {} ,
@@ -2383,12 +2384,12 @@ TextAttribute.prototype.getLineSvgStyle = function( inherit = null , relTo = nul
 		outline = this.getLineOutline( inherit ) ,
 		outlineWidth ;
 
-	style.fill = color ;
+	style.fill = misc.colorToString( color , palette ) ;
 
 	if ( outline && ( outlineWidth = this.getLineOutlineWidth( inherit , relTo ) ) ) {
 		let outlineColor = this.getLineOutlineColor( inherit ) ;
-		if ( outlineColor ) { style.stroke = outlineColor ; }
-		else { style.stroke = color ; }
+		if ( outlineColor ) { style.stroke = misc.colorToString( outlineColor , palette ) ; }
+		else { style.stroke = misc.colorToString( color , palette ) ; }
 
 		style.strokeWidth = outlineWidth * 2 ;
 		style.paintOrder = 'stroke' ;
@@ -2399,19 +2400,19 @@ TextAttribute.prototype.getLineSvgStyle = function( inherit = null , relTo = nul
 
 
 
-TextAttribute.prototype.getFrameSvgStyleString = function( inherit = null , relTo = null ) {
+TextAttribute.prototype.getFrameSvgStyleString = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
 	var str = '' ,
 		color = this.getFrameColor( inherit ) ,
 		outlineWidth = this.getFrameOutlineWidth( inherit , relTo ) ;
 
-	str += 'fill:' + color + ';' ;
+	str += 'fill:' + misc.colorToString( color , palette ) + ';' ;
 
 	if ( outlineWidth ) {
 		let outlineColor = this.getFrameOutlineColor( inherit ) ;
-		if ( outlineColor ) { str += 'stroke:' + outlineColor + ';' ; }
-		else { str += 'stroke:' + color + ';' ; }
+		if ( outlineColor ) { str += 'stroke:' + misc.colorToString( outlineColor , palette ) + ';' ; }
+		else { str += 'stroke:' + misc.colorToString( color , palette ) + ';' ; }
 
 		// It should force paint-order to stroke first, so the outline is out of the content.
 		// As a result, outline width is multiplied by 2 because half of the stroke width is overwritten by the fill pass.
@@ -2422,19 +2423,19 @@ TextAttribute.prototype.getFrameSvgStyleString = function( inherit = null , relT
 	return str ;
 } ;
 
-TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = null ) {
+TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
 	var style = {} ,
 		color = this.getFrameColor( inherit ) ,
 		outlineWidth = this.getFrameOutlineWidth( inherit , relTo ) ;
 
-	style.fill = color ;
+	style.fill = misc.colorToString( color , palette ) ;
 
 	if ( outlineWidth ) {
 		let outlineColor = this.getFrameOutlineColor( inherit ) ;
-		if ( outlineColor ) { style.stroke = outlineColor ; }
-		else { style.stroke = color ; }
+		if ( outlineColor ) { style.stroke = misc.colorToString( outlineColor , palette ) ; }
+		else { style.stroke = misc.colorToString( color , palette ) ; }
 
 		style.strokeWidth = outlineWidth * 2 ;
 		style.paintOrder = 'stroke' ;
@@ -2444,7 +2445,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 } ;
 
 
-},{"../Metric.js":2,"palette-shade":63}],12:[function(require,module,exports){
+},{"../Metric.js":2,"../misc.js":22,"palette-shade":63}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3171,7 +3172,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( maste
 				fontStyle = part.attr.getFontStyle( this.attr ) ,
 				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
-				textStyleStr = part.attr.getTextSvgStyleString( this.attr , fontSize ) ,
+				textStyleStr = part.attr.getTextSvgStyleString( this.attr , fontSize , master?.palette ) ,
 				lineStyleStr , lineThickness ,
 				underline = part.attr.getUnderline( this.attr ) ,
 				lineThrough = part.attr.getLineThrough( this.attr ) ,
@@ -3183,7 +3184,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( maste
 			if ( frame ) {
 				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
 					frameHeight = part.metrics.ascender - part.metrics.descender ,
-					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize ) ,
+					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize , master?.palette ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
 
 				//console.error( "frameStyleStr:" , frameStyleStr , part.attr ) ;
@@ -3198,7 +3199,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgText = async function( maste
 			}
 
 			if ( underline || lineThrough ) {
-				lineStyleStr = part.attr.getLineSvgStyleString( this.attr , fontSize ) ;
+				lineStyleStr = part.attr.getLineSvgStyleString( this.attr , fontSize , master?.palette ) ;
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
 			}
 
@@ -3289,7 +3290,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( master
 				fontStyle = part.attr.getFontStyle( this.attr ) ,
 				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
-				textStyleStr = part.attr.getTextSvgStyleString( this.attr , fontSize ) ,
+				textStyleStr = part.attr.getTextSvgStyleString( this.attr , fontSize , master?.palette ) ,
 				lineStyleStr , lineThickness ,
 				underline = part.attr.getUnderline( this.attr ) ,
 				lineThrough = part.attr.getLineThrough( this.attr ) ,
@@ -3302,7 +3303,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( master
 			if ( frame ) {
 				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
 					frameHeight = part.metrics.ascender - part.metrics.descender ,
-					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize ) ,
+					frameStyleStr = part.attr.getFrameSvgStyleString( this.attr , fontSize , master?.palette ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
 
 				//console.error( "frameStyleStr:" , frameStyleStr , part.attr ) ;
@@ -3317,7 +3318,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( master
 			}
 
 			if ( underline || lineThrough ) {
-				lineStyleStr = part.attr.getLineSvgStyleString( this.attr , fontSize ) ;
+				lineStyleStr = part.attr.getLineSvgStyleString( this.attr , fontSize , master?.palette ) ;
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
 			}
 
@@ -3406,7 +3407,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				fontStyle = part.attr.getFontStyle( this.attr ) ,
 				fontWeight = part.attr.getFontWeight( this.attr ) ,
 				fontSize = part.attr.getFontSize( this.attr ) ,
-				textStyle = part.attr.getTextSvgStyle( this.attr , fontSize ) ,
+				textStyle = part.attr.getTextSvgStyle( this.attr , fontSize , master?.palette ) ,
 				lineStyle , lineThickness ,
 				underline = part.attr.getUnderline( this.attr ) ,
 				lineThrough = part.attr.getLineThrough( this.attr ) ,
@@ -3419,7 +3420,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 			if ( frame ) {
 				let frameY = part.metrics.baselineY - part.metrics.ascender + yOffset ,
 					frameHeight = part.metrics.ascender - part.metrics.descender ,
-					frameStyle = part.attr.getFrameSvgStyle( this.attr , fontSize ) ,
+					frameStyle = part.attr.getFrameSvgStyle( this.attr , fontSize , master?.palette ) ,
 					cornerRadius = part.attr.getFrameCornerRadius( this.attr , fontSize ) ;
 
 				canvasCtx.beginPath() ;
@@ -3431,11 +3432,11 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 					canvasCtx.rect( part.metrics.x , frameY , part.metrics.width , frameHeight ) ;
 				}
 
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , frameStyle , master?.palette ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , frameStyle ) ;
 			}
 
 			if ( underline || lineThrough ) {
-				lineStyle = part.attr.getLineSvgStyle( this.attr , fontSize ) ;
+				lineStyle = part.attr.getLineSvgStyle( this.attr , fontSize , master?.palette ) ;
 				lineThickness = part.attr.getLineThickness( this.attr , fontSize ) ;
 			}
 
@@ -3443,7 +3444,7 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				let underlineY = part.metrics.baselineY - part.metrics.descender * 0.6 - lineThickness + yOffset ;
 				canvasCtx.beginPath() ;
 				canvasCtx.rect( part.metrics.x , underlineY , part.metrics.width , lineThickness ) ;
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle , master?.palette ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
 			}
 
 			if ( part.imageUrl ) {
@@ -3469,14 +3470,14 @@ VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , option
 				let path = font.getPath( part.text , part.metrics.x , part.metrics.baselineY + yOffset , fontSize ) ;
 				let pathData = path.toPathData() ;
 				let path2D = new Path2D( pathData ) ;
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , master?.palette , path2D ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
 			}
 
 			if ( lineThrough ) {
 				let lineThroughY = part.metrics.baselineY - part.metrics.ascender * 0.25 - lineThickness + yOffset ;
 				canvasCtx.beginPath() ;
 				canvasCtx.rect( part.metrics.x , lineThroughY , part.metrics.width , lineThickness ) ;
-				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle , master?.palette ) ;
+				canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
 			}
 		}
 	}
@@ -3688,7 +3689,6 @@ VGGroup.prototype.set = function( params ) {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
-const canvas = require( './canvas.js' ) ;
 const getImageSize = require( './getImageSize.js' ) ;
 
 const dom = require( 'dom-kit' ) ;
@@ -4238,7 +4238,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":72,"./VGEntity.js":7,"./canvas.js":19,"./getImageSize.js":21,"dom-kit":57}],16:[function(require,module,exports){
+},{"../package.json":72,"./VGEntity.js":7,"./getImageSize.js":21,"dom-kit":57}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5279,20 +5279,16 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , mast
 
 
 
-const misc = require( './misc.js' ) ;
-
-
-
 const canvas = {} ;
 module.exports = canvas ;
 
 
 
-canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , palette , path2d = null ) => {
+canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , path2d = null ) => {
 	var fill = false ,
 		stroke = false ,
-		fillStyle = style.fill && style.fill !== 'none' ? misc.colorToString( style.fill , palette ) : null ,
-		strokeStyle = style.stroke && style.stroke !== 'none' ? misc.colorToString( style.stroke , palette ) : null ,
+		fillStyle = style.fill && style.fill !== 'none' ? style.fill : null ,
+		strokeStyle = style.stroke && style.stroke !== 'none' ? style.stroke : null ,
 		lineWidth = + ( style.strokeWidth ?? 1 ) || 0 ;
 
 	if ( fillStyle ) {
@@ -5331,7 +5327,7 @@ canvas.fillAndStrokeUsingSvgStyle = ( canvasCtx , style , palette , path2d = nul
 } ;
 
 
-},{"./misc.js":22}],20:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -5808,12 +5804,14 @@ module.exports = misc ;
 
 
 
-misc.colorToString = ( color , palette ) => {
-	if ( ! color ) { return '' ; }
+const FALLBACK_COLOR = '#f0f' ;
+
+misc.colorToString = ( color , palette = null ) => {
+	if ( ! color ) { return FALLBACK_COLOR ; }
 
 	if ( typeof color === 'string' ) {
 		if ( color[ 0 ] === '%' ) {
-			if ( ! palette ) { return '' ; }
+			if ( ! palette ) { return FALLBACK_COLOR ; }
 			let colorObject = Color.parse( color.slice( 1 ) ) ;
 			return palette.getHex( Color.parse( color.slice( 1 ) ) ) ;
 		}
@@ -5822,11 +5820,11 @@ misc.colorToString = ( color , palette ) => {
 	}
 
 	if ( typeof color === 'object' ) {
-		if ( ! palette ) { return '' ; }
+		if ( ! palette ) { return FALLBACK_COLOR ; }
 		return palette.getHex( color ) ;
 	}
 	
-	return '' ;
+	return FALLBACK_COLOR ;
 } ;
 
 
