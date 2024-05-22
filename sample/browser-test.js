@@ -23,7 +23,7 @@ async function bookSourceFlowTest() {
 		//textHorizontalAlignment: 'center' ,
 		attr: {
 			fontSize: 20 ,
-			color: '#555' ,
+			color: '#444' ,
 			//outline: true ,
 			//frameCornerRadius: '0.2em' ,
 			//frameOutlineWidth: '0.1em' ,
@@ -31,9 +31,46 @@ async function bookSourceFlowTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
-		markupText: rawDoc ,
+		//markupText: rawDoc ,
+        structuredText: [
+            { text: "Hello world!\nWhat " } ,
+            { text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
+            { text: "world!" }
+        ]
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
+
+	var vgRect = new svgKit.VGRect( {
+		x: 10 ,
+		y: 200 ,
+		width: 50 ,
+		height: 50 ,
+		style: {
+			fill: '#4a4' ,
+		} ,
+		dynamic: {
+			boundingBox: {
+				x: 10 ,
+				y: 200 ,
+				width: 50 ,
+				height: 50
+			} ,
+			statusMorph: {
+				on: {
+					style: {
+						fill: '#4a4' ,
+					}
+				} ,
+				off: {
+					style: {
+						fill: '#a44' ,
+					}
+				}
+			}
+		}
+	} ) ;
+	vg.addEntity( vgRect ) ;
+	vg.setAllDynamicAreaStatus( 'off' ) ;
 
 	renderAll( vg ) ;
 
