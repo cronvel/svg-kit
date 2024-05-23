@@ -108,6 +108,12 @@ BoundingBox.prototype.merge = function( bbox ) {
 } ;
 
 
+
+BoundingBox.prototype.isInside = function( coords ) {
+	return coords.x >= this.xmin && coords.x <= this.xmax && coords.y >= this.ymin && coords.y <= this.ymax ;
+} ;
+
+
 },{}],2:[function(require,module,exports){
 /*
 	SVG Kit
@@ -164,10 +170,13 @@ function DynamicArea( entity , params ) {
 
 	// Non-enumerable properties (better for displaying the data)
 	Object.defineProperties( this , {
-		entity: { value: entity } ,		// The entity where to apply things
+		entity: { value: entity }	// The entity where to apply things
 	} ) ;
 
 	this.set( params ) ;
+
+	// Force needRedraw back to false after .set()
+	this.needRedraw = false ;
 }
 
 module.exports = DynamicArea ;
@@ -205,7 +214,107 @@ DynamicArea.prototype.setStatus = function( status ) {
 } ;
 
 
-},{"../package.json":73,"./BoundingBox.js":1}],3:[function(require,module,exports){
+},{"../package.json":84,"./BoundingBox.js":1}],3:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const canvas = require( './canvas.js' ) ;
+
+const Promise = require( 'seventh' ) ;
+
+
+
+function DynamicManager( ctx , vg ) {
+	this.ctx = ctx ;
+	this.vg = vg ;
+
+	this.canvasListeners = [] ;
+}
+
+module.exports = DynamicManager ;
+
+DynamicManager.prototype.__prototypeUID__ = 'svg-kit/DynamicManager' ;
+DynamicManager.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+
+
+DynamicManager.prototype.onMouseMove = function( x , y ) {
+	let needRedraw = false ;
+	let canvasCoords = canvas.screenToCanvasCoords( this.ctx.canvas , { x , y } ) ;
+	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
+
+	for ( let dynamic of this.vg.dynamicAreaIterator() ) {
+		if ( dynamic.boundingBox.isInside( contextCoords ) ) {
+			dynamic.setStatus( 'hover' ) ;
+		}
+		else {
+			dynamic.setStatus( 'neutral' ) ;
+		}
+
+		if ( dynamic.needRedraw ) {
+			needRedraw = true ;
+			console.log( "Need redraw, status: " + dynamic.status ) ;
+		}
+	}
+
+	if ( needRedraw ) {
+		this.vg.renderCanvas( this.ctx ) ;
+		for ( let dynamic of this.vg.dynamicAreaIterator() ) { dynamic.needRedraw = false ; }
+	}
+} ;
+
+
+
+DynamicManager.prototype.manageBrowserCanvas = function() {
+	this.addCanvasEventListener( 'mousemove' , event => this.onMouseMove( event.clientX , event.clientY ) ) ;
+} ;
+
+
+
+DynamicManager.prototype.addCanvasEventListener = function( eventName , listener ) {
+	this.canvasListeners.push( [ eventName , listener ] ) ;
+	this.ctx.canvas.addEventListener( eventName , listener ) ;
+} ;
+
+
+
+DynamicManager.prototype.clearCanvasEventListener = function() {
+	for ( let [ eventName , listener ] of this.canvasListeners ) {
+		this.ctx.canvas.removeEventListener( eventName , listener ) ;
+	}
+
+	this.canvasListeners.length = 0 ;
+} ;
+
+
+},{"../package.json":84,"./canvas.js":21,"seventh":74}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -322,7 +431,7 @@ Metric.isEqual = function( a , b ) {
 } ;
 
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -476,7 +585,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":73,"./VGContainer.js":6,"palette-shade":64}],5:[function(require,module,exports){
+},{"../package.json":84,"./VGContainer.js":7,"palette-shade":65}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -585,7 +694,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":73,"./VGContainer.js":6,"./VGEntity.js":8,"./svg-kit.js":25,"array-kit":47}],6:[function(require,module,exports){
+},{"../package.json":84,"./VGContainer.js":7,"./VGEntity.js":9,"./svg-kit.js":26,"array-kit":48}],7:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -780,7 +889,7 @@ VGContainer.prototype.morphSvgDom = function() {
 } ;
 
 
-},{"../package.json":73,"./VGEntity.js":8,"./svg-kit.js":25,"array-kit":47}],7:[function(require,module,exports){
+},{"../package.json":84,"./VGEntity.js":9,"./svg-kit.js":26,"array-kit":48}],8:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -900,7 +1009,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":73,"./VGEntity.js":8,"./canvas.js":20}],8:[function(require,module,exports){
+},{"../package.json":84,"./VGEntity.js":9,"./canvas.js":21}],9:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -1110,6 +1219,20 @@ VGEntity.prototype.setAllDynamicAreaStatus = function( status ) {
 
 	if ( this.isContainer ) {
 		this.entities.forEach( entity => entity.setAllDynamicAreaStatus( status ) ) ;
+	}
+} ;
+
+
+
+VGEntity.prototype.dynamicAreaIterator = function* () {
+	for ( let dynamic of this.dynamicAreas ) {
+		yield dynamic ;
+	}
+
+	if ( this.isContainer ) {
+		for ( let entity of this.entities ) {
+			yield * entity.dynamicAreaIterator() ;
+		}
 	}
 } ;
 
@@ -1541,11 +1664,11 @@ VGEntity.prototype.preloadFonts = async function() {
 // Return null or an array of font names used by this entity
 VGEntity.prototype.getUsedFontNames = function() { return null ; } ;
 // Return null or a BoundingBox instance
-VGEntity.prototype.getBoundingBox = function() { return null ; }
+VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":73,"./DynamicArea.js":2,"./fontLib.js":21,"./misc.js":23,"_process":80,"dom-kit":58,"string-kit/lib/camel":65,"string-kit/lib/escape":68}],9:[function(require,module,exports){
+},{"../package.json":84,"./DynamicArea.js":2,"./fontLib.js":22,"./misc.js":24,"_process":91,"dom-kit":59,"string-kit/lib/camel":76,"string-kit/lib/escape":79}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1624,7 +1747,7 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 } ;
 
 
-},{"./TextMetrics.js":13}],10:[function(require,module,exports){
+},{"./TextMetrics.js":14}],11:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1809,7 +1932,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 } ;
 
 
-},{"./TextAttribute.js":12,"./TextMetrics.js":13,"string-kit/lib/escape.js":68}],11:[function(require,module,exports){
+},{"./TextAttribute.js":13,"./TextMetrics.js":14,"string-kit/lib/escape.js":79}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2024,7 +2147,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 } ;
 
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2601,7 +2724,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 } ;
 
 
-},{"../Metric.js":3,"../misc.js":23,"palette-shade":64}],13:[function(require,module,exports){
+},{"../Metric.js":4,"../misc.js":24,"palette-shade":65}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2733,7 +2856,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 } ;
 
 
-},{"../fontLib.js":21,"../getImageSize.js":22}],14:[function(require,module,exports){
+},{"../fontLib.js":22,"../getImageSize.js":23}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3756,7 +3879,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":73,"../BoundingBox.js":1,"../VGEntity.js":8,"../canvas.js":20,"../fontLib.js":21,"./StructuredTextLine.js":9,"./StructuredTextPart.js":10,"./StructuredTextRenderer.js":11,"./TextAttribute.js":12,"./TextMetrics.js":13,"book-source":56,"dom-kit":58}],15:[function(require,module,exports){
+},{"../../package.json":84,"../BoundingBox.js":1,"../VGEntity.js":9,"../canvas.js":21,"../fontLib.js":22,"./StructuredTextLine.js":10,"./StructuredTextPart.js":11,"./StructuredTextRenderer.js":12,"./TextAttribute.js":13,"./TextMetrics.js":14,"book-source":57,"dom-kit":59}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3813,7 +3936,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":73,"./VGContainer.js":6,"./svg-kit.js":25}],16:[function(require,module,exports){
+},{"../package.json":84,"./VGContainer.js":7,"./svg-kit.js":26}],17:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4394,7 +4517,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":73,"./VGEntity.js":8,"./getImageSize.js":22,"dom-kit":58}],17:[function(require,module,exports){
+},{"../package.json":84,"./VGEntity.js":9,"./getImageSize.js":23,"dom-kit":59}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5087,7 +5210,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 } ;
 
 
-},{"../package.json":73,"./VGEntity.js":8,"./canvas.js":20}],18:[function(require,module,exports){
+},{"../package.json":84,"./VGEntity.js":9,"./canvas.js":21}],19:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5229,7 +5352,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":73,"./VGEntity.js":8,"./canvas.js":20}],19:[function(require,module,exports){
+},{"../package.json":84,"./VGEntity.js":9,"./canvas.js":21}],20:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5404,7 +5527,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , mast
 } ;
 
 
-},{"../package.json":73,"./VGEntity.js":8}],20:[function(require,module,exports){
+},{"../package.json":84,"./VGEntity.js":9}],21:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5507,7 +5630,38 @@ canvas._fillAndStroke = ( canvasCtx , style , path2d = null , convertColor = fal
 } ;
 
 
-},{"./misc.js":23}],21:[function(require,module,exports){
+
+// Get the Canvas element coordinates given the screen coordinates, accounting for Canvas element
+// stretching (inner size different from displayed size).
+// For browser mouse event, .clientX and .clientY should be used.
+canvas.screenToCanvasCoords = ( $canvas , screenCoords ) => {
+	var rect = $canvas.getBoundingClientRect() ,
+		scaleX = $canvas.width / rect.width ,
+		scaleY = $canvas.height / rect.height ;
+
+	return {
+		x: ( screenCoords.x - rect.left ) * scaleX ,
+		y: ( screenCoords.y - rect.top ) * scaleY
+	} ;
+} ;
+
+
+
+// Get the context coordinates given the coordinates over a Canvas element, accounting for context matrix transformations.
+// E.g.: you have the coordinates of the mouse related to the Canvas element, you want the coordinates in the Canvas context
+// which may have transformations.
+canvas.canvasToContextCoords = ( canvasCtx , canvasCoords ) => {
+	var matrix = canvasCtx.getTransform() ;
+	matrix.invertSelf() ;
+
+	return {
+		x: canvasCoords.x * matrix.a + canvasCoords.y * matrix.c + matrix.e ,
+		y: canvasCoords.x * matrix.b + canvasCoords.y * matrix.d + matrix.f
+	} ;
+} ;
+
+
+},{"./misc.js":24}],22:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -5827,7 +5981,7 @@ fontLib.getFontByUrlAsync = url => {
 	if ( fontPromises[ url ] ) { return fontPromises[ url ] ; }
 	fontPromises[ url ] = fontLib._getFontByUrlAsync( url ) ;
 	return fontPromises[ url ] ;
-}
+} ;
 
 
 
@@ -5886,7 +6040,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":80,"fs":74,"opentype.js":60,"path":79}],22:[function(require,module,exports){
+},{"_process":91,"fs":85,"opentype.js":61,"path":90}],23:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -5944,7 +6098,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":80,"image-size":74}],23:[function(require,module,exports){
+},{"_process":91,"image-size":85}],24:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6087,7 +6241,7 @@ misc.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 } ;
 
 
-},{"palette-shade":64}],24:[function(require,module,exports){
+},{"palette-shade":65}],25:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6135,7 +6289,7 @@ path.dFromPoints = ( points , invertY ) => {
 } ;
 
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -6200,6 +6354,7 @@ svgKit.TextMetrics = require( './VGFlowingText/TextMetrics.js' ) ;
 svgKit.BoundingBox = require( './BoundingBox.js' ) ;
 
 svgKit.DynamicArea = require( './DynamicArea.js' ) ;
+svgKit.DynamicManager = require( './DynamicManager.js' ) ;
 
 svgKit.domKit = domKit ;
 svgKit.opentype = require( 'opentype.js' ) ;
@@ -6635,7 +6790,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"./BoundingBox.js":1,"./DynamicArea.js":2,"./VG.js":4,"./VGClip.js":5,"./VGContainer.js":6,"./VGEllipse.js":7,"./VGEntity.js":8,"./VGFlowingText/StructuredTextLine.js":9,"./VGFlowingText/StructuredTextPart.js":10,"./VGFlowingText/TextAttribute.js":12,"./VGFlowingText/TextMetrics.js":13,"./VGFlowingText/VGFlowingText.js":14,"./VGGroup.js":15,"./VGImage.js":16,"./VGPath.js":17,"./VGRect.js":18,"./VGText.js":19,"./canvas.js":20,"./fontLib.js":21,"./misc.js":23,"./path.js":24,"_process":80,"dom-kit":58,"fs":74,"opentype.js":60,"string-kit/lib/escape.js":68}],26:[function(require,module,exports){
+},{"./BoundingBox.js":1,"./DynamicArea.js":2,"./DynamicManager.js":3,"./VG.js":5,"./VGClip.js":6,"./VGContainer.js":7,"./VGEllipse.js":8,"./VGEntity.js":9,"./VGFlowingText/StructuredTextLine.js":10,"./VGFlowingText/StructuredTextPart.js":11,"./VGFlowingText/TextAttribute.js":13,"./VGFlowingText/TextMetrics.js":14,"./VGFlowingText/VGFlowingText.js":15,"./VGGroup.js":16,"./VGImage.js":17,"./VGPath.js":18,"./VGRect.js":19,"./VGText.js":20,"./canvas.js":21,"./fontLib.js":22,"./misc.js":24,"./path.js":25,"_process":91,"dom-kit":59,"fs":85,"opentype.js":61,"string-kit/lib/escape.js":79}],27:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -6889,7 +7044,7 @@ exports.XMLSerializer = require('./dom').XMLSerializer ;
 exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":27,"./entities":28,"./sax":46}],27:[function(require,module,exports){
+},{"./dom":28,"./entities":29,"./sax":47}],28:[function(require,module,exports){
 
 "use strict" ;
 
@@ -8297,7 +8452,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{"nwmatcher":59,"string-kit":41}],28:[function(require,module,exports){
+},{"nwmatcher":60,"string-kit":42}],29:[function(require,module,exports){
 exports.entityMap = {
        lt: '<',
        gt: '>',
@@ -8542,7 +8697,7 @@ exports.entityMap = {
        diams: "♦"
 };
 //for(var  n in exports.entityMap){console.log(exports.entityMap[n].charCodeAt())}
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 /*
 	String Kit
 
@@ -8956,7 +9111,7 @@ function arrayConcatSlice( intoArray , sourceArray , start = 0 , end = sourceArr
 }
 
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 /*
 	String Kit
 
@@ -9225,7 +9380,7 @@ ansi.parse = str => {
 } ;
 
 
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 /*
 	String Kit
 
@@ -9314,7 +9469,7 @@ camel.camelCaseToDash =
 camel.camelCaseToDashed = ( str ) => camel.camelCaseToSeparated( str , '-' , false ) ;
 
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 /*
 	String Kit
 
@@ -9419,7 +9574,7 @@ exports.unicodePercentEncode = str => str.replace( /[\x00-\x1f\u0100-\uffff\x7f%
 exports.httpHeaderValue = str => exports.unicodePercentEncode( str ) ;
 
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (Buffer){(function (){
 /*
 	String Kit
@@ -10660,7 +10815,7 @@ function round( v , step ) {
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./StringNumber.js":29,"./ansi.js":30,"./escape.js":32,"./inspect.js":35,"./naturalSort.js":39,"./unicode.js":44,"buffer":76}],34:[function(require,module,exports){
+},{"./StringNumber.js":30,"./ansi.js":31,"./escape.js":33,"./inspect.js":36,"./naturalSort.js":40,"./unicode.js":45,"buffer":87}],35:[function(require,module,exports){
 /*
 	String Kit
 
@@ -10976,7 +11131,7 @@ fuzzy.levenshtein = ( left , right ) => {
 } ;
 
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 (function (Buffer,process){(function (){
 /*
 	String Kit
@@ -11740,9 +11895,9 @@ inspectStyle.html = Object.assign( {} , inspectStyle.none , {
 
 
 }).call(this)}).call(this,{"isBuffer":require("../../../../../../../../../../../opt/node-v20.11.0/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../../../../opt/node-v20.11.0/lib/node_modules/browserify/node_modules/is-buffer/index.js":78,"./ansi.js":30,"./escape.js":32,"_process":80}],36:[function(require,module,exports){
+},{"../../../../../../../../../../../opt/node-v20.11.0/lib/node_modules/browserify/node_modules/is-buffer/index.js":89,"./ansi.js":31,"./escape.js":33,"_process":91}],37:[function(require,module,exports){
 module.exports={"߀":"0","́":""," ":" ","Ⓐ":"A","Ａ":"A","À":"A","Á":"A","Â":"A","Ầ":"A","Ấ":"A","Ẫ":"A","Ẩ":"A","Ã":"A","Ā":"A","Ă":"A","Ằ":"A","Ắ":"A","Ẵ":"A","Ẳ":"A","Ȧ":"A","Ǡ":"A","Ä":"A","Ǟ":"A","Ả":"A","Å":"A","Ǻ":"A","Ǎ":"A","Ȁ":"A","Ȃ":"A","Ạ":"A","Ậ":"A","Ặ":"A","Ḁ":"A","Ą":"A","Ⱥ":"A","Ɐ":"A","Ꜳ":"AA","Æ":"AE","Ǽ":"AE","Ǣ":"AE","Ꜵ":"AO","Ꜷ":"AU","Ꜹ":"AV","Ꜻ":"AV","Ꜽ":"AY","Ⓑ":"B","Ｂ":"B","Ḃ":"B","Ḅ":"B","Ḇ":"B","Ƀ":"B","Ɓ":"B","ｃ":"C","Ⓒ":"C","Ｃ":"C","Ꜿ":"C","Ḉ":"C","Ç":"C","Ⓓ":"D","Ｄ":"D","Ḋ":"D","Ď":"D","Ḍ":"D","Ḑ":"D","Ḓ":"D","Ḏ":"D","Đ":"D","Ɗ":"D","Ɖ":"D","ᴅ":"D","Ꝺ":"D","Ð":"Dh","Ǳ":"DZ","Ǆ":"DZ","ǲ":"Dz","ǅ":"Dz","ɛ":"E","Ⓔ":"E","Ｅ":"E","È":"E","É":"E","Ê":"E","Ề":"E","Ế":"E","Ễ":"E","Ể":"E","Ẽ":"E","Ē":"E","Ḕ":"E","Ḗ":"E","Ĕ":"E","Ė":"E","Ë":"E","Ẻ":"E","Ě":"E","Ȅ":"E","Ȇ":"E","Ẹ":"E","Ệ":"E","Ȩ":"E","Ḝ":"E","Ę":"E","Ḙ":"E","Ḛ":"E","Ɛ":"E","Ǝ":"E","ᴇ":"E","ꝼ":"F","Ⓕ":"F","Ｆ":"F","Ḟ":"F","Ƒ":"F","Ꝼ":"F","Ⓖ":"G","Ｇ":"G","Ǵ":"G","Ĝ":"G","Ḡ":"G","Ğ":"G","Ġ":"G","Ǧ":"G","Ģ":"G","Ǥ":"G","Ɠ":"G","Ꞡ":"G","Ᵹ":"G","Ꝿ":"G","ɢ":"G","Ⓗ":"H","Ｈ":"H","Ĥ":"H","Ḣ":"H","Ḧ":"H","Ȟ":"H","Ḥ":"H","Ḩ":"H","Ḫ":"H","Ħ":"H","Ⱨ":"H","Ⱶ":"H","Ɥ":"H","Ⓘ":"I","Ｉ":"I","Ì":"I","Í":"I","Î":"I","Ĩ":"I","Ī":"I","Ĭ":"I","İ":"I","Ï":"I","Ḯ":"I","Ỉ":"I","Ǐ":"I","Ȉ":"I","Ȋ":"I","Ị":"I","Į":"I","Ḭ":"I","Ɨ":"I","Ⓙ":"J","Ｊ":"J","Ĵ":"J","Ɉ":"J","ȷ":"J","Ⓚ":"K","Ｋ":"K","Ḱ":"K","Ǩ":"K","Ḳ":"K","Ķ":"K","Ḵ":"K","Ƙ":"K","Ⱪ":"K","Ꝁ":"K","Ꝃ":"K","Ꝅ":"K","Ꞣ":"K","Ⓛ":"L","Ｌ":"L","Ŀ":"L","Ĺ":"L","Ľ":"L","Ḷ":"L","Ḹ":"L","Ļ":"L","Ḽ":"L","Ḻ":"L","Ł":"L","Ƚ":"L","Ɫ":"L","Ⱡ":"L","Ꝉ":"L","Ꝇ":"L","Ꞁ":"L","Ǉ":"LJ","ǈ":"Lj","Ⓜ":"M","Ｍ":"M","Ḿ":"M","Ṁ":"M","Ṃ":"M","Ɱ":"M","Ɯ":"M","ϻ":"M","Ꞥ":"N","Ƞ":"N","Ⓝ":"N","Ｎ":"N","Ǹ":"N","Ń":"N","Ñ":"N","Ṅ":"N","Ň":"N","Ṇ":"N","Ņ":"N","Ṋ":"N","Ṉ":"N","Ɲ":"N","Ꞑ":"N","ᴎ":"N","Ǌ":"NJ","ǋ":"Nj","Ⓞ":"O","Ｏ":"O","Ò":"O","Ó":"O","Ô":"O","Ồ":"O","Ố":"O","Ỗ":"O","Ổ":"O","Õ":"O","Ṍ":"O","Ȭ":"O","Ṏ":"O","Ō":"O","Ṑ":"O","Ṓ":"O","Ŏ":"O","Ȯ":"O","Ȱ":"O","Ö":"O","Ȫ":"O","Ỏ":"O","Ő":"O","Ǒ":"O","Ȍ":"O","Ȏ":"O","Ơ":"O","Ờ":"O","Ớ":"O","Ỡ":"O","Ở":"O","Ợ":"O","Ọ":"O","Ộ":"O","Ǫ":"O","Ǭ":"O","Ø":"O","Ǿ":"O","Ɔ":"O","Ɵ":"O","Ꝋ":"O","Ꝍ":"O","Œ":"OE","Ƣ":"OI","Ꝏ":"OO","Ȣ":"OU","Ⓟ":"P","Ｐ":"P","Ṕ":"P","Ṗ":"P","Ƥ":"P","Ᵽ":"P","Ꝑ":"P","Ꝓ":"P","Ꝕ":"P","Ⓠ":"Q","Ｑ":"Q","Ꝗ":"Q","Ꝙ":"Q","Ɋ":"Q","Ⓡ":"R","Ｒ":"R","Ŕ":"R","Ṙ":"R","Ř":"R","Ȑ":"R","Ȓ":"R","Ṛ":"R","Ṝ":"R","Ŗ":"R","Ṟ":"R","Ɍ":"R","Ɽ":"R","Ꝛ":"R","Ꞧ":"R","Ꞃ":"R","Ⓢ":"S","Ｓ":"S","ẞ":"S","Ś":"S","Ṥ":"S","Ŝ":"S","Ṡ":"S","Š":"S","Ṧ":"S","Ṣ":"S","Ṩ":"S","Ș":"S","Ş":"S","Ȿ":"S","Ꞩ":"S","Ꞅ":"S","Ⓣ":"T","Ｔ":"T","Ṫ":"T","Ť":"T","Ṭ":"T","Ț":"T","Ţ":"T","Ṱ":"T","Ṯ":"T","Ŧ":"T","Ƭ":"T","Ʈ":"T","Ⱦ":"T","Ꞇ":"T","Þ":"Th","Ꜩ":"TZ","Ⓤ":"U","Ｕ":"U","Ù":"U","Ú":"U","Û":"U","Ũ":"U","Ṹ":"U","Ū":"U","Ṻ":"U","Ŭ":"U","Ü":"U","Ǜ":"U","Ǘ":"U","Ǖ":"U","Ǚ":"U","Ủ":"U","Ů":"U","Ű":"U","Ǔ":"U","Ȕ":"U","Ȗ":"U","Ư":"U","Ừ":"U","Ứ":"U","Ữ":"U","Ử":"U","Ự":"U","Ụ":"U","Ṳ":"U","Ų":"U","Ṷ":"U","Ṵ":"U","Ʉ":"U","Ⓥ":"V","Ｖ":"V","Ṽ":"V","Ṿ":"V","Ʋ":"V","Ꝟ":"V","Ʌ":"V","Ꝡ":"VY","Ⓦ":"W","Ｗ":"W","Ẁ":"W","Ẃ":"W","Ŵ":"W","Ẇ":"W","Ẅ":"W","Ẉ":"W","Ⱳ":"W","Ⓧ":"X","Ｘ":"X","Ẋ":"X","Ẍ":"X","Ⓨ":"Y","Ｙ":"Y","Ỳ":"Y","Ý":"Y","Ŷ":"Y","Ỹ":"Y","Ȳ":"Y","Ẏ":"Y","Ÿ":"Y","Ỷ":"Y","Ỵ":"Y","Ƴ":"Y","Ɏ":"Y","Ỿ":"Y","Ⓩ":"Z","Ｚ":"Z","Ź":"Z","Ẑ":"Z","Ż":"Z","Ž":"Z","Ẓ":"Z","Ẕ":"Z","Ƶ":"Z","Ȥ":"Z","Ɀ":"Z","Ⱬ":"Z","Ꝣ":"Z","ⓐ":"a","ａ":"a","ẚ":"a","à":"a","á":"a","â":"a","ầ":"a","ấ":"a","ẫ":"a","ẩ":"a","ã":"a","ā":"a","ă":"a","ằ":"a","ắ":"a","ẵ":"a","ẳ":"a","ȧ":"a","ǡ":"a","ä":"a","ǟ":"a","ả":"a","å":"a","ǻ":"a","ǎ":"a","ȁ":"a","ȃ":"a","ạ":"a","ậ":"a","ặ":"a","ḁ":"a","ą":"a","ⱥ":"a","ɐ":"a","ɑ":"a","ꜳ":"aa","æ":"ae","ǽ":"ae","ǣ":"ae","ꜵ":"ao","ꜷ":"au","ꜹ":"av","ꜻ":"av","ꜽ":"ay","ⓑ":"b","ｂ":"b","ḃ":"b","ḅ":"b","ḇ":"b","ƀ":"b","ƃ":"b","ɓ":"b","Ƃ":"b","ⓒ":"c","ć":"c","ĉ":"c","ċ":"c","č":"c","ç":"c","ḉ":"c","ƈ":"c","ȼ":"c","ꜿ":"c","ↄ":"c","C":"c","Ć":"c","Ĉ":"c","Ċ":"c","Č":"c","Ƈ":"c","Ȼ":"c","ⓓ":"d","ｄ":"d","ḋ":"d","ď":"d","ḍ":"d","ḑ":"d","ḓ":"d","ḏ":"d","đ":"d","ƌ":"d","ɖ":"d","ɗ":"d","Ƌ":"d","Ꮷ":"d","ԁ":"d","Ɦ":"d","ð":"dh","ǳ":"dz","ǆ":"dz","ⓔ":"e","ｅ":"e","è":"e","é":"e","ê":"e","ề":"e","ế":"e","ễ":"e","ể":"e","ẽ":"e","ē":"e","ḕ":"e","ḗ":"e","ĕ":"e","ė":"e","ë":"e","ẻ":"e","ě":"e","ȅ":"e","ȇ":"e","ẹ":"e","ệ":"e","ȩ":"e","ḝ":"e","ę":"e","ḙ":"e","ḛ":"e","ɇ":"e","ǝ":"e","ⓕ":"f","ｆ":"f","ḟ":"f","ƒ":"f","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ⓖ":"g","ｇ":"g","ǵ":"g","ĝ":"g","ḡ":"g","ğ":"g","ġ":"g","ǧ":"g","ģ":"g","ǥ":"g","ɠ":"g","ꞡ":"g","ꝿ":"g","ᵹ":"g","ⓗ":"h","ｈ":"h","ĥ":"h","ḣ":"h","ḧ":"h","ȟ":"h","ḥ":"h","ḩ":"h","ḫ":"h","ẖ":"h","ħ":"h","ⱨ":"h","ⱶ":"h","ɥ":"h","ƕ":"hv","ⓘ":"i","ｉ":"i","ì":"i","í":"i","î":"i","ĩ":"i","ī":"i","ĭ":"i","ï":"i","ḯ":"i","ỉ":"i","ǐ":"i","ȉ":"i","ȋ":"i","ị":"i","į":"i","ḭ":"i","ɨ":"i","ı":"i","ⓙ":"j","ｊ":"j","ĵ":"j","ǰ":"j","ɉ":"j","ⓚ":"k","ｋ":"k","ḱ":"k","ǩ":"k","ḳ":"k","ķ":"k","ḵ":"k","ƙ":"k","ⱪ":"k","ꝁ":"k","ꝃ":"k","ꝅ":"k","ꞣ":"k","ⓛ":"l","ｌ":"l","ŀ":"l","ĺ":"l","ľ":"l","ḷ":"l","ḹ":"l","ļ":"l","ḽ":"l","ḻ":"l","ſ":"l","ł":"l","ƚ":"l","ɫ":"l","ⱡ":"l","ꝉ":"l","ꞁ":"l","ꝇ":"l","ɭ":"l","ǉ":"lj","ⓜ":"m","ｍ":"m","ḿ":"m","ṁ":"m","ṃ":"m","ɱ":"m","ɯ":"m","ⓝ":"n","ｎ":"n","ǹ":"n","ń":"n","ñ":"n","ṅ":"n","ň":"n","ṇ":"n","ņ":"n","ṋ":"n","ṉ":"n","ƞ":"n","ɲ":"n","ŉ":"n","ꞑ":"n","ꞥ":"n","ԉ":"n","ǌ":"nj","ⓞ":"o","ｏ":"o","ò":"o","ó":"o","ô":"o","ồ":"o","ố":"o","ỗ":"o","ổ":"o","õ":"o","ṍ":"o","ȭ":"o","ṏ":"o","ō":"o","ṑ":"o","ṓ":"o","ŏ":"o","ȯ":"o","ȱ":"o","ö":"o","ȫ":"o","ỏ":"o","ő":"o","ǒ":"o","ȍ":"o","ȏ":"o","ơ":"o","ờ":"o","ớ":"o","ỡ":"o","ở":"o","ợ":"o","ọ":"o","ộ":"o","ǫ":"o","ǭ":"o","ø":"o","ǿ":"o","ꝋ":"o","ꝍ":"o","ɵ":"o","ɔ":"o","ᴑ":"o","œ":"oe","ƣ":"oi","ꝏ":"oo","ȣ":"ou","ⓟ":"p","ｐ":"p","ṕ":"p","ṗ":"p","ƥ":"p","ᵽ":"p","ꝑ":"p","ꝓ":"p","ꝕ":"p","ρ":"p","ⓠ":"q","ｑ":"q","ɋ":"q","ꝗ":"q","ꝙ":"q","ⓡ":"r","ｒ":"r","ŕ":"r","ṙ":"r","ř":"r","ȑ":"r","ȓ":"r","ṛ":"r","ṝ":"r","ŗ":"r","ṟ":"r","ɍ":"r","ɽ":"r","ꝛ":"r","ꞧ":"r","ꞃ":"r","ⓢ":"s","ｓ":"s","ś":"s","ṥ":"s","ŝ":"s","ṡ":"s","š":"s","ṧ":"s","ṣ":"s","ṩ":"s","ș":"s","ş":"s","ȿ":"s","ꞩ":"s","ꞅ":"s","ẛ":"s","ʂ":"s","ß":"ss","ⓣ":"t","ｔ":"t","ṫ":"t","ẗ":"t","ť":"t","ṭ":"t","ț":"t","ţ":"t","ṱ":"t","ṯ":"t","ŧ":"t","ƭ":"t","ʈ":"t","ⱦ":"t","ꞇ":"t","þ":"th","ꜩ":"tz","ⓤ":"u","ｕ":"u","ù":"u","ú":"u","û":"u","ũ":"u","ṹ":"u","ū":"u","ṻ":"u","ŭ":"u","ü":"u","ǜ":"u","ǘ":"u","ǖ":"u","ǚ":"u","ủ":"u","ů":"u","ű":"u","ǔ":"u","ȕ":"u","ȗ":"u","ư":"u","ừ":"u","ứ":"u","ữ":"u","ử":"u","ự":"u","ụ":"u","ṳ":"u","ų":"u","ṷ":"u","ṵ":"u","ʉ":"u","ⓥ":"v","ｖ":"v","ṽ":"v","ṿ":"v","ʋ":"v","ꝟ":"v","ʌ":"v","ꝡ":"vy","ⓦ":"w","ｗ":"w","ẁ":"w","ẃ":"w","ŵ":"w","ẇ":"w","ẅ":"w","ẘ":"w","ẉ":"w","ⱳ":"w","ⓧ":"x","ｘ":"x","ẋ":"x","ẍ":"x","ⓨ":"y","ｙ":"y","ỳ":"y","ý":"y","ŷ":"y","ỹ":"y","ȳ":"y","ẏ":"y","ÿ":"y","ỷ":"y","ẙ":"y","ỵ":"y","ƴ":"y","ɏ":"y","ỿ":"y","ⓩ":"z","ｚ":"z","ź":"z","ẑ":"z","ż":"z","ž":"z","ẓ":"z","ẕ":"z","ƶ":"z","ȥ":"z","ɀ":"z","ⱬ":"z","ꝣ":"z"}
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11781,7 +11936,7 @@ module.exports = function( str ) {
 
 
 
-},{"./latinize-map.json":36}],38:[function(require,module,exports){
+},{"./latinize-map.json":37}],39:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11841,7 +11996,7 @@ exports.occurrenceCount = function( str , subStr , overlap = false ) {
 } ;
 
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11988,7 +12143,7 @@ function naturalSort( a , b ) {
 module.exports = naturalSort ;
 
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 /*
 	String Kit
 
@@ -12045,7 +12200,7 @@ exports.regexp.array2alternatives = function array2alternatives( array ) {
 
 
 
-},{"./escape.js":32}],41:[function(require,module,exports){
+},{"./escape.js":33}],42:[function(require,module,exports){
 /*
 	String Kit
 
@@ -12138,7 +12293,7 @@ stringKit.installPolyfills = function installPolyfills() {
 //*/
 
 
-},{"./StringNumber.js":29,"./ansi.js":30,"./camel.js":31,"./escape.js":32,"./format.js":33,"./fuzzy.js":34,"./inspect.js":35,"./latinize.js":37,"./misc.js":38,"./naturalSort.js":39,"./regexp.js":40,"./toTitleCase.js":42,"./unicode.js":44,"./wordwrap.js":45}],42:[function(require,module,exports){
+},{"./StringNumber.js":30,"./ansi.js":31,"./camel.js":32,"./escape.js":33,"./format.js":34,"./fuzzy.js":35,"./inspect.js":36,"./latinize.js":38,"./misc.js":39,"./naturalSort.js":40,"./regexp.js":41,"./toTitleCase.js":43,"./unicode.js":45,"./wordwrap.js":46}],43:[function(require,module,exports){
 /*
 	String Kit
 
@@ -12227,10 +12382,10 @@ module.exports = ( str , options = DEFAULT_OPTIONS ) => {
 } ;
 
 
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 module.exports=[{"s":9728,"e":9747,"w":1},{"s":9748,"e":9749,"w":2},{"s":9750,"e":9799,"w":1},{"s":9800,"e":9811,"w":2},{"s":9812,"e":9854,"w":1},{"s":9855,"e":9855,"w":2},{"s":9856,"e":9874,"w":1},{"s":9875,"e":9875,"w":2},{"s":9876,"e":9888,"w":1},{"s":9889,"e":9889,"w":2},{"s":9890,"e":9897,"w":1},{"s":9898,"e":9899,"w":2},{"s":9900,"e":9916,"w":1},{"s":9917,"e":9918,"w":2},{"s":9919,"e":9923,"w":1},{"s":9924,"e":9925,"w":2},{"s":9926,"e":9933,"w":1},{"s":9934,"e":9934,"w":2},{"s":9935,"e":9939,"w":1},{"s":9940,"e":9940,"w":2},{"s":9941,"e":9961,"w":1},{"s":9962,"e":9962,"w":2},{"s":9963,"e":9969,"w":1},{"s":9970,"e":9971,"w":2},{"s":9972,"e":9972,"w":1},{"s":9973,"e":9973,"w":2},{"s":9974,"e":9977,"w":1},{"s":9978,"e":9978,"w":2},{"s":9979,"e":9980,"w":1},{"s":9981,"e":9981,"w":2},{"s":9982,"e":9983,"w":1},{"s":9984,"e":9988,"w":1},{"s":9989,"e":9989,"w":2},{"s":9990,"e":9993,"w":1},{"s":9994,"e":9995,"w":2},{"s":9996,"e":10023,"w":1},{"s":10024,"e":10024,"w":2},{"s":10025,"e":10059,"w":1},{"s":10060,"e":10060,"w":2},{"s":10061,"e":10061,"w":1},{"s":10062,"e":10062,"w":2},{"s":10063,"e":10066,"w":1},{"s":10067,"e":10069,"w":2},{"s":10070,"e":10070,"w":1},{"s":10071,"e":10071,"w":2},{"s":10072,"e":10132,"w":1},{"s":10133,"e":10135,"w":2},{"s":10136,"e":10159,"w":1},{"s":10160,"e":10160,"w":2},{"s":10161,"e":10174,"w":1},{"s":10175,"e":10175,"w":2},{"s":126976,"e":126979,"w":1},{"s":126980,"e":126980,"w":2},{"s":126981,"e":127182,"w":1},{"s":127183,"e":127183,"w":2},{"s":127184,"e":127373,"w":1},{"s":127374,"e":127374,"w":2},{"s":127375,"e":127376,"w":1},{"s":127377,"e":127386,"w":2},{"s":127387,"e":127487,"w":1},{"s":127744,"e":127776,"w":2},{"s":127777,"e":127788,"w":1},{"s":127789,"e":127797,"w":2},{"s":127798,"e":127798,"w":1},{"s":127799,"e":127868,"w":2},{"s":127869,"e":127869,"w":1},{"s":127870,"e":127891,"w":2},{"s":127892,"e":127903,"w":1},{"s":127904,"e":127946,"w":2},{"s":127947,"e":127950,"w":1},{"s":127951,"e":127955,"w":2},{"s":127956,"e":127967,"w":1},{"s":127968,"e":127984,"w":2},{"s":127985,"e":127987,"w":1},{"s":127988,"e":127988,"w":2},{"s":127989,"e":127991,"w":1},{"s":127992,"e":127994,"w":2},{"s":128000,"e":128062,"w":2},{"s":128063,"e":128063,"w":1},{"s":128064,"e":128064,"w":2},{"s":128065,"e":128065,"w":1},{"s":128066,"e":128252,"w":2},{"s":128253,"e":128254,"w":1},{"s":128255,"e":128317,"w":2},{"s":128318,"e":128330,"w":1},{"s":128331,"e":128334,"w":2},{"s":128335,"e":128335,"w":1},{"s":128336,"e":128359,"w":2},{"s":128360,"e":128377,"w":1},{"s":128378,"e":128378,"w":2},{"s":128379,"e":128404,"w":1},{"s":128405,"e":128406,"w":2},{"s":128407,"e":128419,"w":1},{"s":128420,"e":128420,"w":2},{"s":128421,"e":128506,"w":1},{"s":128507,"e":128591,"w":2},{"s":128592,"e":128639,"w":1},{"s":128640,"e":128709,"w":2},{"s":128710,"e":128715,"w":1},{"s":128716,"e":128716,"w":2},{"s":128717,"e":128719,"w":1},{"s":128720,"e":128722,"w":2},{"s":128723,"e":128724,"w":1},{"s":128725,"e":128727,"w":2},{"s":128728,"e":128746,"w":1},{"s":128747,"e":128748,"w":2},{"s":128749,"e":128755,"w":1},{"s":128756,"e":128764,"w":2},{"s":128765,"e":128991,"w":1},{"s":128992,"e":129003,"w":2},{"s":129004,"e":129291,"w":1},{"s":129292,"e":129338,"w":2},{"s":129339,"e":129339,"w":1},{"s":129340,"e":129349,"w":2},{"s":129350,"e":129350,"w":1},{"s":129351,"e":129400,"w":2},{"s":129401,"e":129401,"w":1},{"s":129402,"e":129483,"w":2},{"s":129484,"e":129484,"w":1},{"s":129485,"e":129535,"w":2},{"s":129536,"e":129647,"w":1},{"s":129648,"e":129652,"w":2},{"s":129653,"e":129655,"w":1},{"s":129656,"e":129658,"w":2},{"s":129659,"e":129663,"w":1},{"s":129664,"e":129670,"w":2},{"s":129671,"e":129679,"w":1},{"s":129680,"e":129704,"w":2},{"s":129705,"e":129711,"w":1},{"s":129712,"e":129718,"w":2},{"s":129719,"e":129727,"w":1},{"s":129728,"e":129730,"w":2},{"s":129731,"e":129743,"w":1},{"s":129744,"e":129750,"w":2},{"s":129751,"e":129791,"w":1}]
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 /*
 	String Kit
 
@@ -12578,7 +12733,7 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./unicode-emoji-width-ranges.json":43}],45:[function(require,module,exports){
+},{"./unicode-emoji-width-ranges.json":44}],46:[function(require,module,exports){
 /*
 	String Kit
 
@@ -12782,7 +12937,7 @@ module.exports = function wordwrap( str , options ) {
 } ;
 
 
-},{"./unicode.js":44}],46:[function(require,module,exports){
+},{"./unicode.js":45}],47:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -13400,7 +13555,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],47:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -13448,7 +13603,7 @@ arrayKit.shuffle = array => arrayKit.sample( array , array.length , true ) ;
 arrayKit.randomSampleSize = ( array , min , max , inPlace ) => arrayKit.sample( array , arrayKit.randomInteger( min , max ) , inPlace ) ;
 
 
-},{"./delete.js":48,"./deleteValue.js":49,"./inPlaceFilter.js":50,"./range.js":51,"./sample.js":52}],48:[function(require,module,exports){
+},{"./delete.js":49,"./deleteValue.js":50,"./inPlaceFilter.js":51,"./range.js":52,"./sample.js":53}],49:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -13500,7 +13655,7 @@ module.exports = ( src , index ) => {
 } ;
 
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -13564,7 +13719,7 @@ module.exports = ( src , value ) => {
 } ;
 
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -13629,7 +13784,7 @@ module.exports = ( src , fn , thisArg , forceKey ) => {
 } ;
 
 
-},{}],51:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -13696,7 +13851,7 @@ module.exports = function( start , end , step ) {
 } ;
 
 
-},{}],52:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -13753,7 +13908,7 @@ module.exports = ( array , count = Infinity , inPlace = false ) => {
 } ;
 
 
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /*
 	Book Source
 
@@ -15759,7 +15914,7 @@ function unstackToIndent( ctx , toIndent = 0 ) {
 }
 
 
-},{"./Style.js":54,"./Theme.js":55,"./documentParts.js":57,"array-kit/lib/inPlaceFilter.js":50}],54:[function(require,module,exports){
+},{"./Style.js":55,"./Theme.js":56,"./documentParts.js":58,"array-kit/lib/inPlaceFilter.js":51}],55:[function(require,module,exports){
 /*
 	Book Source
 
@@ -15869,7 +16024,7 @@ Style.parse = function( str , forTextElement = true ) {
 } ;
 
 
-},{"palette-shade":64}],55:[function(require,module,exports){
+},{"palette-shade":65}],56:[function(require,module,exports){
 /*
 	Book Source
 
@@ -15999,7 +16154,7 @@ Theme.prototype.substituteWithPalette = function() {
 } ;
 
 
-},{"palette-shade":64}],56:[function(require,module,exports){
+},{"palette-shade":65}],57:[function(require,module,exports){
 /*
 	Book Source
 
@@ -16047,7 +16202,7 @@ bookSource.Palette = paletteShade.Palette ;
 bookSource.parse = bookSource.StructuredDocument.parse ;
 
 
-},{"./StructuredDocument.js":53,"./Style.js":54,"./Theme.js":55,"./documentParts.js":57,"palette-shade":64}],57:[function(require,module,exports){
+},{"./StructuredDocument.js":54,"./Style.js":55,"./Theme.js":56,"./documentParts.js":58,"palette-shade":65}],58:[function(require,module,exports){
 /*
 	Book Source
 
@@ -16494,7 +16649,7 @@ TableHeadCell.prototype.constructor = TableHeadCell ;
 documentParts.TableHeadCell = TableHeadCell ;
 
 
-},{"string-kit/lib/emoji.js":66}],58:[function(require,module,exports){
+},{"string-kit/lib/emoji.js":77}],59:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Dom Kit
@@ -17069,7 +17224,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@cronvel/xmldom":26,"_process":80}],59:[function(require,module,exports){
+},{"@cronvel/xmldom":27,"_process":91}],60:[function(require,module,exports){
 /*
  * Copyright (C) 2007-2018 Diego Perini
  * All rights reserved.
@@ -18847,7 +19002,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
   return Dom;
 });
 
-},{}],60:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 (function (Buffer){(function (){
 /**
  * https://opentype.js.org v1.3.4 | (c) Frederik De Bleser and other contributors | MIT License | Uses tiny-inflate by Devon Govett and string.prototype.codepointat polyfill by Mathias Bynens
@@ -33328,7 +33483,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":76,"fs":74}],61:[function(require,module,exports){
+},{"buffer":87,"fs":85}],62:[function(require,module,exports){
 /**
  * chroma.js - JavaScript library for color conversions
  *
@@ -34195,7 +34350,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 }));
 
-},{}],62:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 /*
 	Palette Shade
 
@@ -34410,7 +34565,7 @@ Color.parse = function( str ) {
 } ;
 
 
-},{}],63:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 /*
 	Palette Shade
 
@@ -34725,7 +34880,7 @@ Palette.cleanClip = function( chromaColor , lch ) {
 } ;
 
 
-},{"../extlib/chromajs.custom.js":61}],64:[function(require,module,exports){
+},{"../extlib/chromajs.custom.js":62}],65:[function(require,module,exports){
 /*
 	Palette Shade
 
@@ -34758,9 +34913,2970 @@ exports.Color = require( './Color.js' ) ;
 exports.Palette = require( './Palette.js' ) ;
 
 
-},{"./Color.js":62,"./Palette.js":63}],65:[function(require,module,exports){
-arguments[4][31][0].apply(exports,arguments)
-},{"dup":31}],66:[function(require,module,exports){
+},{"./Color.js":63,"./Palette.js":64}],66:[function(require,module,exports){
+(function (process,global){(function (){
+(function (global, undefined) {
+    "use strict";
+
+    if (global.setImmediate) {
+        return;
+    }
+
+    var nextHandle = 1; // Spec says greater than zero
+    var tasksByHandle = {};
+    var currentlyRunningATask = false;
+    var doc = global.document;
+    var registerImmediate;
+
+    function setImmediate(callback) {
+      // Callback can either be a function or a string
+      if (typeof callback !== "function") {
+        callback = new Function("" + callback);
+      }
+      // Copy function arguments
+      var args = new Array(arguments.length - 1);
+      for (var i = 0; i < args.length; i++) {
+          args[i] = arguments[i + 1];
+      }
+      // Store and register the task
+      var task = { callback: callback, args: args };
+      tasksByHandle[nextHandle] = task;
+      registerImmediate(nextHandle);
+      return nextHandle++;
+    }
+
+    function clearImmediate(handle) {
+        delete tasksByHandle[handle];
+    }
+
+    function run(task) {
+        var callback = task.callback;
+        var args = task.args;
+        switch (args.length) {
+        case 0:
+            callback();
+            break;
+        case 1:
+            callback(args[0]);
+            break;
+        case 2:
+            callback(args[0], args[1]);
+            break;
+        case 3:
+            callback(args[0], args[1], args[2]);
+            break;
+        default:
+            callback.apply(undefined, args);
+            break;
+        }
+    }
+
+    function runIfPresent(handle) {
+        // From the spec: "Wait until any invocations of this algorithm started before this one have completed."
+        // So if we're currently running a task, we'll need to delay this invocation.
+        if (currentlyRunningATask) {
+            // Delay by doing a setTimeout. setImmediate was tried instead, but in Firefox 7 it generated a
+            // "too much recursion" error.
+            setTimeout(runIfPresent, 0, handle);
+        } else {
+            var task = tasksByHandle[handle];
+            if (task) {
+                currentlyRunningATask = true;
+                try {
+                    run(task);
+                } finally {
+                    clearImmediate(handle);
+                    currentlyRunningATask = false;
+                }
+            }
+        }
+    }
+
+    function installNextTickImplementation() {
+        registerImmediate = function(handle) {
+            process.nextTick(function () { runIfPresent(handle); });
+        };
+    }
+
+    function canUsePostMessage() {
+        // The test against `importScripts` prevents this implementation from being installed inside a web worker,
+        // where `global.postMessage` means something completely different and can't be used for this purpose.
+        if (global.postMessage && !global.importScripts) {
+            var postMessageIsAsynchronous = true;
+            var oldOnMessage = global.onmessage;
+            global.onmessage = function() {
+                postMessageIsAsynchronous = false;
+            };
+            global.postMessage("", "*");
+            global.onmessage = oldOnMessage;
+            return postMessageIsAsynchronous;
+        }
+    }
+
+    function installPostMessageImplementation() {
+        // Installs an event handler on `global` for the `message` event: see
+        // * https://developer.mozilla.org/en/DOM/window.postMessage
+        // * http://www.whatwg.org/specs/web-apps/current-work/multipage/comms.html#crossDocumentMessages
+
+        var messagePrefix = "setImmediate$" + Math.random() + "$";
+        var onGlobalMessage = function(event) {
+            if (event.source === global &&
+                typeof event.data === "string" &&
+                event.data.indexOf(messagePrefix) === 0) {
+                runIfPresent(+event.data.slice(messagePrefix.length));
+            }
+        };
+
+        if (global.addEventListener) {
+            global.addEventListener("message", onGlobalMessage, false);
+        } else {
+            global.attachEvent("onmessage", onGlobalMessage);
+        }
+
+        registerImmediate = function(handle) {
+            global.postMessage(messagePrefix + handle, "*");
+        };
+    }
+
+    function installMessageChannelImplementation() {
+        var channel = new MessageChannel();
+        channel.port1.onmessage = function(event) {
+            var handle = event.data;
+            runIfPresent(handle);
+        };
+
+        registerImmediate = function(handle) {
+            channel.port2.postMessage(handle);
+        };
+    }
+
+    function installReadyStateChangeImplementation() {
+        var html = doc.documentElement;
+        registerImmediate = function(handle) {
+            // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
+            // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
+            var script = doc.createElement("script");
+            script.onreadystatechange = function () {
+                runIfPresent(handle);
+                script.onreadystatechange = null;
+                html.removeChild(script);
+                script = null;
+            };
+            html.appendChild(script);
+        };
+    }
+
+    function installSetTimeoutImplementation() {
+        registerImmediate = function(handle) {
+            setTimeout(runIfPresent, 0, handle);
+        };
+    }
+
+    // If supported, we should attach to the prototype of global, since that is where setTimeout et al. live.
+    var attachTo = Object.getPrototypeOf && Object.getPrototypeOf(global);
+    attachTo = attachTo && attachTo.setTimeout ? attachTo : global;
+
+    // Don't get fooled by e.g. browserify environments.
+    if ({}.toString.call(global.process) === "[object process]") {
+        // For Node.js before 0.9
+        installNextTickImplementation();
+
+    } else if (canUsePostMessage()) {
+        // For non-IE10 modern browsers
+        installPostMessageImplementation();
+
+    } else if (global.MessageChannel) {
+        // For web workers, where supported
+        installMessageChannelImplementation();
+
+    } else if (doc && "onreadystatechange" in doc.createElement("script")) {
+        // For IE 6–8
+        installReadyStateChangeImplementation();
+
+    } else {
+        // For older browsers
+        installSetTimeoutImplementation();
+    }
+
+    attachTo.setImmediate = setImmediate;
+    attachTo.clearImmediate = clearImmediate;
+}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
+
+}).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"_process":91}],67:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+
+
+
+function Queue( jobRunner , concurrency = 4 ) {
+	this.jobRunner = jobRunner ;
+	this.jobs = new Map() ;			// all jobs
+	this.pendingJobs = new Map() ;	// only pending jobs (not run)
+	this.runningJobs = new Map() ;	// only running jobs (not done)
+	this.errorJobs = new Map() ;	// jobs that have failed
+	this.jobsDone = new Map() ;		// jobs that finished successfully
+	this.concurrency = + concurrency || 1 ;
+
+	// Internal
+	this.isQueueRunning = true ;
+	this.isLoopRunning = false ;
+	this.canLoopAgain = false ;
+	this.ready = Promise.resolved ;
+
+	// Misc
+	this.startTime = null ;		// timestamp at the first time the loop is run
+	this.endTime = null ;		// timestamp at the last time the loop exited
+
+	// External API, resolved when there is no jobs anymore in the queue, a new Promise is created when new element are injected
+	this.drained = Promise.resolved ;
+
+	// External API, resolved when the Queue has nothing to do: either it's drained or the pending jobs have dependencies that cannot be solved
+	this.idle = Promise.resolved ;
+}
+
+Promise.Queue = Queue ;
+
+
+
+function Job( id , dependencies = null , data = undefined ) {
+	this.id = id ;
+	this.dependencies = dependencies === null ? null : [ ... dependencies ] ;
+	this.data = data === undefined ? id : data ;
+	this.error = null ;
+	this.startTime = null ;
+	this.endTime = null ;
+}
+
+Queue.Job = Job ;
+
+
+
+Queue.prototype.setConcurrency = function( concurrency ) { this.concurrency = + concurrency || 1 ; } ;
+Queue.prototype.stop = Queue.prototype.pause = function() { this.isQueueRunning = false ; } ;
+Queue.prototype.has = function( id ) { return this.jobs.has( id ) ; } ;
+
+
+
+Queue.prototype.add = Queue.prototype.addJob = function( id , data , dependencies = null ) {
+	// Don't add it twice!
+	if ( this.jobs.has( id ) ) { return false ; }
+
+	var job = new Job( id , dependencies , data ) ;
+	this.jobs.set( id , job ) ;
+	this.pendingJobs.set( id , job ) ;
+	this.canLoopAgain = true ;
+	if ( this.isQueueRunning && ! this.isLoopRunning ) { this.run() ; }
+	if ( this.drained.isSettled() ) { this.drained = new Promise() ; }
+	return job ;
+} ;
+
+
+
+// Add a batch of jobs, with only id (data=id) and no dependencies
+Queue.prototype.addBatch = Queue.prototype.addJobBatch = function( ids ) {
+	var id , job ;
+
+	for ( id of ids ) {
+		// Don't add it twice!
+		if ( this.jobs.has( id ) ) { return false ; }
+		job = new Job( id ) ;
+		this.jobs.set( id , job ) ;
+		this.pendingJobs.set( id , job ) ;
+	}
+
+	this.canLoopAgain = true ;
+	if ( this.isQueueRunning && ! this.isLoopRunning ) { this.run() ; }
+	if ( this.drained.isSettled() ) { this.drained = new Promise() ; }
+} ;
+
+
+
+Queue.prototype.run = Queue.prototype.resume = async function() {
+	var job ;
+
+	this.isQueueRunning = true ;
+
+	if ( this.isLoopRunning ) { return ; }
+	this.isLoopRunning = true ;
+
+	if ( ! this.startTime ) { this.startTime = Date.now() ; }
+
+	do {
+		this.canLoopAgain = false ;
+
+		for ( job of this.pendingJobs.values() ) {
+			if ( job.dependencies && job.dependencies.some( dependencyId => ! this.jobsDone.has( dependencyId ) ) ) { continue ; }
+			// This should be done synchronously:
+			if ( this.idle.isSettled() ) { this.idle = new Promise() ; }
+			this.canLoopAgain = true ;
+
+			await this.ready ;
+
+			// Something has stopped the queue while we were awaiting.
+			// This check MUST be done only after "await", before is potentially synchronous, and things only change concurrently during an "await"
+			if ( ! this.isQueueRunning ) { this.finishRun() ; return ; }
+
+			this.runJob( job ) ;
+		}
+	} while ( this.canLoopAgain ) ;
+
+	this.finishRun() ;
+} ;
+
+
+
+// Finish current run
+Queue.prototype.finishRun = function() {
+	this.isLoopRunning = false ;
+
+	if ( ! this.pendingJobs.size ) { this.drained.resolve() ; }
+
+	if ( ! this.runningJobs.size ) {
+		this.endTime = Date.now() ;
+		this.idle.resolve() ;
+	}
+} ;
+
+
+
+Queue.prototype.runJob = async function( job ) {
+	// Immediately remove it synchronously from the pending queue and add it to the running one
+	this.pendingJobs.delete( job.id ) ;
+	this.runningJobs.set( job.id , job ) ;
+
+	if ( this.runningJobs.size >= this.concurrency ) { this.ready = new Promise() ; }
+
+	// Async part
+	try {
+		job.startTime = Date.now() ;
+		await this.jobRunner( job.data ) ;
+		job.endTime = Date.now() ;
+		this.jobsDone.set( job.id , job ) ;
+		this.canLoopAgain = true ;
+	}
+	catch ( error ) {
+		job.endTime = Date.now() ;
+		job.error = error ;
+		this.errorJobs.set( job.id , job ) ;
+	}
+
+	this.runningJobs.delete( job.id ) ;
+	if ( this.runningJobs.size < this.concurrency ) { this.ready.resolve() ; }
+
+	// This MUST come last, because it retry the loop: dependencies may have been unlocked!
+	if ( ! this.isLoopRunning ) {
+		if ( this.isQueueRunning && this.pendingJobs.size ) { this.run() ; }
+		else { this.finishRun() ; }
+	}
+} ;
+
+
+
+Queue.prototype.getJobTimes = function() {
+	var job , stats = {} ;
+	for ( job of this.jobsDone.values() ) { stats[ job.id ] = job.endTime - job.startTime ; }
+	return stats ;
+} ;
+
+
+
+Queue.prototype.getStats = function() {
+	var job , sum = 0 ,
+		stats = {
+			pending: this.pendingJobs.size ,
+			running: this.runningJobs.size ,
+			failed: this.errorJobs.size ,
+			done: this.jobsDone.size ,
+			averageJobTime: null ,
+			queueTime: null
+		} ;
+
+	if ( this.jobsDone.size ) {
+		for ( job of this.jobsDone.values() ) { sum += job.endTime - job.startTime ; }
+		stats.averageJobTime = sum / this.jobsDone.size ;
+	}
+
+	if ( this.endTime ) { stats.queueTime = this.endTime - this.startTime ; }
+
+	return stats ;
+} ;
+
+
+},{"./seventh.js":74}],68:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+
+
+
+Promise.promisifyNodeApi = ( api , suffix , multiSuffix , filter , anything ) => {
+	var keys ;
+
+	suffix = suffix || 'Async' ;
+	multiSuffix = multiSuffix || 'AsyncAll' ;
+	filter = filter || ( key => key[ 0 ] !== '_' && ! key.endsWith( 'Sync' ) ) ;
+
+	if ( anything ) {
+		keys = [] ;
+
+		for ( let key in api ) {
+			if ( typeof api[ key ] === 'function' ) { keys.push( key ) ; }
+		}
+	}
+	else {
+		keys = Object.keys( api ) ;
+	}
+
+	keys.filter( key => {
+		if ( typeof api[ key ] !== 'function' ) { return false ; }
+
+		// If it has any enumerable properties on its prototype, it's a constructor
+		for ( let trash in api[ key ].prototype ) { return false ; }
+
+		return filter( key , api ) ;
+	} )
+		.forEach( key => {
+			const targetKey = key + suffix ;
+			const multiTargetKey = key + multiSuffix ;
+
+			// Do nothing if it already exists
+			if ( ! api[ targetKey ] ) {
+				api[ targetKey ] = Promise.promisify( api[ key ] , api ) ;
+			}
+
+			if ( ! api[ multiTargetKey ] ) {
+				api[ multiTargetKey ] = Promise.promisifyAll( api[ key ] , api ) ;
+			}
+		} ) ;
+} ;
+
+
+
+Promise.promisifyAnyNodeApi = ( api , suffix , multiSuffix , filter ) => {
+	Promise.promisifyNodeApi( api , suffix , multiSuffix , filter , true ) ;
+} ;
+
+
+
+},{"./seventh.js":74}],69:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+
+
+
+// This object is used as a special unique value for array hole (see Promise.filter())
+const HOLE = {} ;
+
+function noop() {}
+
+
+
+Promise.all = ( iterable ) => {
+	var index = - 1 , settled = false ,
+		count = 0 , length = Infinity ,
+		value , values = [] ,
+		allPromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		const promiseIndex = ++ index ;
+
+		Promise.resolve( value )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					values[ promiseIndex ] = value_ ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						allPromise._resolveValue( values ) ;
+					}
+				} ,
+				error => {
+					if ( settled ) { return ; }
+					settled = true ;
+					allPromise.reject( error ) ;
+				}
+			) ;
+	}
+
+	length = index + 1 ;
+
+	if ( ! length ) {
+		allPromise._resolveValue( values ) ;
+	}
+
+	return allPromise ;
+} ;
+
+
+
+// Maybe faster, but can't find any reasonable grounds for that ATM
+//Promise.all =
+Promise._allArray = ( iterable ) => {
+	var length = iterable.length ;
+
+	if ( ! length ) { Promise._resolveValue( [] ) ; }
+
+	var index ,
+		runtime = {
+			settled: false ,
+			count: 0 ,
+			length: length ,
+			values: [] ,
+			allPromise: new Promise()
+		} ;
+
+	for ( index = 0 ; ! runtime.settled && index < length ; index ++ ) {
+		Promise._allArrayOne( iterable[ index ] , index , runtime ) ;
+	}
+
+	return runtime.allPromise ;
+} ;
+
+
+
+// internal for allArray
+Promise._allArrayOne = ( value , index , runtime ) => {
+	Promise._bareThen( value ,
+		value_ => {
+			if ( runtime.settled ) { return ; }
+
+			runtime.values[ index ] = value_ ;
+			runtime.count ++ ;
+
+			if ( runtime.count >= runtime.length ) {
+				runtime.settled = true ;
+				runtime.allPromise._resolveValue( runtime.values ) ;
+			}
+		} ,
+		error => {
+			if ( runtime.settled ) { return ; }
+			runtime.settled = true ;
+			runtime.allPromise.reject( error ) ;
+		}
+	) ;
+} ;
+
+
+
+Promise.allSettled = ( iterable ) => {
+	var index = - 1 , settled = false ,
+		count = 0 , length = Infinity ,
+		value , values = [] ,
+		allPromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		const promiseIndex = ++ index ;
+
+		Promise.resolve( value )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					values[ promiseIndex ] = { status: 'fulfilled' , value: value_ } ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						allPromise._resolveValue( values ) ;
+					}
+				} ,
+				error => {
+					if ( settled ) { return ; }
+
+					values[ promiseIndex ] = { status: 'rejected' ,  reason: error } ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						allPromise._resolveValue( values ) ;
+					}
+				}
+			) ;
+	}
+
+	length = index + 1 ;
+
+	if ( ! length ) {
+		allPromise._resolveValue( values ) ;
+	}
+
+	return allPromise ;
+} ;
+
+
+
+// Promise.all() with an iterator
+Promise.every =
+Promise.map = ( iterable , iterator ) => {
+	var index = - 1 , settled = false ,
+		count = 0 , length = Infinity ,
+		value , values = [] ,
+		allPromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		const promiseIndex = ++ index ;
+
+		Promise.resolve( value )
+			.then( value_ => {
+				if ( settled ) { return ; }
+				return iterator( value_ , promiseIndex ) ;
+			} )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					values[ promiseIndex ] = value_ ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						allPromise._resolveValue( values ) ;
+					}
+				} ,
+				error => {
+					if ( settled ) { return ; }
+					settled = true ;
+					allPromise.reject( error ) ;
+				}
+			) ;
+	}
+
+	length = index + 1 ;
+
+	if ( ! length ) {
+		allPromise._resolveValue( values ) ;
+	}
+
+	return allPromise ;
+} ;
+
+
+
+/*
+	It works symmetrically with Promise.all(), the resolve and reject logic are switched.
+	Therefore, it resolves to the first resolving promise OR reject if all promises are rejected
+	with, as a reason an AggregateError of all promise rejection reasons.
+*/
+Promise.any = ( iterable ) => {
+	var index = - 1 , settled = false ,
+		count = 0 , length = Infinity ,
+		value ,
+		errors = [] ,
+		anyPromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		const promiseIndex = ++ index ;
+
+		Promise.resolve( value )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					settled = true ;
+					anyPromise._resolveValue( value_ ) ;
+				} ,
+				error => {
+					if ( settled ) { return ; }
+
+					errors[ promiseIndex ] = error ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						anyPromise.reject( new AggregateError( errors ) , 'Promise.any(): All promises have rejected' ) ;
+					}
+				}
+			) ;
+	}
+
+	length = index + 1 ;
+
+	if ( ! length ) {
+		anyPromise.reject( new RangeError( 'Promise.any(): empty array' ) ) ;
+	}
+
+	return anyPromise ;
+} ;
+
+
+
+// Like Promise.any() but with an iterator
+Promise.some = ( iterable , iterator ) => {
+	var index = - 1 , settled = false ,
+		count = 0 , length = Infinity ,
+		value ,
+		errors = [] ,
+		anyPromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		const promiseIndex = ++ index ;
+
+		Promise.resolve( value )
+			.then( value_ => {
+				if ( settled ) { return ; }
+				return iterator( value_ , promiseIndex ) ;
+			} )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					settled = true ;
+					anyPromise._resolveValue( value_ ) ;
+				} ,
+				error => {
+					if ( settled ) { return ; }
+
+					errors[ promiseIndex ] = error ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						anyPromise.reject( new AggregateError( errors , 'Promise.some(): All promises have rejected' ) ) ;
+					}
+				}
+			) ;
+	}
+
+	length = index + 1 ;
+
+	if ( ! length ) {
+		anyPromise.reject( new RangeError( 'Promise.some(): empty array' ) ) ;
+	}
+
+	return anyPromise ;
+} ;
+
+
+
+/*
+	More closed to Array#filter().
+	The iterator should return truthy if the array element should be kept,
+	or falsy if the element should be filtered out.
+	Any rejection reject the whole promise.
+*/
+Promise.filter = ( iterable , iterator ) => {
+	var index = - 1 , settled = false ,
+		count = 0 , length = Infinity ,
+		value , values = [] ,
+		filterPromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		const promiseIndex = ++ index ;
+
+		Promise.resolve( value )
+			.then( value_ => {
+				if ( settled ) { return ; }
+				values[ promiseIndex ] = value_ ;
+				return iterator( value_ , promiseIndex ) ;
+			} )
+			.then(
+				iteratorValue => {
+					if ( settled ) { return ; }
+
+					count ++ ;
+
+					if ( ! iteratorValue ) { values[ promiseIndex ] = HOLE ; }
+
+					if ( count >= length ) {
+						settled = true ;
+						values = values.filter( e => e !== HOLE ) ;
+						filterPromise._resolveValue( values ) ;
+					}
+				} ,
+				error => {
+					if ( settled ) { return ; }
+					settled = true ;
+					filterPromise.reject( error ) ;
+				}
+			) ;
+	}
+
+	length = index + 1 ;
+
+	if ( ! length ) {
+		filterPromise._resolveValue( values ) ;
+	}
+	else if ( count >= length ) {
+		settled = true ;
+		values = values.filter( e => e !== HOLE ) ;
+		filterPromise._resolveValue( values ) ;
+	}
+
+	return filterPromise ;
+} ;
+
+
+
+// forEach performs reduce as well, if a third argument is supplied
+// Force a function statement because we are using arguments.length, so we can support accumulator equals to undefined
+Promise.foreach =
+Promise.forEach = function( iterable , iterator , accumulator ) {
+	var index = - 1 ,
+		isReduce = arguments.length >= 3 ,
+		it = iterable[Symbol.iterator]() ,
+		forEachPromise = new Promise() ,
+		lastPromise = Promise.resolve( accumulator ) ;
+
+	// The array-like may contains promises that could be rejected before being handled
+	if ( Promise.warnUnhandledRejection ) { Promise._handleAll( iterable ) ; }
+
+	var nextElement = () => {
+		lastPromise.then(
+			accumulator_ => {
+				let { value , done } = it.next() ;
+				index ++ ;
+
+				if ( done ) {
+					forEachPromise.resolve( accumulator_ ) ;
+				}
+				else {
+					lastPromise = Promise.resolve( value ).then(
+						isReduce ?
+							value_ => iterator( accumulator_ , value_ , index ) :
+							value_ => iterator( value_ , index )
+					) ;
+
+					nextElement() ;
+				}
+			} ,
+			error => {
+				forEachPromise.reject( error ) ;
+
+				// We have to eat all remaining promise errors
+				for ( ;; ) {
+					let { value , done } = it.next() ;
+					if ( done ) { break ; }
+
+					//if ( ( value instanceof Promise ) || ( value instanceof NativePromise ) )
+					if ( Promise.isThenable( value ) ) {
+						value.then( noop , noop ) ;
+					}
+				}
+			}
+		) ;
+	} ;
+
+	nextElement() ;
+
+	return forEachPromise ;
+} ;
+
+
+
+Promise.reduce = ( iterable , iterator , accumulator ) => {
+	// Force 3 arguments
+	return Promise.forEach( iterable , iterator , accumulator ) ;
+} ;
+
+
+
+/*
+	Same than map, but iterate over an object and produce an object.
+	Think of it as a kind of Object#map() (which of course does not exist).
+*/
+Promise.mapObject = ( inputObject , iterator ) => {
+	var settled = false ,
+		count = 0 ,
+		keys = Object.keys( inputObject ) ,
+		length = keys.length ,
+		outputObject = {} ,
+		mapPromise = new Promise() ;
+
+	for ( let i = 0 ; ! settled && i < length ; i ++ ) {
+		const key = keys[ i ] ;
+		const value = inputObject[ key ] ;
+
+		Promise.resolve( value )
+			.then( value_ => {
+				if ( settled ) { return ; }
+				return iterator( value_ , key ) ;
+			} )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					outputObject[ key ] = value_ ;
+					count ++ ;
+
+					if ( count >= length ) {
+						settled = true ;
+						mapPromise._resolveValue( outputObject ) ;
+					}
+				} ,
+				error => {
+					if ( settled ) { return ; }
+					settled = true ;
+					mapPromise.reject( error ) ;
+				}
+			) ;
+	}
+
+	if ( ! length ) {
+		mapPromise._resolveValue( outputObject ) ;
+	}
+
+	return mapPromise ;
+} ;
+
+
+
+// Like map, but with a concurrency limit
+Promise.concurrent = ( limit , iterable , iterator ) => {
+	var index = - 1 , settled = false ,
+		running = 0 ,
+		count = 0 , length = Infinity ,
+		value , done = false ,
+		values = [] ,
+		it = iterable[Symbol.iterator]() ,
+		concurrentPromise = new Promise() ;
+
+	// The array-like may contains promises that could be rejected before being handled
+	if ( Promise.warnUnhandledRejection ) { Promise._handleAll( iterable ) ; }
+
+	limit = + limit || 1 ;
+
+	const runBatch = () => {
+		while ( ! done && running < limit ) {
+
+			//console.log( "Pre" , index ) ;
+			( { value , done } = it.next() ) ;
+
+			if ( done ) {
+				length = index + 1 ;
+
+				if ( count >= length ) {
+					settled = true ;
+					concurrentPromise._resolveValue( values ) ;
+					return ;
+				}
+				break ;
+			}
+
+			if ( settled ) { break ; }
+
+			const promiseIndex = ++ index ;
+			running ++ ;
+			//console.log( "Launch" , promiseIndex ) ;
+
+			Promise.resolve( value )
+				.then( value_ => {
+					if ( settled ) { return ; }
+					return iterator( value_ , promiseIndex ) ;
+				} )
+				.then(
+					value_ => {
+					//console.log( "Done" , promiseIndex , value_ ) ;
+						if ( settled ) { return ; }
+
+						values[ promiseIndex ] = value_ ;
+						count ++ ;
+						running -- ;
+
+						//console.log( "count/length" , count , length ) ;
+						if ( count >= length ) {
+							settled = true ;
+							concurrentPromise._resolveValue( values ) ;
+							return ;
+						}
+
+						if ( running < limit ) {
+							runBatch() ;
+							return ;
+						}
+					} ,
+					error => {
+						if ( settled ) { return ; }
+						settled = true ;
+						concurrentPromise.reject( error ) ;
+					}
+				) ;
+		}
+	} ;
+
+	runBatch() ;
+
+	if ( index < 0 ) {
+		concurrentPromise._resolveValue( values ) ;
+	}
+
+	return concurrentPromise ;
+} ;
+
+
+
+/*
+	Like native Promise.race(), it is hanging forever if the array is empty.
+	It resolves or rejects to the first resolved/rejected promise.
+*/
+Promise.race = ( iterable ) => {
+	var settled = false ,
+		value ,
+		racePromise = new Promise() ;
+
+	for ( value of iterable ) {
+		if ( settled ) { break ; }
+
+		Promise.resolve( value )
+			.then(
+				value_ => {
+					if ( settled ) { return ; }
+
+					settled = true ;
+					racePromise._resolveValue( value_ ) ;
+				} ,
+				error => {
+					if ( settled ) { return ; }
+
+					settled = true ;
+					racePromise.reject( error ) ;
+				}
+			) ;
+	}
+
+	return racePromise ;
+} ;
+
+
+},{"./seventh.js":74}],70:[function(require,module,exports){
+(function (process,global,setImmediate){(function (){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+/*
+	Prerequisite.
+*/
+
+
+
+const NativePromise = global.Promise ;
+
+// Cross-platform next tick function
+var nextTick ;
+
+if ( ! process.browser ) {
+	nextTick = process.nextTick ;
+}
+else {
+	// Browsers suck, they don't have setImmediate() except IE/Edge.
+	// A module is needed to emulate it.
+	require( 'setimmediate' ) ;
+	nextTick = setImmediate ;
+}
+
+
+
+/*
+	Constructor.
+*/
+
+
+
+function Promise( fn ) {
+	this.fn = fn ;
+	this._then = Promise._dormantThen ;
+	this.value = null ;
+	this.thenHandlers = null ;
+	this.handledRejection = null ;
+
+	if ( this.fn ) {
+		this._exec() ;
+	}
+}
+
+module.exports = Promise ;
+
+
+
+Promise.Native = NativePromise ;
+Promise.warnUnhandledRejection = true ;
+Promise.nextTick = nextTick ;
+
+
+
+Promise.prototype._exec = function() {
+	this._then = Promise._pendingThen ;
+
+	try {
+		this.fn(
+			// Don't return anything, it would create nasty bugs! E.g.:
+			// bad: error => this.reject( error_ )
+			// good: error_ => { this.reject( error_ ) ; }
+			result_ => { this.resolve( result_ ) ; } ,
+			error_ => { this.reject( error_ ) ; }
+		) ;
+	}
+	catch ( error ) {
+		this.reject( error ) ;
+	}
+} ;
+
+
+
+/*
+	Resolve/reject and then-handlers management.
+*/
+
+
+
+Promise.prototype.resolve = Promise.prototype.fulfill = function( value ) {
+	// Throw an error?
+	if ( this._then.settled ) { return this ; }
+
+	if ( Promise.isThenable( value ) ) {
+		this._execThenPromise( value ) ;
+		return this ;
+	}
+
+	return this._resolveValue( value ) ;
+} ;
+
+
+
+Promise.prototype._resolveValue = function( value ) {
+	this._then = Promise._fulfilledThen ;
+	this.value = value ;
+	if ( this.thenHandlers && this.thenHandlers.length ) { this._execFulfillHandlers() ; }
+
+	return this ;
+} ;
+
+
+
+// Faster on node v8.x
+Promise.prototype._execThenPromise = function( thenPromise ) {
+	try {
+		thenPromise.then(
+			result_ => { this.resolve( result_ ) ; } ,
+			error_ => { this.reject( error_ ) ; }
+		) ;
+	}
+	catch ( error ) {
+		this.reject( error ) ;
+	}
+} ;
+
+
+
+Promise.prototype.reject = function( error ) {
+	// Throw an error?
+	if ( this._then.settled ) { return this ; }
+
+	this._then = Promise._rejectedThen ;
+	this.value = error ;
+
+	if ( this.thenHandlers && this.thenHandlers.length ) {
+		this._execRejectionHandlers() ;
+	}
+	else if ( Promise.warnUnhandledRejection && ! this.handledRejection ) {
+		this._unhandledRejection() ;
+	}
+
+	return this ;
+} ;
+
+
+
+Promise.prototype._execFulfillHandlers = function() {
+	var i ,
+		length = this.thenHandlers.length ;
+
+	// Do cache the length, if a handler is synchronously added, it will be called on next tick
+	for ( i = 0 ; i < length ; i += 3 ) {
+		if ( this.thenHandlers[ i + 1 ] ) {
+			this._execOneFulfillHandler( this.thenHandlers[ i ] , this.thenHandlers[ i + 1 ] ) ;
+		}
+		else {
+			this.thenHandlers[ i ].resolve( this.value ) ;
+		}
+	}
+} ;
+
+
+
+// Faster on node v8.x?
+//*
+Promise.prototype._execOneFulfillHandler = function( promise , onFulfill ) {
+	try {
+		promise.resolve( onFulfill( this.value ) ) ;
+	}
+	catch ( error_ ) {
+		promise.reject( error_ ) ;
+	}
+} ;
+//*/
+
+
+
+Promise.prototype._execRejectionHandlers = function() {
+	var i ,
+		length = this.thenHandlers.length ;
+
+	// Do cache the length, if a handler is synchronously added, it will be called on next tick
+	for ( i = 0 ; i < length ; i += 3 ) {
+		if ( this.thenHandlers[ i + 2 ] ) {
+			this._execOneRejectHandler( this.thenHandlers[ i ] , this.thenHandlers[ i + 2 ] ) ;
+		}
+		else {
+			this.thenHandlers[ i ].reject( this.value ) ;
+		}
+	}
+} ;
+
+
+
+// Faster on node v8.x?
+//*
+Promise.prototype._execOneRejectHandler = function( promise , onReject ) {
+	try {
+		promise.resolve( onReject( this.value ) ) ;
+	}
+	catch ( error_ ) {
+		promise.reject( error_ ) ;
+	}
+} ;
+//*/
+
+
+
+Promise.prototype.resolveTimeout = Promise.prototype.fulfillTimeout = function( time , result ) {
+	setTimeout( () => this.resolve( result ) , time ) ;
+} ;
+
+
+
+Promise.prototype.rejectTimeout = function( time , error ) {
+	setTimeout( () => this.reject( error ) , time ) ;
+} ;
+
+
+
+Promise.prototype.resolveNextTick = Promise.prototype.fulfillNextTick = function( result ) {
+	nextTick( () => this.resolve( result ) ) ;
+} ;
+
+
+
+Promise.prototype.rejectNextTick = function( error ) {
+	nextTick( () => this.reject( error ) ) ;
+} ;
+
+
+
+/*
+	.then() variants depending on the state
+*/
+
+
+
+// .then() variant when the promise is dormant
+Promise._dormantThen = function( onFulfill , onReject ) {
+	if ( this.fn ) {
+		// If this is a dormant promise, wake it up now!
+		this._exec() ;
+
+		// Return now, some sync stuff can change the status
+		return this._then( onFulfill , onReject ) ;
+	}
+
+	var promise = new Promise() ;
+
+	if ( ! this.thenHandlers ) {
+		this.thenHandlers = [ promise , onFulfill , onReject ] ;
+	}
+	else {
+		//this.thenHandlers.push( onFulfill ) ;
+		this.thenHandlers[ this.thenHandlers.length ] = promise ;
+		this.thenHandlers[ this.thenHandlers.length ] = onFulfill ;
+		this.thenHandlers[ this.thenHandlers.length ] = onReject ;
+	}
+
+	return promise ;
+} ;
+
+Promise._dormantThen.settled = false ;
+
+
+
+// .then() variant when the promise is pending
+Promise._pendingThen = function( onFulfill , onReject ) {
+	var promise = new Promise() ;
+
+	if ( ! this.thenHandlers ) {
+		this.thenHandlers = [ promise , onFulfill , onReject ] ;
+	}
+	else {
+		//this.thenHandlers.push( onFulfill ) ;
+		this.thenHandlers[ this.thenHandlers.length ] = promise ;
+		this.thenHandlers[ this.thenHandlers.length ] = onFulfill ;
+		this.thenHandlers[ this.thenHandlers.length ] = onReject ;
+	}
+
+	return promise ;
+} ;
+
+Promise._pendingThen.settled = false ;
+
+
+
+// .then() variant when the promise is fulfilled
+Promise._fulfilledThen = function( onFulfill ) {
+	if ( ! onFulfill ) { return this ; }
+
+	var promise = new Promise() ;
+
+	// This handler should not fire in this code sync flow
+	nextTick( () => {
+		try {
+			promise.resolve( onFulfill( this.value ) ) ;
+		}
+		catch ( error ) {
+			promise.reject( error ) ;
+		}
+	} ) ;
+
+	return promise ;
+} ;
+
+Promise._fulfilledThen.settled = true ;
+
+
+
+// .then() variant when the promise is rejected
+Promise._rejectedThen = function( onFulfill , onReject ) {
+	if ( ! onReject ) { return this ; }
+
+	this.handledRejection = true ;
+	var promise = new Promise() ;
+
+	// This handler should not fire in this code sync flow
+	nextTick( () => {
+		try {
+			promise.resolve( onReject( this.value ) ) ;
+		}
+		catch ( error ) {
+			promise.reject( error ) ;
+		}
+	} ) ;
+
+	return promise ;
+} ;
+
+Promise._rejectedThen.settled = true ;
+
+
+
+/*
+	.then() and short-hands.
+*/
+
+
+
+Promise.prototype.then = function( onFulfill , onReject ) {
+	return this._then( onFulfill , onReject ) ;
+} ;
+
+
+
+Promise.prototype.catch = function( onReject = () => undefined ) {
+	return this._then( undefined , onReject ) ;
+} ;
+
+
+
+Promise.prototype.finally = function( onSettled ) {
+	return this._then( onSettled , onSettled ) ;
+} ;
+
+
+
+Promise.prototype.tap = Promise.prototype.tapThen = function( onFulfill ) {
+	this._then( onFulfill , undefined ) ;
+	return this ;
+} ;
+
+
+
+Promise.prototype.tapCatch = function( onReject ) {
+	this._then( undefined , onReject ) ;
+	return this ;
+} ;
+
+
+
+Promise.prototype.tapFinally = function( onSettled ) {
+	this._then( onSettled , onSettled ) ;
+	return this ;
+} ;
+
+
+
+// Any unhandled error throw ASAP
+Promise.prototype.fatal = function() {
+	this._then( undefined , error => {
+		// Throw async, otherwise it would be catched by .then()
+		nextTick( () => { throw error ; } ) ;
+	} ) ;
+} ;
+
+
+
+Promise.prototype.done = function( onFulfill , onReject ) {
+	this._then( onFulfill , onReject ).fatal() ;
+	return this ;
+} ;
+
+
+
+Promise.prototype.callback = function( cb ) {
+	this._then(
+		value => { cb( undefined , value ) ; } ,
+		error => { cb( error ) ; }
+	).fatal() ;
+
+	return this ;
+} ;
+
+
+
+Promise.prototype.callbackAll = function( cb ) {
+	this._then(
+		values => {
+			if ( Array.isArray( values ) ) { cb( undefined , ... values ) ; }
+			else { cb( undefined , values ) ; }
+		} ,
+		error => { cb( error ) ; }
+	).fatal() ;
+
+	return this ;
+} ;
+
+
+
+/*
+	The reverse of .callback(), it calls the function with a callback argument and return a promise that resolve or reject depending on that callback invocation.
+	Usage:
+		await Promise.callback( callback => myFunctionRelyingOnCallback( [arg1] , [arg2] , [...] , callback ) ;
+*/
+Promise.callback = function( fn ) {
+	return new Promise( ( resolve , reject ) => {
+		fn( ( error , arg ) => {
+			if ( error ) { reject( error ) ; }
+			else { resolve( arg ) ; }
+		} ) ;
+	} ) ;
+} ;
+
+
+
+Promise.callbackAll = function( fn ) {
+	return new Promise( ( resolve , reject ) => {
+		fn( ( error , ... args ) => {
+			if ( error ) { reject( error ) ; }
+			else { resolve( args ) ; }
+		} ) ;
+	} ) ;
+} ;
+
+
+
+Promise.prototype.toPromise =	// <-- DEPRECATED, use .propagate
+Promise.prototype.propagate = function( promise ) {
+	this._then(
+		value => { promise.resolve( value ) ; } ,
+		error => { promise.reject( error ) ; }
+	) ;
+
+	return this ;
+} ;
+
+
+
+
+
+/*
+	Foreign promises facilities
+*/
+
+
+
+Promise.propagate = function( foreignPromise , promise ) {
+	foreignPromise.then(
+		value => { promise.resolve( value ) ; } ,
+		error => { promise.reject( error ) ; }
+	) ;
+
+	return foreignPromise ;
+} ;
+
+
+
+Promise.finally = function( foreignPromise , onSettled ) {
+	return foreignPromise.then( onSettled , onSettled ) ;
+} ;
+
+
+
+
+
+/*
+	Static factories.
+*/
+
+
+
+Promise.resolve = Promise.fulfill = function( value ) {
+	if ( Promise.isThenable( value ) ) { return Promise.fromThenable( value ) ; }
+	return Promise._resolveValue( value ) ;
+} ;
+
+
+
+Promise._resolveValue = function( value ) {
+	var promise = new Promise() ;
+	promise._then = Promise._fulfilledThen ;
+	promise.value = value ;
+	return promise ;
+} ;
+
+
+
+Promise.reject = function( error ) {
+	//return new Promise().reject( error ) ;
+	var promise = new Promise() ;
+	promise._then = Promise._rejectedThen ;
+	promise.value = error ;
+	return promise ;
+} ;
+
+
+
+Promise.resolveTimeout = Promise.fulfillTimeout = function( timeout , value ) {
+	return new Promise( resolve => setTimeout( () => resolve( value ) , timeout ) ) ;
+} ;
+
+
+
+Promise.rejectTimeout = function( timeout , error ) {
+	return new Promise( ( resolve , reject ) => setTimeout( () => reject( error ) , timeout ) ) ;
+} ;
+
+
+
+Promise.resolveNextTick = Promise.fulfillNextTick = function( value ) {
+	return new Promise( resolve => nextTick( () => resolve( value ) ) ) ;
+} ;
+
+
+
+Promise.rejectNextTick = function( error ) {
+	return new Promise( ( resolve , reject ) => nextTick( () => reject( error ) ) ) ;
+} ;
+
+
+
+// A dormant promise is activated the first time a then handler is assigned
+Promise.dormant = function( fn ) {
+	var promise = new Promise() ;
+	promise.fn = fn ;
+	return promise ;
+} ;
+
+
+
+// Try-catched Promise.resolve( fn() )
+Promise.try = function( fn ) {
+	try {
+		return Promise.resolve( fn() ) ;
+	}
+	catch ( error ) {
+		return Promise.reject( error ) ;
+	}
+} ;
+
+
+
+/*
+	Thenables.
+*/
+
+
+
+Promise.isThenable = function( value ) {
+	return value && typeof value === 'object' && typeof value.then === 'function' ;
+} ;
+
+
+
+// We assume a thenable object here
+Promise.fromThenable = function( thenable ) {
+	if ( thenable instanceof Promise ) { return thenable ; }
+
+	return new Promise( ( resolve , reject ) => {
+		thenable.then(
+			value => { resolve( value ) ; } ,
+			error => { reject( error ) ; }
+		) ;
+	} ) ;
+} ;
+
+
+
+// When you just want a fast then() function out of anything, without any desync and unchainable
+Promise._bareThen = function( value , onFulfill , onReject ) {
+	//if ( Promise.isThenable( value ) )
+	if( value && typeof value === 'object' ) {
+		if ( value instanceof Promise ) {
+			if ( value._then === Promise._fulfilledThen ) { onFulfill( value.value ) ; }
+			else if ( value._then === Promise._rejectedThen ) { onReject( value.value ) ; }
+			else { value._then( onFulfill , onReject ) ; }
+		}
+		else if ( typeof value.then === 'function' ) {
+			value.then( onFulfill , onReject ) ;
+		}
+		else {
+			onFulfill( value ) ;
+		}
+	}
+	else {
+		onFulfill( value ) ;
+	}
+} ;
+
+
+
+/*
+	Misc.
+*/
+
+
+
+// Internal usage, mark all promises as handled ahead of time, useful for series,
+// because a warning would be displayed for unhandled rejection for promises that are not yet processed.
+Promise._handleAll = function( iterable ) {
+	var value ;
+
+	for ( value of iterable ) {
+		//if ( ( value instanceof Promise ) || ( value instanceof NativePromise ) )
+		if ( Promise.isThenable( value ) ) {
+			value.handledRejection = true ;
+		}
+	}
+} ;
+
+
+
+Promise.prototype._unhandledRejection = function() {
+	// This promise is currently unhandled
+	// If still unhandled at the end of the synchronous block of code,
+	// output an error message.
+
+	this.handledRejection = false ;
+
+	// Don't know what is the correct way to inform node.js about that.
+	// There is no doc about that, and emitting unhandledRejection,
+	// does not produce what is expected.
+
+	//process.emit( 'unhandledRejection' , this.value , this ) ;
+
+	/*
+	nextTick( () => {
+		if ( this.handledRejection === false )
+		{
+			process.emit( 'unhandledRejection' , this.value , this ) ;
+		}
+	} ) ;
+	*/
+
+	// It looks like 'await' inside a 'try-catch' does not handle the promise soon enough -_-'
+	//const nextTick_ = nextTick ;
+	const nextTick_ = cb => setTimeout( cb , 0 ) ;
+
+	//*
+	if ( this.value instanceof Error ) {
+		nextTick_( () => {
+			if ( this.handledRejection === false ) {
+				this.value.message = 'Unhandled promise rejection: ' + this.value.message ;
+				console.error( this.value ) ;
+			}
+		} ) ;
+	}
+	else {
+		// Avoid starting the stack trace in the nextTick()...
+		let error_ = new Error( 'Unhandled promise rejection' ) ;
+		nextTick_( () => {
+			if ( this.handledRejection === false ) {
+				console.error( error_ ) ;
+				console.error( 'Rejection reason:' , this.value ) ;
+			}
+		} ) ;
+	}
+	//*/
+} ;
+
+
+
+Promise.prototype.isSettled = function() { return this._then.settled ; } ;
+
+
+
+Promise.prototype.getStatus = function() {
+	switch ( this._then ) {
+		case Promise._dormantThen :
+			return 'dormant' ;
+		case Promise._pendingThen :
+			return 'pending' ;
+		case Promise._fulfilledThen :
+			return 'fulfilled' ;
+		case Promise._rejectedThen :
+			return 'rejected' ;
+	}
+} ;
+
+
+
+Promise.prototype.inspect = function() {
+	switch ( this._then ) {
+		case Promise._dormantThen :
+			return 'Promise { <DORMANT> }' ;
+		case Promise._pendingThen :
+			return 'Promise { <PENDING> }' ;
+		case Promise._fulfilledThen :
+			return 'Promise { <FULFILLED> ' + this.value + ' }' ;
+		case Promise._rejectedThen :
+			return 'Promise { <REJECTED> ' + this.value + ' }' ;
+	}
+} ;
+
+
+
+// A shared dummy promise, when you just want to return an immediately thenable
+Promise.resolved = Promise.dummy = Promise.resolve() ;
+
+
+
+
+
+/*
+	Browser specific.
+*/
+
+
+
+if ( process.browser ) {
+	Promise.prototype.resolveAtAnimationFrame = function( value ) {
+		window.requestAnimationFrame( () => this.resolve( value ) ) ;
+	} ;
+
+	Promise.prototype.rejectAtAnimationFrame = function( error ) {
+		window.requestAnimationFrame( () => this.reject( error ) ) ;
+	} ;
+
+	Promise.resolveAtAnimationFrame = function( value ) {
+		return new Promise( resolve => window.requestAnimationFrame( () => resolve( value ) ) ) ;
+	} ;
+
+	Promise.rejectAtAnimationFrame = function( error ) {
+		return new Promise( ( resolve , reject ) => window.requestAnimationFrame( () => reject( error ) ) ) ;
+	} ;
+}
+
+
+}).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
+},{"_process":91,"setimmediate":66,"timers":92}],71:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+const noop = () => undefined ;
+
+
+
+Promise.promisifyAll = ( nodeAsyncFn , thisBinding ) => {
+	// Little optimization here to have a promisified function as fast as possible
+	if ( thisBinding ) {
+		return ( ... args ) => {
+			return new Promise( ( resolve , reject ) => {
+				nodeAsyncFn.call( thisBinding , ... args , ( error , ... cbArgs ) => {
+					if ( error ) {
+						if ( cbArgs.length && error instanceof Error ) { error.args = cbArgs ; }
+						reject( error ) ;
+					}
+					else {
+						resolve( cbArgs ) ;
+					}
+				} ) ;
+			} ) ;
+		} ;
+	}
+
+	return function( ... args ) {
+		return new Promise( ( resolve , reject ) => {
+			nodeAsyncFn.call( this , ... args , ( error , ... cbArgs ) => {
+				if ( error ) {
+					if ( cbArgs.length && error instanceof Error ) { error.args = cbArgs ; }
+					reject( error ) ;
+				}
+				else {
+					resolve( cbArgs ) ;
+				}
+			} ) ;
+		} ) ;
+	} ;
+
+} ;
+
+
+
+// Same than .promisifyAll() but only return the callback args #1 instead of an array of args from #1 to #n
+Promise.promisify = ( nodeAsyncFn , thisBinding ) => {
+	// Little optimization here to have a promisified function as fast as possible
+	if ( thisBinding ) {
+		return ( ... args ) => {
+			return new Promise( ( resolve , reject ) => {
+				nodeAsyncFn.call( thisBinding , ... args , ( error , cbArg ) => {
+					if ( error ) {
+						if ( cbArg !== undefined && error instanceof Error ) { error.arg = cbArg ; }
+						reject( error ) ;
+					}
+					else {
+						resolve( cbArg ) ;
+					}
+				} ) ;
+			} ) ;
+		} ;
+	}
+
+	return function( ... args ) {
+		return new Promise( ( resolve , reject ) => {
+			nodeAsyncFn.call( this , ... args , ( error , cbArg ) => {
+				if ( error ) {
+					if ( cbArg !== undefined && error instanceof Error ) { error.arg = cbArg ; }
+					reject( error ) ;
+				}
+				else {
+					resolve( cbArg ) ;
+				}
+			} ) ;
+		} ) ;
+	} ;
+} ;
+
+
+
+/*
+	Intercept each decoratee resolve/reject.
+*/
+Promise.interceptor = ( asyncFn , interceptor , errorInterceptor , thisBinding ) => {
+	if ( typeof errorInterceptor !== 'function' ) {
+		thisBinding = errorInterceptor ;
+		errorInterceptor = noop ;
+	}
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			maybePromise = asyncFn.call( localThis , ... args ) ;
+
+		Promise.resolve( maybePromise ).then(
+			value => interceptor.call( localThis , value ) ,
+			error => errorInterceptor.call( localThis , error )
+		) ;
+
+		return maybePromise ;
+	} ;
+} ;
+
+
+
+/*
+	Run only once, return always the same promise.
+*/
+Promise.once = ( asyncFn , thisBinding ) => {
+	var functionInstance = null ,	// instance when not called as an object's method but a regular function ('this' is undefined)
+		instanceMap = new WeakMap() ;
+
+	const getInstance = ( localThis ) => {
+		var instance = localThis ? instanceMap.get( localThis ) : functionInstance ;
+		if ( instance ) { return instance ; }
+
+		instance = {
+			triggered: false ,
+			result: undefined
+		} ;
+
+		if ( localThis ) { instanceMap.set( localThis , instance ) ; }
+		else { functionInstance = instance ; }
+
+		return instance ;
+	} ;
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			instance = getInstance( localThis ) ;
+
+		if ( ! instance.triggered ) {
+			instance.triggered = true ;
+			instance.result = asyncFn.call( localThis , ... args ) ;
+		}
+
+		return instance.result ;
+	} ;
+} ;
+
+
+
+/*
+	The decoratee execution does not overlap, multiple calls are serialized.
+*/
+Promise.serialize = ( asyncFn , thisBinding ) => {
+	var functionInstance = null ,	// instance when not called as an object's method but a regular function ('this' is undefined)
+		instanceMap = new WeakMap() ;
+
+	const getInstance = ( localThis ) => {
+		var instance = localThis ? instanceMap.get( localThis ) : functionInstance ;
+		if ( instance ) { return instance ; }
+
+		instance = { lastPromise: Promise.resolve() } ;
+
+		if ( localThis ) { instanceMap.set( localThis , instance ) ; }
+		else { functionInstance = instance ; }
+
+		return instance ;
+	} ;
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			instance = getInstance( localThis ) ,
+			promise = new Promise() ;
+
+		instance.lastPromise.finally( () => {
+			Promise.propagate( asyncFn.call( localThis , ... args ) , promise ) ;
+		} ) ;
+
+		instance.lastPromise = promise ;
+
+		return promise ;
+	} ;
+} ;
+
+
+
+/*
+	It does nothing if the decoratee is still in progress, but it returns the promise of the action in progress.
+*/
+Promise.debounce = ( asyncFn , thisBinding ) => {
+	var functionInstance = null ,	// instance when not called as an object's method but a regular function ('this' is undefined)
+		instanceMap = new WeakMap() ;
+
+	const getInstance = ( localThis ) => {
+		var instance = localThis ? instanceMap.get( localThis ) : functionInstance ;
+		if ( instance ) { return instance ; }
+
+		instance = { inProgress: null } ;
+
+		if ( localThis ) { instanceMap.set( localThis , instance ) ; }
+		else { functionInstance = instance ; }
+
+		return instance ;
+	} ;
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			instance = getInstance( localThis ) ;
+
+		if ( instance.inProgress ) { return instance.inProgress ; }
+
+		let inProgress = instance.inProgress = asyncFn.call( localThis , ... args ) ;
+		Promise.finally( inProgress , () => instance.inProgress = null ) ;
+		return inProgress ;
+	} ;
+} ;
+
+
+
+/*
+	Like .debounce(), but subsequent call continue to return the last promise for some extra time after it resolved.
+*/
+Promise.debounceDelay = ( delay , asyncFn , thisBinding ) => {
+	var functionInstance = null ,	// instance when not called as an object's method but a regular function ('this' is undefined)
+		instanceMap = new WeakMap() ;
+
+	const getInstance = ( localThis ) => {
+		var instance = localThis ? instanceMap.get( localThis ) : functionInstance ;
+		if ( instance ) { return instance ; }
+
+		instance = { inProgress: null } ;
+
+		if ( localThis ) { instanceMap.set( localThis , instance ) ; }
+		else { functionInstance = instance ; }
+
+		return instance ;
+	} ;
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			instance = getInstance( localThis ) ;
+
+		if ( instance.inProgress ) { return instance.inProgress ; }
+
+		let inProgress = instance.inProgress = asyncFn.call( localThis , ... args ) ;
+		Promise.finally( inProgress , () => setTimeout( () => instance.inProgress = null , delay ) ) ;
+		return inProgress ;
+	} ;
+} ;
+
+
+
+/*
+	debounceNextTick( [asyncFn|syncFn] , thisBinding ) => {
+
+	It does nothing until the next tick.
+	The decoratee is called only once with the arguments of the last decorator call.
+	The function argument can be sync or async.
+
+	The use case is can be some niche case of .update()/.refresh()/.redraw() functions.
+*/
+Promise.debounceNextTick = ( asyncFn , thisBinding ) => {
+	var inWrapper = null ,
+		outWrapper = null ,
+		waitFn = null ,
+		functionInstance = null ,	// instance when not called as an object's method but a regular function ('this' is undefined)
+		instanceMap = new WeakMap() ;
+
+	const getInstance = ( localThis ) => {
+		var instance = localThis ? instanceMap.get( localThis ) : functionInstance ;
+		if ( instance ) { return instance ; }
+
+		instance = {
+			inProgress: null ,
+			waitingNextTick: false ,
+			currentUpdateWith: null ,
+			currentUpdatePromise: null ,
+			nextUpdateWith: null ,
+			nextUpdatePromise: null
+		} ;
+
+		if ( localThis ) { instanceMap.set( localThis , instance ) ; }
+		else { functionInstance = instance ; }
+
+		return instance ;
+	} ;
+
+
+	const nextUpdate = function() {
+		var instance = getInstance( this ) ;
+		instance.inProgress = instance.currentUpdatePromise = null ;
+
+		if ( instance.nextUpdateWith ) {
+			let args = instance.nextUpdateWith ;
+			instance.nextUpdateWith = null ;
+			let sharedPromise = instance.nextUpdatePromise ;
+			instance.nextUpdatePromise = null ;
+
+			instance.inProgress = inWrapper.call( this , args ) ;
+			// Forward the result to the pending promise
+			Promise.propagate( instance.inProgress , sharedPromise ) ;
+		}
+	} ;
+
+
+	inWrapper = function( args ) {
+		var instance = getInstance( this ) ;
+
+		instance.inProgress = new Promise() ;
+		instance.currentUpdateWith = args ;
+		instance.waitingNextTick = true ;
+
+		Promise.nextTick( () => {
+			instance.waitingNextTick = false ;
+			let maybePromise = asyncFn.call( this , ... instance.currentUpdateWith ) ;
+
+			if ( Promise.isThenable( maybePromise ) ) {
+				instance.currentUpdatePromise = maybePromise ;
+				Promise.finally( maybePromise , nextUpdate.bind( this ) ) ;
+				Promise.propagate( maybePromise , instance.inProgress ) ;
+			}
+			else {
+				// the function was synchronous
+				instance.currentUpdatePromise = null ;
+				instance.inProgress.resolve( maybePromise ) ;
+				nextUpdate.call( this ) ;
+			}
+		} ) ;
+
+		return instance.inProgress ;
+	} ;
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			instance = getInstance( localThis ) ;
+
+		if ( instance.waitingNextTick ) {
+			instance.currentUpdateWith = args ;
+			return instance.inProgress ;
+		}
+
+		if ( instance.currentUpdatePromise ) {
+			if ( ! instance.nextUpdatePromise ) { instance.nextUpdatePromise = new Promise() ; }
+			instance.nextUpdateWith = args ;
+			return instance.nextUpdatePromise ;
+		}
+
+		return inWrapper.call( localThis , args ) ;
+	} ;
+} ;
+
+
+
+/*
+	debounceUpdate( [options] , asyncFn , thisBinding ) => {
+
+	It does nothing if the decoratee is still in progress.
+	Instead, the decoratee is called again after finishing once and only once, if it was tried one or more time during its progress.
+	In case of multiple calls, the arguments of the last call will be used.
+
+	The use case is .update()/.refresh()/.redraw() functions.
+
+	If 'options' is given, it is an object, with:
+		* delay: `number` a delay before calling again the decoratee
+		* delayFn: async `function` called before calling again the decoratee
+		* waitFn: async `function` called before calling the decoratee (even the first try), use-case: Window.requestAnimationFrame()
+*/
+Promise.debounceUpdate = ( options , asyncFn , thisBinding ) => {
+	var inWrapper = null ,
+		outWrapper = null ,
+		delay = 0 ,
+		delayFn = null ,
+		waitFn = null ,
+		functionInstance = null ,	// instance when not called as an object's method but a regular function ('this' is undefined)
+		instanceMap = new WeakMap() ;
+
+	// Manage arguments
+	if ( typeof options === 'function' ) {
+		thisBinding = asyncFn ;
+		asyncFn = options ;
+	}
+	else {
+		if ( typeof options.delay === 'number' ) { delay = options.delay ; }
+		if ( typeof options.delayFn === 'function' ) { delayFn = options.delayFn ; }
+
+		if ( options.waitNextTick ) { waitFn = Promise.resolveNextTick ; }
+		else if ( typeof options.waitFn === 'function' ) { waitFn = options.waitFn ; }
+	}
+
+
+	const getInstance = ( localThis ) => {
+		var instance = localThis ? instanceMap.get( localThis ) : functionInstance ;
+		if ( instance ) { return instance ; }
+
+		instance = {
+			inProgress: null ,
+			waitInProgress: null ,
+			currentUpdateWith: null ,
+			currentUpdatePromise: null ,
+			nextUpdateWith: null ,
+			nextUpdatePromise: null
+		} ;
+
+		if ( localThis ) { instanceMap.set( localThis , instance ) ; }
+		else { functionInstance = instance ; }
+
+		return instance ;
+	} ;
+
+
+	const nextUpdate = function() {
+		var instance = getInstance( this ) ;
+		instance.inProgress = instance.currentUpdatePromise = null ;
+
+		if ( instance.nextUpdateWith ) {
+			let args = instance.nextUpdateWith ;
+			instance.nextUpdateWith = null ;
+			let sharedPromise = instance.nextUpdatePromise ;
+			instance.nextUpdatePromise = null ;
+
+			instance.inProgress = inWrapper.call( this , args ) ;
+			// Forward the result to the pending promise
+			Promise.propagate( instance.inProgress , sharedPromise ) ;
+		}
+	} ;
+
+
+	// Build outWrapper
+	if ( delayFn ) {
+		outWrapper = function() {
+			delayFn().then( nextUpdate.bind( this ) ) ;
+		} ;
+	}
+	else if ( delay ) {
+		outWrapper = function() {
+			setTimeout( nextUpdate.bind( this ) , delay ) ;
+		} ;
+	}
+	else {
+		outWrapper = nextUpdate ;
+	}
+
+
+	if ( waitFn ) {
+		inWrapper = function( args ) {
+			var instance = getInstance( this ) ;
+
+			instance.inProgress = new Promise() ;
+			instance.currentUpdateWith = args ;
+			instance.waitInProgress = waitFn() ;
+
+			Promise.finally( instance.waitInProgress , () => {
+				instance.waitInProgress = null ;
+				instance.currentUpdatePromise = asyncFn.call( this , ... instance.currentUpdateWith ) ;
+				Promise.finally( instance.currentUpdatePromise , outWrapper.bind( this ) ) ;
+				Promise.propagate( instance.currentUpdatePromise , instance.inProgress ) ;
+			} ) ;
+
+			return instance.inProgress ;
+		} ;
+
+		return function( ... args ) {
+			var localThis = thisBinding || this ,
+				instance = getInstance( localThis ) ;
+
+			if ( instance.waitInProgress ) {
+				instance.currentUpdateWith = args ;
+				return instance.inProgress ;
+			}
+
+			if ( instance.currentUpdatePromise ) {
+				if ( ! instance.nextUpdatePromise ) { instance.nextUpdatePromise = new Promise() ; }
+				instance.nextUpdateWith = args ;
+				return instance.nextUpdatePromise ;
+			}
+
+			return inWrapper.call( localThis , args ) ;
+		} ;
+	}
+
+
+	// Variant without a waitFn
+
+	inWrapper = function( args ) {
+		var instance = getInstance( this ) ;
+
+		instance.inProgress = asyncFn.call( this , ... args ) ;
+		Promise.finally( instance.inProgress , outWrapper.bind( this ) ) ;
+		return instance.inProgress ;
+	} ;
+
+	return function( ... args ) {
+		var localThis = thisBinding || this ,
+			instance = getInstance( localThis ) ;
+
+		if ( instance.inProgress ) {
+			if ( ! instance.nextUpdatePromise ) { instance.nextUpdatePromise = new Promise() ; }
+			instance.nextUpdateWith = args ;
+			return instance.nextUpdatePromise ;
+		}
+
+		return inWrapper.call( localThis , args ) ;
+	} ;
+} ;
+
+
+
+// Used to ensure that the sync is done immediately if not busy
+Promise.NO_DELAY = {} ;
+
+// Used to ensure that the sync is done immediately if not busy, but for the first of a batch
+Promise.BATCH_NO_DELAY = {} ;
+
+/*
+	Debounce for synchronization algorithm.
+	Get two functions, one for getting from upstream, one for a full sync with upstream (getting AND updating).
+	No operation overlap for a given resourceId.
+	Depending on the configuration, it is either like .debounce() or like .debounceUpdate().
+
+	*Params:
+		fn: the function
+		thisBinding: the this binding, if any
+		delay: the minimum delay between to call
+			for get: nothing is done is the delay is not met, simply return the last promise
+			for update/fullSync, it waits for that delay before synchronizing again
+		onDebounce: *ONLY* for GET ATM, a callback called when debounced
+*/
+Promise.debounceSync = ( getParams , fullSyncParams ) => {
+	var perResourceData = new Map() ;
+
+	const getResourceData = resourceId => {
+		var resourceData = perResourceData.get( resourceId ) ;
+
+		if ( ! resourceData ) {
+			resourceData = {
+				inProgress: null ,
+				inProgressIsFull: null ,
+				last: null ,				// Get or full sync promise
+				lastTime: null ,			// Get or full sync time
+				lastFullSync: null ,		// last full sync promise
+				lastFullSyncTime: null ,	// last full sync time
+				nextFullSyncPromise: null ,	// the promise for the next fullSync iteration
+				nextFullSyncWith: null , 	// the 'this' and arguments for the next fullSync iteration
+				noDelayBatches: new Set()		// only the first of the batch has no delay
+			} ;
+
+			perResourceData.set( resourceId , resourceData ) ;
+		}
+
+		return resourceData ;
+	} ;
+
+
+	const outWrapper = ( resourceData , level ) => {
+		// level 2: fullSync, 1: get, 0: nothing but a delay
+		var delta , args , sharedPromise , now = new Date() ;
+		//lastTime = resourceData.lastTime , lastFullSyncTime = resourceData.lastFullSyncTime ;
+
+		resourceData.inProgress = null ;
+
+		if ( level >= 2 ) { resourceData.lastFullSyncTime = resourceData.lastTime = now ; }
+		else if ( level >= 1 ) { resourceData.lastTime = now ; }
+
+		if ( resourceData.nextFullSyncWith ) {
+			if ( fullSyncParams.delay && resourceData.lastFullSyncTime && ( delta = now - resourceData.lastFullSyncTime - fullSyncParams.delay ) < 0 ) {
+				resourceData.inProgress = Promise.resolveTimeout( - delta + 1 ) ;	// Strangely, sometime it is trigerred 1ms too soon
+				resourceData.inProgress.finally( () => outWrapper( resourceData , 0 ) ) ;
+				return resourceData.nextFullSyncPromise ;
+			}
+
+			args = resourceData.nextFullSyncWith ;
+			resourceData.nextFullSyncWith = null ;
+			sharedPromise = resourceData.nextFullSyncPromise ;
+			resourceData.nextFullSyncPromise = null ;
+
+			// Call the fullSyncParams.fn again
+			resourceData.lastFullSync = resourceData.last = resourceData.inProgress = fullSyncParams.fn.call( ... args ) ;
+
+			// Forward the result to the pending promise
+			Promise.propagate( resourceData.inProgress , sharedPromise ) ;
+
+			// BTW, trigger again the outWrapper
+			Promise.finally( resourceData.inProgress , () => outWrapper( resourceData , 2 ) ) ;
+
+			return resourceData.inProgress ;
+		}
+	} ;
+
+	const getInWrapper = function( resourceId , ... args ) {
+		var noDelay = false ,
+			localThis = getParams.thisBinding || this ,
+			resourceData = getResourceData( resourceId ) ;
+
+		if ( args[ 0 ] === Promise.NO_DELAY ) {
+			noDelay = true ;
+			args.shift() ;
+		}
+		else if ( args[ 0 ] === Promise.BATCH_NO_DELAY ) {
+			args.shift() ;
+			let batchId = args.shift() ;
+			if ( ! resourceData.noDelayBatches.has( batchId ) ) {
+				resourceData.noDelayBatches.add( batchId ) ;
+				noDelay = true ;
+			}
+		}
+
+		if ( resourceData.inProgress ) { return resourceData.inProgress ; }
+
+		if ( ! noDelay && getParams.delay && resourceData.lastTime && new Date() - resourceData.lastTime < getParams.delay ) {
+			if ( typeof getParams.onDebounce === 'function' ) { getParams.onDebounce( resourceId , ... args ) ; }
+			return resourceData.last ;
+		}
+
+		resourceData.last = resourceData.inProgress = getParams.fn.call( localThis , resourceId , ... args ) ;
+		resourceData.inProgressIsFull = false ;
+		Promise.finally( resourceData.inProgress , () => outWrapper( resourceData , 1 ) ) ;
+		return resourceData.inProgress ;
+	} ;
+
+	const fullSyncInWrapper = function( resourceId , ... args ) {
+		var delta ,
+			noDelay = false ,
+			localThis = fullSyncParams.thisBinding || this ,
+			resourceData = getResourceData( resourceId ) ;
+
+		if ( args[ 0 ] === Promise.NO_DELAY ) {
+			noDelay = true ;
+			args.shift() ;
+		}
+		else if ( args[ 0 ] === Promise.BATCH_NO_DELAY ) {
+			args.shift() ;
+			let batchId = args.shift() ;
+			if ( ! resourceData.noDelayBatches.has( batchId ) ) {
+				resourceData.noDelayBatches.add( batchId ) ;
+				noDelay = true ;
+			}
+		}
+
+		if ( ! resourceData.inProgress && ! noDelay && fullSyncParams.delay && resourceData.lastFullSyncTime && ( delta = new Date() - resourceData.lastFullSyncTime - fullSyncParams.delay ) < 0 ) {
+			resourceData.inProgress = Promise.resolveTimeout( - delta + 1 ) ;	// Strangely, sometime it is trigerred 1ms too soon
+			Promise.finally( resourceData.inProgress , () => outWrapper( resourceData , 0 ) ) ;
+		}
+
+		if ( resourceData.inProgress ) {
+			// No difference between in-progress is 'get' or 'fullSync'
+			if ( ! resourceData.nextFullSyncPromise ) { resourceData.nextFullSyncPromise = new Promise() ; }
+			resourceData.nextFullSyncWith = [ localThis , resourceId , ... args ] ;
+			return resourceData.nextFullSyncPromise ;
+		}
+
+		resourceData.lastFullSync = resourceData.last = resourceData.inProgress = fullSyncParams.fn.call( localThis , resourceId , ... args ) ;
+		Promise.finally( resourceData.inProgress , () => outWrapper( resourceData , 2 ) ) ;
+		return resourceData.inProgress ;
+	} ;
+
+	return [ getInWrapper , fullSyncInWrapper ] ;
+} ;
+
+
+
+// The call reject with a timeout error if it takes too much time
+Promise.timeout = ( timeout , asyncFn , thisBinding ) => {
+	return function( ... args ) {
+		var promise = new Promise() ;
+		Promise.propagate( asyncFn.call( thisBinding || this , ... args ) , promise ) ;
+		setTimeout( () => promise.reject( new Error( 'Timeout' ) ) , timeout ) ;
+		return promise ;
+	} ;
+} ;
+
+
+
+// Like .timeout(), but here the timeout value is not passed at creation, but as the first arg of each call
+Promise.variableTimeout = ( asyncFn , thisBinding ) => {
+	return function( timeout , ... args ) {
+		var promise = new Promise() ;
+		Promise.propagate( asyncFn.call( thisBinding || this , ... args ) , promise ) ;
+		setTimeout( () => promise.reject( new Error( 'Timeout' ) ) , timeout ) ;
+		return promise ;
+	} ;
+} ;
+
+
+},{"./seventh.js":74}],72:[function(require,module,exports){
+(function (process){(function (){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+
+
+
+/*
+	Asynchronously exit.
+
+	Wait for all listeners of the 'asyncExit' event (on the 'process' object) to have called their callback.
+	The listeners receive the exit code about to be produced and a completion callback.
+*/
+
+var exitInProgress = false ;
+
+Promise.asyncExit = function( exitCode , timeout ) {
+	// Already exiting? no need to call it twice!
+	if ( exitInProgress ) { return ; }
+
+	exitInProgress = true ;
+
+	var listeners = process.listeners( 'asyncExit' ) ;
+
+	if ( ! listeners.length ) { process.exit( exitCode ) ; return ; }
+
+	if ( timeout === undefined ) { timeout = 1000 ; }
+
+	const callListener = listener => {
+
+		if ( listener.length < 3 ) {
+			// This listener does not have a callback, it is interested in the event but does not need to perform critical stuff.
+			// E.g. a server will not accept connection or data anymore, but doesn't need cleanup.
+			listener( exitCode , timeout ) ;
+			return Promise.dummy ;
+		}
+
+		// This listener have a callback, it probably has critical stuff to perform before exiting.
+		// E.g. a server that needs to gracefully exit will not accept connection or data anymore,
+		// but still want to deliver request in progress.
+		return new Promise( resolve => {
+			listener( exitCode , timeout , () => { resolve() ; } ) ;
+		} ) ;
+
+	} ;
+
+	// We don't care about errors here... We are exiting!
+	Promise.map( listeners , callListener )
+		.finally( () => process.exit( exitCode ) ) ;
+
+	// Quit anyway if it's too long
+	setTimeout( () => process.exit( exitCode ) , timeout ) ;
+} ;
+
+
+
+// A timeout that ensure a task get the time to perform its action (when there are CPU-bound tasks)
+Promise.resolveSafeTimeout = function( timeout , value ) {
+	return new Promise( resolve => {
+		setTimeout( () => {
+			setTimeout( () => {
+				setTimeout( () => {
+					setTimeout( () => resolve( value ) , 0 ) ;
+				} , timeout / 2 ) ;
+			} , timeout / 2 ) ;
+		} , 0 ) ;
+	} ) ;
+} ;
+
+
+}).call(this)}).call(this,require('_process'))
+},{"./seventh.js":74,"_process":91}],73:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+
+
+
+/*
+	This parasite the native promise, bringing some of seventh features into them.
+*/
+
+Promise.parasite = () => {
+
+	var compatibleProtoFn = [
+		'tap' , 'tapCatch' , 'finally' ,
+		'fatal' , 'done' ,
+		'callback' , 'callbackAll'
+	] ;
+
+	compatibleProtoFn.forEach( fn => Promise.Native.prototype[ fn ] = Promise.prototype[ fn ] ) ;
+	Promise.Native.prototype._then = Promise.Native.prototype.then ;
+} ;
+
+
+},{"./seventh.js":74}],74:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const seventh = require( './core.js' ) ;
+module.exports = seventh ;
+
+// The order matters
+require( './batch.js' ) ;
+require( './wrapper.js' ) ;
+require( './decorators.js' ) ;
+require( './Queue.js' ) ;
+require( './api.js' ) ;
+require( './parasite.js' ) ;
+require( './misc.js' ) ;
+
+
+},{"./Queue.js":67,"./api.js":68,"./batch.js":69,"./core.js":70,"./decorators.js":71,"./misc.js":72,"./parasite.js":73,"./wrapper.js":75}],75:[function(require,module,exports){
+/*
+	Seventh
+
+	Copyright (c) 2017 - 2020 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const Promise = require( './seventh.js' ) ;
+
+
+
+Promise.timeLimit = ( timeout , asyncFnOrPromise ) => {
+	return new Promise( ( resolve , reject ) => {
+		if ( typeof asyncFnOrPromise === 'function' ) { asyncFnOrPromise = asyncFnOrPromise() ; }
+		Promise.resolve( asyncFnOrPromise ).then( resolve , reject ) ;
+		setTimeout( () => reject( new Error( "Timeout" ) ) , timeout ) ;
+	} ) ;
+} ;
+
+
+
+/*
+	options:
+		retries: number of retry
+		coolDown: time before retrying
+		raiseFactor: time multiplier for each successive cool down
+		maxCoolDown: maximum cool-down, the raising time is capped to this value
+		timeout: time before assuming it has failed, 0 = no time limit
+		catch: `function` (optional) if absent, the function is always retried until it reaches the limit,
+			if present, that catch-function is used like a normal promise catch block, the function is retry
+			only if the catch-function does not throw or return a rejecting promise
+*/
+Promise.retry = ( options , asyncFn ) => {
+	var count = options.retries || 1 ,
+		coolDown = options.coolDown || 0 ,
+		raiseFactor = options.raiseFactor || 1 ,
+		maxCoolDown = options.maxCoolDown || Infinity ,
+		timeout = options.timeout || 0 ,
+		catchFn = options.catch || null ;
+
+	const oneTry = () => {
+		return ( timeout ? Promise.timeLimit( timeout , asyncFn ) : asyncFn() ).catch( error => {
+			if ( ! count -- ) { throw error ; }
+
+			var currentCoolDown = coolDown ;
+			coolDown = Math.min( coolDown * raiseFactor , maxCoolDown ) ;
+
+			if ( catchFn ) {
+				// Call the custom catch function
+				// Let it crash, if it throw we are already in a .catch() block
+				return Promise.resolve( catchFn( error ) ).then( () => Promise.resolveTimeout( currentCoolDown ).then( oneTry ) ) ;
+			}
+
+			return Promise.resolveTimeout( currentCoolDown ).then( oneTry ) ;
+		} ) ;
+	} ;
+
+	return oneTry() ;
+} ;
+
+
+
+// Resolve once an event is fired
+Promise.onceEvent = ( emitter , eventName ) => {
+	return new Promise( resolve => emitter.once( eventName , resolve ) ) ;
+} ;
+
+
+
+// Resolve once an event is fired, resolve with an array of arguments
+Promise.onceEventAll = ( emitter , eventName ) => {
+	return new Promise( resolve => emitter.once( eventName , ( ... args ) => resolve( args ) ) ) ;
+} ;
+
+
+
+// Resolve once an event is fired, or reject on error
+Promise.onceEventOrError = ( emitter , eventName , excludeEvents , _internalAllArgs = false ) => {
+	return new Promise( ( resolve , reject ) => {
+		var altRejects ;
+
+		// We care about removing listener, especially 'error', because if an error kick in after, it should throw because there is no listener
+		var resolve_ = ( ... args ) => {
+			emitter.removeListener( 'error' , reject_ ) ;
+
+			if ( altRejects ) {
+				for ( let event in altRejects ) {
+					emitter.removeListener( event , altRejects[ event ] ) ;
+				}
+			}
+
+			resolve( _internalAllArgs ? args : args[ 0 ] ) ;
+		} ;
+
+		var reject_ = arg => {
+			emitter.removeListener( eventName , resolve_ ) ;
+
+			if ( altRejects ) {
+				for ( let event in altRejects ) {
+					emitter.removeListener( event , altRejects[ event ] ) ;
+				}
+			}
+
+			reject( arg ) ;
+		} ;
+
+		emitter.once( eventName , resolve_ ) ;
+		emitter.once( 'error' , reject_ ) ;
+
+		if ( excludeEvents ) {
+			if ( ! Array.isArray( excludeEvents ) ) { excludeEvents = [ excludeEvents ] ; }
+
+			altRejects = {} ;
+
+			excludeEvents.forEach( event => {
+				var altReject = ( ... args ) => {
+					emitter.removeListener( 'error' , reject_ ) ;
+					emitter.removeListener( eventName , resolve_ ) ;
+
+					var error = new Error( "Received an excluded event: " + event ) ;
+					error.event = event ;
+					error.eventArgs = args ;
+					reject( error ) ;
+				} ;
+
+				emitter.once( event , altReject ) ;
+
+				altRejects[ event ] = altReject ;
+			} ) ;
+		}
+	} ) ;
+} ;
+
+
+
+// Resolve once an event is fired, or reject on error, resolve with an array of arguments, reject with the first argument
+Promise.onceEventAllOrError = ( emitter , eventName , excludeEvents ) => {
+	return Promise.onceEventOrError( emitter , eventName , excludeEvents , true ) ;
+} ;
+
+
+},{"./seventh.js":74}],76:[function(require,module,exports){
+arguments[4][32][0].apply(exports,arguments)
+},{"dup":32}],77:[function(require,module,exports){
 /*
 	Book Source
 
@@ -34898,7 +38014,7 @@ emoji.splitIntoKeywords = ( name , noSimplify = false ) => {
 } ;
 
 
-},{"./english.js":67,"./json-data/emoji-char-to-canonical-name.json":69,"./json-data/emoji-keyword-to-charlist.json":70,"./latinize.js":72}],67:[function(require,module,exports){
+},{"./english.js":78,"./json-data/emoji-char-to-canonical-name.json":80,"./json-data/emoji-keyword-to-charlist.json":81,"./latinize.js":83}],78:[function(require,module,exports){
 /*
 	Book Source
 
@@ -34989,15 +38105,15 @@ english.undoPresentParticiple = word => {
 } ;
 
 
-},{}],68:[function(require,module,exports){
-arguments[4][32][0].apply(exports,arguments)
-},{"dup":32}],69:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
+arguments[4][33][0].apply(exports,arguments)
+},{"dup":33}],80:[function(require,module,exports){
 module.exports={"😀":"grinning-face","😃":"grinning-face-with-big-eyes","😄":"grinning-face-with-smiling-eyes","😁":"beaming-face-with-smiling-eyes","😆":"grinning-squinting-face","😅":"grinning-face-with-sweat","🤣":"rolling-on-the-floor-laughing","😂":"face-with-tears-of-joy","🙂":"slightly-smiling-face","🙃":"upside-down-face","🫠":"melting-face","😉":"winking-face","😊":"smiling-face-with-smiling-eyes","😇":"smiling-face-with-halo","🥰":"smiling-face-with-hearts","😍":"smiling-face-with-heart-eyes","🤩":"star-struck","😘":"face-blowing-a-kiss","😗":"kissing-face","☺️":"smiling-face","😚":"kissing-face-with-closed-eyes","😙":"kissing-face-with-smiling-eyes","🥲":"smiling-face-with-tear","😋":"face-savoring-food","😛":"face-with-tongue","😜":"winking-face-with-tongue","🤪":"zany-face","😝":"squinting-face-with-tongue","🤑":"money-mouth-face","🤗":"smiling-face-with-open-hands","🤭":"face-with-hand-over-mouth","🫢":"face-with-open-eyes-and-hand-over-mouth","🫣":"face-with-peeking-eye","🤫":"shushing-face","🤔":"thinking-face","🫡":"saluting-face","🤐":"zipper-mouth-face","🤨":"face-with-raised-eyebrow","😐":"neutral-face","😑":"expressionless-face","😶":"face-without-mouth","🫥":"dotted-line-face","😶‍🌫️":"face-in-clouds","😏":"smirking-face","😒":"unamused-face","🙄":"face-with-rolling-eyes","😬":"grimacing-face","😮‍💨":"face-exhaling","🤥":"lying-face","🫨":"shaking-face","😌":"relieved-face","😔":"pensive-face","😪":"sleepy-face","🤤":"drooling-face","😴":"sleeping-face","😷":"face-with-medical-mask","🤒":"face-with-thermometer","🤕":"face-with-head-bandage","🤢":"nauseated-face","🤮":"face-vomiting","🤧":"sneezing-face","🥵":"hot-face","🥶":"cold-face","🥴":"woozy-face","😵":"face-with-crossed-out-eyes","😵‍💫":"face-with-spiral-eyes","🤯":"exploding-head","🤠":"cowboy-hat-face","🥳":"partying-face","🥸":"disguised-face","😎":"smiling-face-with-sunglasses","🤓":"nerd-face","🧐":"face-with-monocle","😕":"confused-face","🫤":"face-with-diagonal-mouth","😟":"worried-face","🙁":"slightly-frowning-face","☹️":"frowning-face","😮":"face-with-open-mouth","😯":"hushed-face","😲":"astonished-face","😳":"flushed-face","🥺":"pleading-face","🥹":"face-holding-back-tears","😦":"frowning-face-with-open-mouth","😧":"anguished-face","😨":"fearful-face","😰":"anxious-face-with-sweat","😥":"sad-but-relieved-face","😢":"crying-face","😭":"loudly-crying-face","😱":"face-screaming-in-fear","😖":"confounded-face","😣":"persevering-face","😞":"disappointed-face","😓":"downcast-face-with-sweat","😩":"weary-face","😫":"tired-face","🥱":"yawning-face","😤":"face-with-steam-from-nose","😡":"enraged-face","😠":"angry-face","🤬":"face-with-symbols-on-mouth","😈":"smiling-face-with-horns","👿":"angry-face-with-horns","💀":"skull","☠️":"skull-and-crossbones","💩":"pile-of-poo","🤡":"clown-face","👹":"ogre","👺":"goblin","👻":"ghost","👽":"alien","👾":"alien-monster","🤖":"robot","😺":"grinning-cat","😸":"grinning-cat-with-smiling-eyes","😹":"cat-with-tears-of-joy","😻":"smiling-cat-with-heart-eyes","😼":"cat-with-wry-smile","😽":"kissing-cat","🙀":"weary-cat","😿":"crying-cat","😾":"pouting-cat","🙈":"see-no-evil-monkey","🙉":"hear-no-evil-monkey","🙊":"speak-no-evil-monkey","💌":"love-letter","💘":"heart-with-arrow","💝":"heart-with-ribbon","💖":"sparkling-heart","💗":"growing-heart","💓":"beating-heart","💞":"revolving-hearts","💕":"two-hearts","💟":"heart-decoration","❣️":"heart-exclamation","💔":"broken-heart","❤️‍🔥":"heart-on-fire","❤️‍🩹":"mending-heart","❤️":"red-heart","🩷":"pink-heart","🧡":"orange-heart","💛":"yellow-heart","💚":"green-heart","💙":"blue-heart","🩵":"light-blue-heart","💜":"purple-heart","🤎":"brown-heart","🖤":"black-heart","🩶":"grey-heart","🤍":"white-heart","💋":"kiss-mark","💯":"hundred-points","💢":"anger-symbol","💥":"collision","💫":"dizzy","💦":"sweat-droplets","💨":"dashing-away","🕳️":"hole","💬":"speech-balloon","👁️‍🗨️":"eye-in-speech-bubble","🗨️":"left-speech-bubble","🗯️":"right-anger-bubble","💭":"thought-balloon","💤":"zzz","👋":"waving-hand","🤚":"raised-back-of-hand","🖐️":"hand-with-fingers-splayed","✋":"raised-hand","🖖":"vulcan-salute","🫱":"rightwards-hand","🫲":"leftwards-hand","🫳":"palm-down-hand","🫴":"palm-up-hand","🫷":"leftwards-pushing-hand","🫸":"rightwards-pushing-hand","👌":"ok-hand","🤌":"pinched-fingers","🤏":"pinching-hand","✌️":"victory-hand","🤞":"crossed-fingers","🫰":"hand-with-index-finger-and-thumb-crossed","🤟":"love-you-gesture","🤘":"sign-of-the-horns","🤙":"call-me-hand","👈":"backhand-index-pointing-left","👉":"backhand-index-pointing-right","👆":"backhand-index-pointing-up","🖕":"middle-finger","👇":"backhand-index-pointing-down","☝️":"index-pointing-up","🫵":"index-pointing-at-the-viewer","👍":"thumbs-up","👎":"thumbs-down","✊":"raised-fist","👊":"oncoming-fist","🤛":"left-facing-fist","🤜":"right-facing-fist","👏":"clapping-hands","🙌":"raising-hands","🫶":"heart-hands","👐":"open-hands","🤲":"palms-up-together","🤝":"handshake","🙏":"folded-hands","✍️":"writing-hand","💅":"nail-polish","🤳":"selfie","💪":"flexed-biceps","🦾":"mechanical-arm","🦿":"mechanical-leg","🦵":"leg","🦶":"foot","👂":"ear","🦻":"ear-with-hearing-aid","👃":"nose","🧠":"brain","🫀":"anatomical-heart","🫁":"lungs","🦷":"tooth","🦴":"bone","👀":"eyes","👁️":"eye","👅":"tongue","👄":"mouth","🫦":"biting-lip","👶":"baby","🧒":"child","👦":"boy","👧":"girl","🧑":"person","👱":"person-blond-hair","👨":"man","🧔":"person-beard","🧔‍♂️":"man-beard","🧔‍♀️":"woman-beard","👨‍🦰":"man-red-hair","👨‍🦱":"man-curly-hair","👨‍🦳":"man-white-hair","👨‍🦲":"man-bald","👩":"woman","👩‍🦰":"woman-red-hair","🧑‍🦰":"person-red-hair","👩‍🦱":"woman-curly-hair","🧑‍🦱":"person-curly-hair","👩‍🦳":"woman-white-hair","🧑‍🦳":"person-white-hair","👩‍🦲":"woman-bald","🧑‍🦲":"person-bald","👱‍♀️":"woman-blond-hair","👱‍♂️":"man-blond-hair","🧓":"older-person","👴":"old-man","👵":"old-woman","🙍":"person-frowning","🙍‍♂️":"man-frowning","🙍‍♀️":"woman-frowning","🙎":"person-pouting","🙎‍♂️":"man-pouting","🙎‍♀️":"woman-pouting","🙅":"person-gesturing-no","🙅‍♂️":"man-gesturing-no","🙅‍♀️":"woman-gesturing-no","🙆":"person-gesturing-ok","🙆‍♂️":"man-gesturing-ok","🙆‍♀️":"woman-gesturing-ok","💁":"person-tipping-hand","💁‍♂️":"man-tipping-hand","💁‍♀️":"woman-tipping-hand","🙋":"person-raising-hand","🙋‍♂️":"man-raising-hand","🙋‍♀️":"woman-raising-hand","🧏":"deaf-person","🧏‍♂️":"deaf-man","🧏‍♀️":"deaf-woman","🙇":"person-bowing","🙇‍♂️":"man-bowing","🙇‍♀️":"woman-bowing","🤦":"person-facepalming","🤦‍♂️":"man-facepalming","🤦‍♀️":"woman-facepalming","🤷":"person-shrugging","🤷‍♂️":"man-shrugging","🤷‍♀️":"woman-shrugging","🧑‍⚕️":"health-worker","👨‍⚕️":"man-health-worker","👩‍⚕️":"woman-health-worker","🧑‍🎓":"student","👨‍🎓":"man-student","👩‍🎓":"woman-student","🧑‍🏫":"teacher","👨‍🏫":"man-teacher","👩‍🏫":"woman-teacher","🧑‍⚖️":"judge","👨‍⚖️":"man-judge","👩‍⚖️":"woman-judge","🧑‍🌾":"farmer","👨‍🌾":"man-farmer","👩‍🌾":"woman-farmer","🧑‍🍳":"cook","👨‍🍳":"man-cook","👩‍🍳":"woman-cook","🧑‍🔧":"mechanic","👨‍🔧":"man-mechanic","👩‍🔧":"woman-mechanic","🧑‍🏭":"factory-worker","👨‍🏭":"man-factory-worker","👩‍🏭":"woman-factory-worker","🧑‍💼":"office-worker","👨‍💼":"man-office-worker","👩‍💼":"woman-office-worker","🧑‍🔬":"scientist","👨‍🔬":"man-scientist","👩‍🔬":"woman-scientist","🧑‍💻":"technologist","👨‍💻":"man-technologist","👩‍💻":"woman-technologist","🧑‍🎤":"singer","👨‍🎤":"man-singer","👩‍🎤":"woman-singer","🧑‍🎨":"artist","👨‍🎨":"man-artist","👩‍🎨":"woman-artist","🧑‍✈️":"pilot","👨‍✈️":"man-pilot","👩‍✈️":"woman-pilot","🧑‍🚀":"astronaut","👨‍🚀":"man-astronaut","👩‍🚀":"woman-astronaut","🧑‍🚒":"firefighter","👨‍🚒":"man-firefighter","👩‍🚒":"woman-firefighter","👮":"police-officer","👮‍♂️":"man-police-officer","👮‍♀️":"woman-police-officer","🕵️":"detective","🕵️‍♂️":"man-detective","🕵️‍♀️":"woman-detective","💂":"guard","💂‍♂️":"man-guard","💂‍♀️":"woman-guard","🥷":"ninja","👷":"construction-worker","👷‍♂️":"man-construction-worker","👷‍♀️":"woman-construction-worker","🫅":"person-with-crown","🤴":"prince","👸":"princess","👳":"person-wearing-turban","👳‍♂️":"man-wearing-turban","👳‍♀️":"woman-wearing-turban","👲":"person-with-skullcap","🧕":"woman-with-headscarf","🤵":"person-in-tuxedo","🤵‍♂️":"man-in-tuxedo","🤵‍♀️":"woman-in-tuxedo","👰":"person-with-veil","👰‍♂️":"man-with-veil","👰‍♀️":"woman-with-veil","🤰":"pregnant-woman","🫃":"pregnant-man","🫄":"pregnant-person","🤱":"breast-feeding","👩‍🍼":"woman-feeding-baby","👨‍🍼":"man-feeding-baby","🧑‍🍼":"person-feeding-baby","👼":"baby-angel","🎅":"santa-claus","🤶":"mrs-claus","🧑‍🎄":"mx-claus","🦸":"superhero","🦸‍♂️":"man-superhero","🦸‍♀️":"woman-superhero","🦹":"supervillain","🦹‍♂️":"man-supervillain","🦹‍♀️":"woman-supervillain","🧙":"mage","🧙‍♂️":"man-mage","🧙‍♀️":"woman-mage","🧚":"fairy","🧚‍♂️":"man-fairy","🧚‍♀️":"woman-fairy","🧛":"vampire","🧛‍♂️":"man-vampire","🧛‍♀️":"woman-vampire","🧜":"merperson","🧜‍♂️":"merman","🧜‍♀️":"mermaid","🧝":"elf","🧝‍♂️":"man-elf","🧝‍♀️":"woman-elf","🧞":"genie","🧞‍♂️":"man-genie","🧞‍♀️":"woman-genie","🧟":"zombie","🧟‍♂️":"man-zombie","🧟‍♀️":"woman-zombie","🧌":"troll","💆":"person-getting-massage","💆‍♂️":"man-getting-massage","💆‍♀️":"woman-getting-massage","💇":"person-getting-haircut","💇‍♂️":"man-getting-haircut","💇‍♀️":"woman-getting-haircut","🚶":"person-walking","🚶‍♂️":"man-walking","🚶‍♀️":"woman-walking","🧍":"person-standing","🧍‍♂️":"man-standing","🧍‍♀️":"woman-standing","🧎":"person-kneeling","🧎‍♂️":"man-kneeling","🧎‍♀️":"woman-kneeling","🧑‍🦯":"person-with-white-cane","👨‍🦯":"man-with-white-cane","👩‍🦯":"woman-with-white-cane","🧑‍🦼":"person-in-motorized-wheelchair","👨‍🦼":"man-in-motorized-wheelchair","👩‍🦼":"woman-in-motorized-wheelchair","🧑‍🦽":"person-in-manual-wheelchair","👨‍🦽":"man-in-manual-wheelchair","👩‍🦽":"woman-in-manual-wheelchair","🏃":"person-running","🏃‍♂️":"man-running","🏃‍♀️":"woman-running","💃":"woman-dancing","🕺":"man-dancing","🕴️":"person-in-suit-levitating","👯":"people-with-bunny-ears","👯‍♂️":"men-with-bunny-ears","👯‍♀️":"women-with-bunny-ears","🧖":"person-in-steamy-room","🧖‍♂️":"man-in-steamy-room","🧖‍♀️":"woman-in-steamy-room","🧗":"person-climbing","🧗‍♂️":"man-climbing","🧗‍♀️":"woman-climbing","🤺":"person-fencing","🏇":"horse-racing","⛷️":"skier","🏂":"snowboarder","🏌️":"person-golfing","🏌️‍♂️":"man-golfing","🏌️‍♀️":"woman-golfing","🏄":"person-surfing","🏄‍♂️":"man-surfing","🏄‍♀️":"woman-surfing","🚣":"person-rowing-boat","🚣‍♂️":"man-rowing-boat","🚣‍♀️":"woman-rowing-boat","🏊":"person-swimming","🏊‍♂️":"man-swimming","🏊‍♀️":"woman-swimming","⛹️":"person-bouncing-ball","⛹️‍♂️":"man-bouncing-ball","⛹️‍♀️":"woman-bouncing-ball","🏋️":"person-lifting-weights","🏋️‍♂️":"man-lifting-weights","🏋️‍♀️":"woman-lifting-weights","🚴":"person-biking","🚴‍♂️":"man-biking","🚴‍♀️":"woman-biking","🚵":"person-mountain-biking","🚵‍♂️":"man-mountain-biking","🚵‍♀️":"woman-mountain-biking","🤸":"person-cartwheeling","🤸‍♂️":"man-cartwheeling","🤸‍♀️":"woman-cartwheeling","🤼":"people-wrestling","🤼‍♂️":"men-wrestling","🤼‍♀️":"women-wrestling","🤽":"person-playing-water-polo","🤽‍♂️":"man-playing-water-polo","🤽‍♀️":"woman-playing-water-polo","🤾":"person-playing-handball","🤾‍♂️":"man-playing-handball","🤾‍♀️":"woman-playing-handball","🤹":"person-juggling","🤹‍♂️":"man-juggling","🤹‍♀️":"woman-juggling","🧘":"person-in-lotus-position","🧘‍♂️":"man-in-lotus-position","🧘‍♀️":"woman-in-lotus-position","🛀":"person-taking-bath","🛌":"person-in-bed","🧑‍🤝‍🧑":"people-holding-hands","👭":"women-holding-hands","👫":"woman-and-man-holding-hands","👬":"men-holding-hands","💏":"kiss","👩‍❤️‍💋‍👨":"kiss-woman-man","👨‍❤️‍💋‍👨":"kiss-man-man","👩‍❤️‍💋‍👩":"kiss-woman-woman","💑":"couple-with-heart","👩‍❤️‍👨":"couple-with-heart-woman-man","👨‍❤️‍👨":"couple-with-heart-man-man","👩‍❤️‍👩":"couple-with-heart-woman-woman","👪":"family","👨‍👩‍👦":"family-man-woman-boy","👨‍👩‍👧":"family-man-woman-girl","👨‍👩‍👧‍👦":"family-man-woman-girl-boy","👨‍👩‍👦‍👦":"family-man-woman-boy-boy","👨‍👩‍👧‍👧":"family-man-woman-girl-girl","👨‍👨‍👦":"family-man-man-boy","👨‍👨‍👧":"family-man-man-girl","👨‍👨‍👧‍👦":"family-man-man-girl-boy","👨‍👨‍👦‍👦":"family-man-man-boy-boy","👨‍👨‍👧‍👧":"family-man-man-girl-girl","👩‍👩‍👦":"family-woman-woman-boy","👩‍👩‍👧":"family-woman-woman-girl","👩‍👩‍👧‍👦":"family-woman-woman-girl-boy","👩‍👩‍👦‍👦":"family-woman-woman-boy-boy","👩‍👩‍👧‍👧":"family-woman-woman-girl-girl","👨‍👦":"family-man-boy","👨‍👦‍👦":"family-man-boy-boy","👨‍👧":"family-man-girl","👨‍👧‍👦":"family-man-girl-boy","👨‍👧‍👧":"family-man-girl-girl","👩‍👦":"family-woman-boy","👩‍👦‍👦":"family-woman-boy-boy","👩‍👧":"family-woman-girl","👩‍👧‍👦":"family-woman-girl-boy","👩‍👧‍👧":"family-woman-girl-girl","🗣️":"speaking-head","👤":"bust-in-silhouette","👥":"busts-in-silhouette","🫂":"people-hugging","👣":"footprints","🐵":"monkey-face","🐒":"monkey","🦍":"gorilla","🦧":"orangutan","🐶":"dog-face","🐕":"dog","🦮":"guide-dog","🐕‍🦺":"service-dog","🐩":"poodle","🐺":"wolf","🦊":"fox","🦝":"raccoon","🐱":"cat-face","🐈":"cat","🐈‍⬛":"black-cat","🦁":"lion","🐯":"tiger-face","🐅":"tiger","🐆":"leopard","🐴":"horse-face","🫎":"moose","🫏":"donkey","🐎":"horse","🦄":"unicorn","🦓":"zebra","🦌":"deer","🦬":"bison","🐮":"cow-face","🐂":"ox","🐃":"water-buffalo","🐄":"cow","🐷":"pig-face","🐖":"pig","🐗":"boar","🐽":"pig-nose","🐏":"ram","🐑":"ewe","🐐":"goat","🐪":"camel","🐫":"two-hump-camel","🦙":"llama","🦒":"giraffe","🐘":"elephant","🦣":"mammoth","🦏":"rhinoceros","🦛":"hippopotamus","🐭":"mouse-face","🐁":"mouse","🐀":"rat","🐹":"hamster","🐰":"rabbit-face","🐇":"rabbit","🐿️":"chipmunk","🦫":"beaver","🦔":"hedgehog","🦇":"bat","🐻":"bear","🐻‍❄️":"polar-bear","🐨":"koala","🐼":"panda","🦥":"sloth","🦦":"otter","🦨":"skunk","🦘":"kangaroo","🦡":"badger","🐾":"paw-prints","🦃":"turkey","🐔":"chicken","🐓":"rooster","🐣":"hatching-chick","🐤":"baby-chick","🐥":"front-facing-baby-chick","🐦":"bird","🐧":"penguin","🕊️":"dove","🦅":"eagle","🦆":"duck","🦢":"swan","🦉":"owl","🦤":"dodo","🪶":"feather","🦩":"flamingo","🦚":"peacock","🦜":"parrot","🪽":"wing","🐦‍⬛":"black-bird","🪿":"goose","🐸":"frog","🐊":"crocodile","🐢":"turtle","🦎":"lizard","🐍":"snake","🐲":"dragon-face","🐉":"dragon","🦕":"sauropod","🦖":"t-rex","🐳":"spouting-whale","🐋":"whale","🐬":"dolphin","🦭":"seal","🐟":"fish","🐠":"tropical-fish","🐡":"blowfish","🦈":"shark","🐙":"octopus","🐚":"spiral-shell","🪸":"coral","🪼":"jellyfish","🐌":"snail","🦋":"butterfly","🐛":"bug","🐜":"ant","🐝":"honeybee","🪲":"beetle","🐞":"lady-beetle","🦗":"cricket","🪳":"cockroach","🕷️":"spider","🕸️":"spider-web","🦂":"scorpion","🦟":"mosquito","🪰":"fly","🪱":"worm","🦠":"microbe","💐":"bouquet","🌸":"cherry-blossom","💮":"white-flower","🪷":"lotus","🏵️":"rosette","🌹":"rose","🥀":"wilted-flower","🌺":"hibiscus","🌻":"sunflower","🌼":"blossom","🌷":"tulip","🪻":"hyacinth","🌱":"seedling","🪴":"potted-plant","🌲":"evergreen-tree","🌳":"deciduous-tree","🌴":"palm-tree","🌵":"cactus","🌾":"sheaf-of-rice","🌿":"herb","☘️":"shamrock","🍀":"four-leaf-clover","🍁":"maple-leaf","🍂":"fallen-leaf","🍃":"leaf-fluttering-in-wind","🪹":"empty-nest","🪺":"nest-with-eggs","🍄":"mushroom","🍇":"grapes","🍈":"melon","🍉":"watermelon","🍊":"tangerine","🍋":"lemon","🍌":"banana","🍍":"pineapple","🥭":"mango","🍎":"red-apple","🍏":"green-apple","🍐":"pear","🍑":"peach","🍒":"cherries","🍓":"strawberry","🫐":"blueberries","🥝":"kiwi-fruit","🍅":"tomato","🫒":"olive","🥥":"coconut","🥑":"avocado","🍆":"eggplant","🥔":"potato","🥕":"carrot","🌽":"ear-of-corn","🌶️":"hot-pepper","🫑":"bell-pepper","🥒":"cucumber","🥬":"leafy-green","🥦":"broccoli","🧄":"garlic","🧅":"onion","🥜":"peanuts","🫘":"beans","🌰":"chestnut","🫚":"ginger-root","🫛":"pea-pod","🍞":"bread","🥐":"croissant","🥖":"baguette-bread","🫓":"flatbread","🥨":"pretzel","🥯":"bagel","🥞":"pancakes","🧇":"waffle","🧀":"cheese-wedge","🍖":"meat-on-bone","🍗":"poultry-leg","🥩":"cut-of-meat","🥓":"bacon","🍔":"hamburger","🍟":"french-fries","🍕":"pizza","🌭":"hot-dog","🥪":"sandwich","🌮":"taco","🌯":"burrito","🫔":"tamale","🥙":"stuffed-flatbread","🧆":"falafel","🥚":"egg","🍳":"cooking","🥘":"shallow-pan-of-food","🍲":"pot-of-food","🫕":"fondue","🥣":"bowl-with-spoon","🥗":"green-salad","🍿":"popcorn","🧈":"butter","🧂":"salt","🥫":"canned-food","🍱":"bento-box","🍘":"rice-cracker","🍙":"rice-ball","🍚":"cooked-rice","🍛":"curry-rice","🍜":"steaming-bowl","🍝":"spaghetti","🍠":"roasted-sweet-potato","🍢":"oden","🍣":"sushi","🍤":"fried-shrimp","🍥":"fish-cake-with-swirl","🥮":"moon-cake","🍡":"dango","🥟":"dumpling","🥠":"fortune-cookie","🥡":"takeout-box","🦀":"crab","🦞":"lobster","🦐":"shrimp","🦑":"squid","🦪":"oyster","🍦":"soft-ice-cream","🍧":"shaved-ice","🍨":"ice-cream","🍩":"doughnut","🍪":"cookie","🎂":"birthday-cake","🍰":"shortcake","🧁":"cupcake","🥧":"pie","🍫":"chocolate-bar","🍬":"candy","🍭":"lollipop","🍮":"custard","🍯":"honey-pot","🍼":"baby-bottle","🥛":"glass-of-milk","☕":"hot-beverage","🫖":"teapot","🍵":"teacup-without-handle","🍶":"sake","🍾":"bottle-with-popping-cork","🍷":"wine-glass","🍸":"cocktail-glass","🍹":"tropical-drink","🍺":"beer-mug","🍻":"clinking-beer-mugs","🥂":"clinking-glasses","🥃":"tumbler-glass","🫗":"pouring-liquid","🥤":"cup-with-straw","🧋":"bubble-tea","🧃":"beverage-box","🧉":"mate","🧊":"ice","🥢":"chopsticks","🍽️":"fork-and-knife-with-plate","🍴":"fork-and-knife","🥄":"spoon","🔪":"kitchen-knife","🫙":"jar","🏺":"amphora","🌍":"globe-showing-europe-africa","🌎":"globe-showing-americas","🌏":"globe-showing-asia-australia","🌐":"globe-with-meridians","🗺️":"world-map","🗾":"map-of-japan","🧭":"compass","🏔️":"snow-capped-mountain","⛰️":"mountain","🌋":"volcano","🗻":"mount-fuji","🏕️":"camping","🏖️":"beach-with-umbrella","🏜️":"desert","🏝️":"desert-island","🏞️":"national-park","🏟️":"stadium","🏛️":"classical-building","🏗️":"building-construction","🧱":"brick","🪨":"rock","🪵":"wood","🛖":"hut","🏘️":"houses","🏚️":"derelict-house","🏠":"house","🏡":"house-with-garden","🏢":"office-building","🏣":"japanese-post-office","🏤":"post-office","🏥":"hospital","🏦":"bank","🏨":"hotel","🏩":"love-hotel","🏪":"convenience-store","🏫":"school","🏬":"department-store","🏭":"factory","🏯":"japanese-castle","🏰":"castle","💒":"wedding","🗼":"tokyo-tower","🗽":"statue-of-liberty","⛪":"church","🕌":"mosque","🛕":"hindu-temple","🕍":"synagogue","⛩️":"shinto-shrine","🕋":"kaaba","⛲":"fountain","⛺":"tent","🌁":"foggy","🌃":"night-with-stars","🏙️":"cityscape","🌄":"sunrise-over-mountains","🌅":"sunrise","🌆":"cityscape-at-dusk","🌇":"sunset","🌉":"bridge-at-night","♨️":"hot-springs","🎠":"carousel-horse","🛝":"playground-slide","🎡":"ferris-wheel","🎢":"roller-coaster","💈":"barber-pole","🎪":"circus-tent","🚂":"locomotive","🚃":"railway-car","🚄":"high-speed-train","🚅":"bullet-train","🚆":"train","🚇":"metro","🚈":"light-rail","🚉":"station","🚊":"tram","🚝":"monorail","🚞":"mountain-railway","🚋":"tram-car","🚌":"bus","🚍":"oncoming-bus","🚎":"trolleybus","🚐":"minibus","🚑":"ambulance","🚒":"fire-engine","🚓":"police-car","🚔":"oncoming-police-car","🚕":"taxi","🚖":"oncoming-taxi","🚗":"automobile","🚘":"oncoming-automobile","🚙":"sport-utility-vehicle","🛻":"pickup-truck","🚚":"delivery-truck","🚛":"articulated-lorry","🚜":"tractor","🏎️":"racing-car","🏍️":"motorcycle","🛵":"motor-scooter","🦽":"manual-wheelchair","🦼":"motorized-wheelchair","🛺":"auto-rickshaw","🚲":"bicycle","🛴":"kick-scooter","🛹":"skateboard","🛼":"roller-skate","🚏":"bus-stop","🛣️":"motorway","🛤️":"railway-track","🛢️":"oil-drum","⛽":"fuel-pump","🛞":"wheel","🚨":"police-car-light","🚥":"horizontal-traffic-light","🚦":"vertical-traffic-light","🛑":"stop-sign","🚧":"construction","⚓":"anchor","🛟":"ring-buoy","⛵":"sailboat","🛶":"canoe","🚤":"speedboat","🛳️":"passenger-ship","⛴️":"ferry","🛥️":"motor-boat","🚢":"ship","✈️":"airplane","🛩️":"small-airplane","🛫":"airplane-departure","🛬":"airplane-arrival","🪂":"parachute","💺":"seat","🚁":"helicopter","🚟":"suspension-railway","🚠":"mountain-cableway","🚡":"aerial-tramway","🛰️":"satellite","🚀":"rocket","🛸":"flying-saucer","🛎️":"bellhop-bell","🧳":"luggage","⌛":"hourglass-done","⏳":"hourglass-not-done","⌚":"watch","⏰":"alarm-clock","⏱️":"stopwatch","⏲️":"timer-clock","🕰️":"mantelpiece-clock","🕛":"twelve-o-clock","🕧":"twelve-thirty","🕐":"one-o-clock","🕜":"one-thirty","🕑":"two-o-clock","🕝":"two-thirty","🕒":"three-o-clock","🕞":"three-thirty","🕓":"four-o-clock","🕟":"four-thirty","🕔":"five-o-clock","🕠":"five-thirty","🕕":"six-o-clock","🕡":"six-thirty","🕖":"seven-o-clock","🕢":"seven-thirty","🕗":"eight-o-clock","🕣":"eight-thirty","🕘":"nine-o-clock","🕤":"nine-thirty","🕙":"ten-o-clock","🕥":"ten-thirty","🕚":"eleven-o-clock","🕦":"eleven-thirty","🌑":"new-moon","🌒":"waxing-crescent-moon","🌓":"first-quarter-moon","🌔":"waxing-gibbous-moon","🌕":"full-moon","🌖":"waning-gibbous-moon","🌗":"last-quarter-moon","🌘":"waning-crescent-moon","🌙":"crescent-moon","🌚":"new-moon-face","🌛":"first-quarter-moon-face","🌜":"last-quarter-moon-face","🌡️":"thermometer","☀️":"sun","🌝":"full-moon-face","🌞":"sun-with-face","🪐":"ringed-planet","⭐":"star","🌟":"glowing-star","🌠":"shooting-star","🌌":"milky-way","☁️":"cloud","⛅":"sun-behind-cloud","⛈️":"cloud-with-lightning-and-rain","🌤️":"sun-behind-small-cloud","🌥️":"sun-behind-large-cloud","🌦️":"sun-behind-rain-cloud","🌧️":"cloud-with-rain","🌨️":"cloud-with-snow","🌩️":"cloud-with-lightning","🌪️":"tornado","🌫️":"fog","🌬️":"wind-face","🌀":"cyclone","🌈":"rainbow","🌂":"closed-umbrella","☂️":"umbrella","☔":"umbrella-with-rain-drops","⛱️":"umbrella-on-ground","⚡":"high-voltage","❄️":"snowflake","☃️":"snowman","⛄":"snowman-without-snow","☄️":"comet","🔥":"fire","💧":"droplet","🌊":"water-wave","🎃":"jack-o-lantern","🎄":"christmas-tree","🎆":"fireworks","🎇":"sparkler","🧨":"firecracker","✨":"sparkles","🎈":"balloon","🎉":"party-popper","🎊":"confetti-ball","🎋":"tanabata-tree","🎍":"pine-decoration","🎎":"japanese-dolls","🎏":"carp-streamer","🎐":"wind-chime","🎑":"moon-viewing-ceremony","🧧":"red-envelope","🎀":"ribbon","🎁":"wrapped-gift","🎗️":"reminder-ribbon","🎟️":"admission-tickets","🎫":"ticket","🎖️":"military-medal","🏆":"trophy","🏅":"sports-medal","🥇":"1st-place-medal","🥈":"2nd-place-medal","🥉":"3rd-place-medal","⚽":"soccer-ball","⚾":"baseball","🥎":"softball","🏀":"basketball","🏐":"volleyball","🏈":"american-football","🏉":"rugby-football","🎾":"tennis","🥏":"flying-disc","🎳":"bowling","🏏":"cricket-game","🏑":"field-hockey","🏒":"ice-hockey","🥍":"lacrosse","🏓":"ping-pong","🏸":"badminton","🥊":"boxing-glove","🥋":"martial-arts-uniform","🥅":"goal-net","⛳":"flag-in-hole","⛸️":"ice-skate","🎣":"fishing-pole","🤿":"diving-mask","🎽":"running-shirt","🎿":"skis","🛷":"sled","🥌":"curling-stone","🎯":"bullseye","🪀":"yo-yo","🪁":"kite","🔫":"water-pistol","🎱":"pool-8-ball","🔮":"crystal-ball","🪄":"magic-wand","🎮":"video-game","🕹️":"joystick","🎰":"slot-machine","🎲":"game-die","🧩":"puzzle-piece","🧸":"teddy-bear","🪅":"pinata","🪩":"mirror-ball","🪆":"nesting-dolls","♠️":"spade-suit","♥️":"heart-suit","♦️":"diamond-suit","♣️":"club-suit","♟️":"chess-pawn","🃏":"joker","🀄":"mahjong-red-dragon","🎴":"flower-playing-cards","🎭":"performing-arts","🖼️":"framed-picture","🎨":"artist-palette","🧵":"thread","🪡":"sewing-needle","🧶":"yarn","🪢":"knot","👓":"glasses","🕶️":"sunglasses","🥽":"goggles","🥼":"lab-coat","🦺":"safety-vest","👔":"necktie","👕":"t-shirt","👖":"jeans","🧣":"scarf","🧤":"gloves","🧥":"coat","🧦":"socks","👗":"dress","👘":"kimono","🥻":"sari","🩱":"one-piece-swimsuit","🩲":"briefs","🩳":"shorts","👙":"bikini","👚":"woman-s-clothes","🪭":"folding-hand-fan","👛":"purse","👜":"handbag","👝":"clutch-bag","🛍️":"shopping-bags","🎒":"backpack","🩴":"thong-sandal","👞":"man-s-shoe","👟":"running-shoe","🥾":"hiking-boot","🥿":"flat-shoe","👠":"high-heeled-shoe","👡":"woman-s-sandal","🩰":"ballet-shoes","👢":"woman-s-boot","🪮":"hair-pick","👑":"crown","👒":"woman-s-hat","🎩":"top-hat","🎓":"graduation-cap","🧢":"billed-cap","🪖":"military-helmet","⛑️":"rescue-worker-s-helmet","📿":"prayer-beads","💄":"lipstick","💍":"ring","💎":"gem-stone","🔇":"muted-speaker","🔈":"speaker-low-volume","🔉":"speaker-medium-volume","🔊":"speaker-high-volume","📢":"loudspeaker","📣":"megaphone","📯":"postal-horn","🔔":"bell","🔕":"bell-with-slash","🎼":"musical-score","🎵":"musical-note","🎶":"musical-notes","🎙️":"studio-microphone","🎚️":"level-slider","🎛️":"control-knobs","🎤":"microphone","🎧":"headphone","📻":"radio","🎷":"saxophone","🪗":"accordion","🎸":"guitar","🎹":"musical-keyboard","🎺":"trumpet","🎻":"violin","🪕":"banjo","🥁":"drum","🪘":"long-drum","🪇":"maracas","🪈":"flute","📱":"mobile-phone","📲":"mobile-phone-with-arrow","☎️":"telephone","📞":"telephone-receiver","📟":"pager","📠":"fax-machine","🔋":"battery","🪫":"low-battery","🔌":"electric-plug","💻":"laptop","🖥️":"desktop-computer","🖨️":"printer","⌨️":"keyboard","🖱️":"computer-mouse","🖲️":"trackball","💽":"computer-disk","💾":"floppy-disk","💿":"optical-disk","📀":"dvd","🧮":"abacus","🎥":"movie-camera","🎞️":"film-frames","📽️":"film-projector","🎬":"clapper-board","📺":"television","📷":"camera","📸":"camera-with-flash","📹":"video-camera","📼":"videocassette","🔍":"magnifying-glass-tilted-left","🔎":"magnifying-glass-tilted-right","🕯️":"candle","💡":"light-bulb","🔦":"flashlight","🏮":"red-paper-lantern","🪔":"diya-lamp","📔":"notebook-with-decorative-cover","📕":"closed-book","📖":"open-book","📗":"green-book","📘":"blue-book","📙":"orange-book","📚":"books","📓":"notebook","📒":"ledger","📃":"page-with-curl","📜":"scroll","📄":"page-facing-up","📰":"newspaper","🗞️":"rolled-up-newspaper","📑":"bookmark-tabs","🔖":"bookmark","🏷️":"label","💰":"money-bag","🪙":"coin","💴":"yen-banknote","💵":"dollar-banknote","💶":"euro-banknote","💷":"pound-banknote","💸":"money-with-wings","💳":"credit-card","🧾":"receipt","💹":"chart-increasing-with-yen","✉️":"envelope","📧":"e-mail","📨":"incoming-envelope","📩":"envelope-with-arrow","📤":"outbox-tray","📥":"inbox-tray","📦":"package","📫":"closed-mailbox-with-raised-flag","📪":"closed-mailbox-with-lowered-flag","📬":"open-mailbox-with-raised-flag","📭":"open-mailbox-with-lowered-flag","📮":"postbox","🗳️":"ballot-box-with-ballot","✏️":"pencil","✒️":"black-nib","🖋️":"fountain-pen","🖊️":"pen","🖌️":"paintbrush","🖍️":"crayon","📝":"memo","💼":"briefcase","📁":"file-folder","📂":"open-file-folder","🗂️":"card-index-dividers","📅":"calendar","📆":"tear-off-calendar","🗒️":"spiral-notepad","🗓️":"spiral-calendar","📇":"card-index","📈":"chart-increasing","📉":"chart-decreasing","📊":"bar-chart","📋":"clipboard","📌":"pushpin","📍":"round-pushpin","📎":"paperclip","🖇️":"linked-paperclips","📏":"straight-ruler","📐":"triangular-ruler","✂️":"scissors","🗃️":"card-file-box","🗄️":"file-cabinet","🗑️":"wastebasket","🔒":"locked","🔓":"unlocked","🔏":"locked-with-pen","🔐":"locked-with-key","🔑":"key","🗝️":"old-key","🔨":"hammer","🪓":"axe","⛏️":"pick","⚒️":"hammer-and-pick","🛠️":"hammer-and-wrench","🗡️":"dagger","⚔️":"crossed-swords","💣":"bomb","🪃":"boomerang","🏹":"bow-and-arrow","🛡️":"shield","🪚":"carpentry-saw","🔧":"wrench","🪛":"screwdriver","🔩":"nut-and-bolt","⚙️":"gear","🗜️":"clamp","⚖️":"balance-scale","🦯":"white-cane","🔗":"link","⛓️":"chains","🪝":"hook","🧰":"toolbox","🧲":"magnet","🪜":"ladder","⚗️":"alembic","🧪":"test-tube","🧫":"petri-dish","🧬":"dna","🔬":"microscope","🔭":"telescope","📡":"satellite-antenna","💉":"syringe","🩸":"drop-of-blood","💊":"pill","🩹":"adhesive-bandage","🩼":"crutch","🩺":"stethoscope","🩻":"x-ray","🚪":"door","🛗":"elevator","🪞":"mirror","🪟":"window","🛏️":"bed","🛋️":"couch-and-lamp","🪑":"chair","🚽":"toilet","🪠":"plunger","🚿":"shower","🛁":"bathtub","🪤":"mouse-trap","🪒":"razor","🧴":"lotion-bottle","🧷":"safety-pin","🧹":"broom","🧺":"basket","🧻":"roll-of-paper","🪣":"bucket","🧼":"soap","🫧":"bubbles","🪥":"toothbrush","🧽":"sponge","🧯":"fire-extinguisher","🛒":"shopping-cart","🚬":"cigarette","⚰️":"coffin","🪦":"headstone","⚱️":"funeral-urn","🧿":"nazar-amulet","🪬":"hamsa","🗿":"moai","🪧":"placard","🪪":"identification-card","🏧":"atm-sign","🚮":"litter-in-bin-sign","🚰":"potable-water","♿":"wheelchair-symbol","🚹":"men-s-room","🚺":"women-s-room","🚻":"restroom","🚼":"baby-symbol","🚾":"water-closet","🛂":"passport-control","🛃":"customs","🛄":"baggage-claim","🛅":"left-luggage","⚠️":"warning","🚸":"children-crossing","⛔":"no-entry","🚫":"prohibited","🚳":"no-bicycles","🚭":"no-smoking","🚯":"no-littering","🚱":"non-potable-water","🚷":"no-pedestrians","📵":"no-mobile-phones","🔞":"no-one-under-eighteen","☢️":"radioactive","☣️":"biohazard","⬆️":"up-arrow","↗️":"up-right-arrow","➡️":"right-arrow","↘️":"down-right-arrow","⬇️":"down-arrow","↙️":"down-left-arrow","⬅️":"left-arrow","↖️":"up-left-arrow","↕️":"up-down-arrow","↔️":"left-right-arrow","↩️":"right-arrow-curving-left","↪️":"left-arrow-curving-right","⤴️":"right-arrow-curving-up","⤵️":"right-arrow-curving-down","🔃":"clockwise-vertical-arrows","🔄":"counterclockwise-arrows-button","🔙":"back-arrow","🔚":"end-arrow","🔛":"on-arrow","🔜":"soon-arrow","🔝":"top-arrow","🛐":"place-of-worship","⚛️":"atom-symbol","🕉️":"om","✡️":"star-of-david","☸️":"wheel-of-dharma","☯️":"yin-yang","✝️":"latin-cross","☦️":"orthodox-cross","☪️":"star-and-crescent","☮️":"peace-symbol","🕎":"menorah","🔯":"dotted-six-pointed-star","🪯":"khanda","♈":"aries","♉":"taurus","♊":"gemini","♋":"cancer","♌":"leo","♍":"virgo","♎":"libra","♏":"scorpio","♐":"sagittarius","♑":"capricorn","♒":"aquarius","♓":"pisces","⛎":"ophiuchus","🔀":"shuffle-tracks-button","🔁":"repeat-button","🔂":"repeat-single-button","▶️":"play-button","⏩":"fast-forward-button","⏭️":"next-track-button","⏯️":"play-or-pause-button","◀️":"reverse-button","⏪":"fast-reverse-button","⏮️":"last-track-button","🔼":"upwards-button","⏫":"fast-up-button","🔽":"downwards-button","⏬":"fast-down-button","⏸️":"pause-button","⏹️":"stop-button","⏺️":"record-button","⏏️":"eject-button","🎦":"cinema","🔅":"dim-button","🔆":"bright-button","📶":"antenna-bars","🛜":"wireless","📳":"vibration-mode","📴":"mobile-phone-off","♀️":"female-sign","♂️":"male-sign","⚧️":"transgender-symbol","✖️":"multiply","➕":"plus","➖":"minus","➗":"divide","🟰":"heavy-equals-sign","♾️":"infinity","‼️":"double-exclamation-mark","⁉️":"exclamation-question-mark","❓":"red-question-mark","❔":"white-question-mark","❕":"white-exclamation-mark","❗":"red-exclamation-mark","〰️":"wavy-dash","💱":"currency-exchange","💲":"heavy-dollar-sign","⚕️":"medical-symbol","♻️":"recycling-symbol","⚜️":"fleur-de-lis","🔱":"trident-emblem","📛":"name-badge","🔰":"japanese-symbol-for-beginner","⭕":"hollow-red-circle","✅":"check-mark-button","☑️":"check-box-with-check","✔️":"check-mark","❌":"cross-mark","❎":"cross-mark-button","➰":"curly-loop","➿":"double-curly-loop","〽️":"part-alternation-mark","✳️":"eight-spoked-asterisk","✴️":"eight-pointed-star","❇️":"sparkle","©️":"copyright","®️":"registered","™️":"trade-mark","#️⃣":"keycap-#","*️⃣":"keycap-*","0️⃣":"keycap-0","1️⃣":"keycap-1","2️⃣":"keycap-2","3️⃣":"keycap-3","4️⃣":"keycap-4","5️⃣":"keycap-5","6️⃣":"keycap-6","7️⃣":"keycap-7","8️⃣":"keycap-8","9️⃣":"keycap-9","🔟":"keycap-10","🔠":"input-latin-uppercase","🔡":"input-latin-lowercase","🔢":"input-numbers","🔣":"input-symbols","🔤":"input-latin-letters","🅰️":"a-button-blood-type","🆎":"ab-button-blood-type","🅱️":"b-button-blood-type","🆑":"cl-button","🆒":"cool-button","🆓":"free-button","ℹ️":"information","🆔":"id-button","Ⓜ️":"circled-m","🆕":"new-button","🆖":"ng-button","🅾️":"o-button-blood-type","🆗":"ok-button","🅿️":"p-button","🆘":"sos-button","🆙":"up-button","🆚":"vs-button","🈁":"japanese-here-button","🈂️":"japanese-service-charge-button","🈷️":"japanese-monthly-amount-button","🈶":"japanese-not-free-of-charge-button","🈯":"japanese-reserved-button","🉐":"japanese-bargain-button","🈹":"japanese-discount-button","🈚":"japanese-free-of-charge-button","🈲":"japanese-prohibited-button","🉑":"japanese-acceptable-button","🈸":"japanese-application-button","🈴":"japanese-passing-grade-button","🈳":"japanese-vacancy-button","㊗️":"japanese-congratulations-button","㊙️":"japanese-secret-button","🈺":"japanese-open-for-business-button","🈵":"japanese-no-vacancy-button","🔴":"red-circle","🟠":"orange-circle","🟡":"yellow-circle","🟢":"green-circle","🔵":"blue-circle","🟣":"purple-circle","🟤":"brown-circle","⚫":"black-circle","⚪":"white-circle","🟥":"red-square","🟧":"orange-square","🟨":"yellow-square","🟩":"green-square","🟦":"blue-square","🟪":"purple-square","🟫":"brown-square","⬛":"black-large-square","⬜":"white-large-square","◼️":"black-medium-square","◻️":"white-medium-square","◾":"black-medium-small-square","◽":"white-medium-small-square","▪️":"black-small-square","▫️":"white-small-square","🔶":"large-orange-diamond","🔷":"large-blue-diamond","🔸":"small-orange-diamond","🔹":"small-blue-diamond","🔺":"red-triangle-pointed-up","🔻":"red-triangle-pointed-down","💠":"diamond-with-a-dot","🔘":"radio-button","🔳":"white-square-button","🔲":"black-square-button","🏁":"chequered-flag","🚩":"triangular-flag","🎌":"crossed-flags","🏴":"black-flag","🏳️":"white-flag","🏳️‍🌈":"rainbow-flag","🏳️‍⚧️":"transgender-flag","🏴‍☠️":"pirate-flag","🇦🇨":"flag-ascension-island","🇦🇩":"flag-andorra","🇦🇪":"flag-united-arab-emirates","🇦🇫":"flag-afghanistan","🇦🇬":"flag-antigua-&-barbuda","🇦🇮":"flag-anguilla","🇦🇱":"flag-albania","🇦🇲":"flag-armenia","🇦🇴":"flag-angola","🇦🇶":"flag-antarctica","🇦🇷":"flag-argentina","🇦🇸":"flag-american-samoa","🇦🇹":"flag-austria","🇦🇺":"flag-australia","🇦🇼":"flag-aruba","🇦🇽":"flag-aland-islands","🇦🇿":"flag-azerbaijan","🇧🇦":"flag-bosnia-&-herzegovina","🇧🇧":"flag-barbados","🇧🇩":"flag-bangladesh","🇧🇪":"flag-belgium","🇧🇫":"flag-burkina-faso","🇧🇬":"flag-bulgaria","🇧🇭":"flag-bahrain","🇧🇮":"flag-burundi","🇧🇯":"flag-benin","🇧🇱":"flag-st-barthelemy","🇧🇲":"flag-bermuda","🇧🇳":"flag-brunei","🇧🇴":"flag-bolivia","🇧🇶":"flag-caribbean-netherlands","🇧🇷":"flag-brazil","🇧🇸":"flag-bahamas","🇧🇹":"flag-bhutan","🇧🇻":"flag-bouvet-island","🇧🇼":"flag-botswana","🇧🇾":"flag-belarus","🇧🇿":"flag-belize","🇨🇦":"flag-canada","🇨🇨":"flag-cocos-keeling-islands","🇨🇩":"flag-congo-kinshasa","🇨🇫":"flag-central-african-republic","🇨🇬":"flag-congo-brazzaville","🇨🇭":"flag-switzerland","🇨🇮":"flag-cote-d-ivoire","🇨🇰":"flag-cook-islands","🇨🇱":"flag-chile","🇨🇲":"flag-cameroon","🇨🇳":"flag-china","🇨🇴":"flag-colombia","🇨🇵":"flag-clipperton-island","🇨🇷":"flag-costa-rica","🇨🇺":"flag-cuba","🇨🇻":"flag-cape-verde","🇨🇼":"flag-curacao","🇨🇽":"flag-christmas-island","🇨🇾":"flag-cyprus","🇨🇿":"flag-czechia","🇩🇪":"flag-germany","🇩🇬":"flag-diego-garcia","🇩🇯":"flag-djibouti","🇩🇰":"flag-denmark","🇩🇲":"flag-dominica","🇩🇴":"flag-dominican-republic","🇩🇿":"flag-algeria","🇪🇦":"flag-ceuta-&-melilla","🇪🇨":"flag-ecuador","🇪🇪":"flag-estonia","🇪🇬":"flag-egypt","🇪🇭":"flag-western-sahara","🇪🇷":"flag-eritrea","🇪🇸":"flag-spain","🇪🇹":"flag-ethiopia","🇪🇺":"flag-european-union","🇫🇮":"flag-finland","🇫🇯":"flag-fiji","🇫🇰":"flag-falkland-islands","🇫🇲":"flag-micronesia","🇫🇴":"flag-faroe-islands","🇫🇷":"flag-france","🇬🇦":"flag-gabon","🇬🇧":"flag-united-kingdom","🇬🇩":"flag-grenada","🇬🇪":"flag-georgia","🇬🇫":"flag-french-guiana","🇬🇬":"flag-guernsey","🇬🇭":"flag-ghana","🇬🇮":"flag-gibraltar","🇬🇱":"flag-greenland","🇬🇲":"flag-gambia","🇬🇳":"flag-guinea","🇬🇵":"flag-guadeloupe","🇬🇶":"flag-equatorial-guinea","🇬🇷":"flag-greece","🇬🇸":"flag-south-georgia-&-south-sandwich-islands","🇬🇹":"flag-guatemala","🇬🇺":"flag-guam","🇬🇼":"flag-guinea-bissau","🇬🇾":"flag-guyana","🇭🇰":"flag-hong-kong-sar-china","🇭🇲":"flag-heard-&-mcdonald-islands","🇭🇳":"flag-honduras","🇭🇷":"flag-croatia","🇭🇹":"flag-haiti","🇭🇺":"flag-hungary","🇮🇨":"flag-canary-islands","🇮🇩":"flag-indonesia","🇮🇪":"flag-ireland","🇮🇱":"flag-israel","🇮🇲":"flag-isle-of-man","🇮🇳":"flag-india","🇮🇴":"flag-british-indian-ocean-territory","🇮🇶":"flag-iraq","🇮🇷":"flag-iran","🇮🇸":"flag-iceland","🇮🇹":"flag-italy","🇯🇪":"flag-jersey","🇯🇲":"flag-jamaica","🇯🇴":"flag-jordan","🇯🇵":"flag-japan","🇰🇪":"flag-kenya","🇰🇬":"flag-kyrgyzstan","🇰🇭":"flag-cambodia","🇰🇮":"flag-kiribati","🇰🇲":"flag-comoros","🇰🇳":"flag-st-kitts-&-nevis","🇰🇵":"flag-north-korea","🇰🇷":"flag-south-korea","🇰🇼":"flag-kuwait","🇰🇾":"flag-cayman-islands","🇰🇿":"flag-kazakhstan","🇱🇦":"flag-laos","🇱🇧":"flag-lebanon","🇱🇨":"flag-st-lucia","🇱🇮":"flag-liechtenstein","🇱🇰":"flag-sri-lanka","🇱🇷":"flag-liberia","🇱🇸":"flag-lesotho","🇱🇹":"flag-lithuania","🇱🇺":"flag-luxembourg","🇱🇻":"flag-latvia","🇱🇾":"flag-libya","🇲🇦":"flag-morocco","🇲🇨":"flag-monaco","🇲🇩":"flag-moldova","🇲🇪":"flag-montenegro","🇲🇫":"flag-st-martin","🇲🇬":"flag-madagascar","🇲🇭":"flag-marshall-islands","🇲🇰":"flag-north-macedonia","🇲🇱":"flag-mali","🇲🇲":"flag-myanmar-burma","🇲🇳":"flag-mongolia","🇲🇴":"flag-macao-sar-china","🇲🇵":"flag-northern-mariana-islands","🇲🇶":"flag-martinique","🇲🇷":"flag-mauritania","🇲🇸":"flag-montserrat","🇲🇹":"flag-malta","🇲🇺":"flag-mauritius","🇲🇻":"flag-maldives","🇲🇼":"flag-malawi","🇲🇽":"flag-mexico","🇲🇾":"flag-malaysia","🇲🇿":"flag-mozambique","🇳🇦":"flag-namibia","🇳🇨":"flag-new-caledonia","🇳🇪":"flag-niger","🇳🇫":"flag-norfolk-island","🇳🇬":"flag-nigeria","🇳🇮":"flag-nicaragua","🇳🇱":"flag-netherlands","🇳🇴":"flag-norway","🇳🇵":"flag-nepal","🇳🇷":"flag-nauru","🇳🇺":"flag-niue","🇳🇿":"flag-new-zealand","🇴🇲":"flag-oman","🇵🇦":"flag-panama","🇵🇪":"flag-peru","🇵🇫":"flag-french-polynesia","🇵🇬":"flag-papua-new-guinea","🇵🇭":"flag-philippines","🇵🇰":"flag-pakistan","🇵🇱":"flag-poland","🇵🇲":"flag-st-pierre-&-miquelon","🇵🇳":"flag-pitcairn-islands","🇵🇷":"flag-puerto-rico","🇵🇸":"flag-palestinian-territories","🇵🇹":"flag-portugal","🇵🇼":"flag-palau","🇵🇾":"flag-paraguay","🇶🇦":"flag-qatar","🇷🇪":"flag-reunion","🇷🇴":"flag-romania","🇷🇸":"flag-serbia","🇷🇺":"flag-russia","🇷🇼":"flag-rwanda","🇸🇦":"flag-saudi-arabia","🇸🇧":"flag-solomon-islands","🇸🇨":"flag-seychelles","🇸🇩":"flag-sudan","🇸🇪":"flag-sweden","🇸🇬":"flag-singapore","🇸🇭":"flag-st-helena","🇸🇮":"flag-slovenia","🇸🇯":"flag-svalbard-&-jan-mayen","🇸🇰":"flag-slovakia","🇸🇱":"flag-sierra-leone","🇸🇲":"flag-san-marino","🇸🇳":"flag-senegal","🇸🇴":"flag-somalia","🇸🇷":"flag-suriname","🇸🇸":"flag-south-sudan","🇸🇹":"flag-sao-tome-&-principe","🇸🇻":"flag-el-salvador","🇸🇽":"flag-sint-maarten","🇸🇾":"flag-syria","🇸🇿":"flag-eswatini","🇹🇦":"flag-tristan-da-cunha","🇹🇨":"flag-turks-&-caicos-islands","🇹🇩":"flag-chad","🇹🇫":"flag-french-southern-territories","🇹🇬":"flag-togo","🇹🇭":"flag-thailand","🇹🇯":"flag-tajikistan","🇹🇰":"flag-tokelau","🇹🇱":"flag-timor-leste","🇹🇲":"flag-turkmenistan","🇹🇳":"flag-tunisia","🇹🇴":"flag-tonga","🇹🇷":"flag-turkey","🇹🇹":"flag-trinidad-&-tobago","🇹🇻":"flag-tuvalu","🇹🇼":"flag-taiwan","🇹🇿":"flag-tanzania","🇺🇦":"flag-ukraine","🇺🇬":"flag-uganda","🇺🇲":"flag-us-outlying-islands","🇺🇳":"flag-united-nations","🇺🇸":"flag-united-states","🇺🇾":"flag-uruguay","🇺🇿":"flag-uzbekistan","🇻🇦":"flag-vatican-city","🇻🇨":"flag-st-vincent-&-grenadines","🇻🇪":"flag-venezuela","🇻🇬":"flag-british-virgin-islands","🇻🇮":"flag-us-virgin-islands","🇻🇳":"flag-vietnam","🇻🇺":"flag-vanuatu","🇼🇫":"flag-wallis-&-futuna","🇼🇸":"flag-samoa","🇽🇰":"flag-kosovo","🇾🇪":"flag-yemen","🇾🇹":"flag-mayotte","🇿🇦":"flag-south-africa","🇿🇲":"flag-zambia","🇿🇼":"flag-zimbabwe","🏴󠁧󠁢󠁥󠁮󠁧󠁿":"flag-england","🏴󠁧󠁢󠁳󠁣󠁴󠁿":"flag-scotland","🏴󠁧󠁢󠁷󠁬󠁳󠁿":"flag-wales"}
-},{}],70:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 module.exports={"10":["🔟"],"grin":["😀","😃","😄","😆","😅","😺","😸"],"face":["😀","😃","😄","😁","😆","😅","😂","🙂","🙃","🫠","😉","😊","😇","🥰","😍","😘","😗","☺️","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🫢","🫣","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😶‍🌫️","😏","😒","🙄","😬","😮‍💨","🤥","🫨","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","😵‍💫","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹️","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","🤡","🤛","🤜","🐵","🐶","🐱","🐯","🐴","🐮","🐷","🐭","🐰","🐥","🐲","🌚","🌛","🌜","🌝","🌞","🌬️","📄"],"big":["😃"],"eyes":["😃","😄","😁","😊","😍","😚","😙","🫢","🙄","😵","😵‍💫","😸","😻","👀"],"smile":["😄","😁","🙂","😊","😇","🥰","😍","☺️","😙","🥲","🤗","😎","😈","😸","😻","😼"],"beam":["😁"],"squint":["😆","😝"],"sweat":["😅","😰","😓","💦"],"roll":["🤣","🙄","🧻"],"on":["🤣","🤬","❤️‍🔥","🍖","⛱️","🔛"],"the":["🤣","🤘","🫵"],"floor":["🤣"],"laugh":["🤣"],"tears":["😂","🥹","😹"],"joy":["😂","😹"],"slightly":["🙂","🙁"],"upside":["🙃"],"down":["🙃","🫳","👇","👎","↘️","⬇️","↙️","↕️","⤵️","⏬","🔻"],"melt":["🫠"],"wink":["😉","😜"],"halo":["😇"],"hearts":["🥰","💞","💕"],"heart":["😍","😻","💘","💝","💖","💗","💓","💟","❣️","💔","❤️‍🔥","❤️‍🩹","❤️","🩷","🧡","💛","💚","💙","🩵","💜","🤎","🖤","🩶","🤍","🫶","🫀","💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩","♥️"],"star":["🤩","⭐","🌟","🌠","✡️","☪️","🔯","✴️"],"struck":["🤩"],"blow":["😘"],"kiss":["😘","😗","😚","😙","😽","💋","💏","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍💋‍👩"],"closed":["😚","🌂","📕","📫","📪"],"tear":["🥲","📆"],"savore":["😋"],"food":["😋","🥘","🍲","🥫"],"tongue":["😛","😜","😝","👅"],"zany":["🤪"],"money":["🤑","💰","💸"],"mouth":["🤑","🤭","🫢","🤐","😶","🫤","😮","😦","🤬","👄"],"open":["🤗","🫢","😮","😦","👐","📖","📬","📭","📂","🈺"],"hands":["🤗","👏","🙌","🫶","👐","🙏","🧑‍🤝‍🧑","👭","👫","👬"],"hand":["🤭","🫢","👋","🤚","🖐️","✋","🫱","🫲","🫳","🫴","🫷","🫸","👌","🤏","✌️","🫰","🤙","✍️","💁","💁‍♂️","💁‍♀️","🙋","🙋‍♂️","🙋‍♀️","🪭"],"over":["🤭","🫢","🌄"],"and":["🫢","☠️","🫰","👫","🍽️","🍴","⛈️","⚒️","🛠️","🏹","🔩","🛋️","☪️"],"peek":["🫣"],"eye":["🫣","👁️‍🗨️","👁️"],"shush":["🤫"],"think":["🤔"],"salute":["🫡","🖖"],"zipper":["🤐"],"raised":["🤨","🤚","✋","✊","📫","📬"],"eyebrow":["🤨"],"neutral":["😐"],"expressionless":["😑"],"without":["😶","🍵","⛄"],"dotted":["🫥","🔯"],"line":["🫥"],"in":["😶‍🌫️","😱","👁️‍🗨️","🤵","🤵‍♂️","🤵‍♀️","🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🕴️","🧖","🧖‍♂️","🧖‍♀️","🧘","🧘‍♂️","🧘‍♀️","🛌","👤","👥","🍃","⛳","🚮"],"clouds":["😶‍🌫️"],"smirk":["😏"],"unamused":["😒"],"grimace":["😬"],"exhale":["😮‍💨"],"lying":["🤥"],"shake":["🫨"],"relieved":["😌","😥"],"pensive":["😔"],"sleepy":["😪"],"drool":["🤤"],"sleep":["😴"],"medical":["😷","⚕️"],"mask":["😷","🤿"],"thermometer":["🤒","🌡️"],"head":["🤕","🤯","🗣️"],"bandage":["🤕","🩹"],"nauseated":["🤢"],"vomite":["🤮"],"sneez":["🤧"],"hot":["🥵","🌶️","🌭","☕","♨️"],"cold":["🥶"],"woozy":["🥴"],"crossed":["😵","🤞","🫰","⚔️","🎌"],"out":["😵"],"spiral":["😵‍💫","🐚","🗒️","🗓️"],"explode":["🤯"],"cowboy":["🤠"],"hat":["🤠","👒","🎩"],"party":["🥳","🎉"],"disguised":["🥸"],"sunglasses":["😎","🕶️"],"nerd":["🤓"],"monocle":["🧐"],"confused":["😕"],"diagonal":["🫤"],"worried":["😟"],"frown":["🙁","☹️","😦","🙍","🙍‍♂️","🙍‍♀️"],"hushed":["😯"],"astonished":["😲"],"flushed":["😳"],"plead":["🥺"],"hold":["🥹","🧑‍🤝‍🧑","👭","👫","👬"],"back":["🥹","🤚","🔙"],"anguished":["😧"],"fearful":["😨"],"anxious":["😰"],"sad":["😥"],"but":["😥"],"cry":["😢","😭","😿"],"loudly":["😭"],"scream":["😱"],"fear":["😱"],"confounded":["😖"],"persever":["😣"],"disappointed":["😞"],"downcast":["😓"],"weary":["😩","🙀"],"tired":["😫"],"yawn":["🥱"],"steam":["😤","🍜"],"from":["😤"],"nose":["😤","👃","🐽"],"enraged":["😡"],"angry":["😠","👿"],"symbols":["🤬","🔣"],"horns":["😈","👿","🤘"],"skull":["💀","☠️"],"crossbones":["☠️"],"pile":["💩"],"poo":["💩"],"clown":["🤡"],"ogre":["👹"],"goblin":["👺"],"ghost":["👻"],"alien":["👽","👾"],"monster":["👾"],"robot":["🤖"],"cat":["😺","😸","😹","😻","😼","😽","🙀","😿","😾","🐱","🐈","🐈‍⬛"],"wry":["😼"],"pout":["😾","🙎","🙎‍♂️","🙎‍♀️"],"see":["🙈"],"no":["🙈","🙉","🙊","🙅","🙅‍♂️","🙅‍♀️","⛔","🚳","🚭","🚯","🚷","📵","🔞","🈵"],"evil":["🙈","🙉","🙊"],"monkey":["🙈","🙉","🙊","🐵","🐒"],"hear":["🙉","🦻"],"speak":["🙊","🗣️"],"love":["💌","🤟","🏩"],"letter":["💌"],"arrow":["💘","📲","📩","🏹","⬆️","↗️","➡️","↘️","⬇️","↙️","⬅️","↖️","↕️","↔️","↩️","↪️","⤴️","⤵️","🔙","🔚","🔛","🔜","🔝"],"ribbon":["💝","🎀","🎗️"],"sparkle":["💖","❇️"],"grow":["💗"],"beat":["💓"],"revolve":["💞"],"two":["💕","🐫","🕑","🕝"],"decoration":["💟","🎍"],"exclamation":["❣️","‼️","⁉️","❕","❗"],"broken":["💔"],"fire":["❤️‍🔥","🚒","🔥","🧯"],"mend":["❤️‍🩹"],"red":["❤️","👨‍🦰","👩‍🦰","🧑‍🦰","🍎","🧧","🀄","🏮","❓","❗","⭕","🔴","🟥","🔺","🔻"],"pink":["🩷"],"orange":["🧡","📙","🟠","🟧","🔶","🔸"],"yellow":["💛","🟡","🟨"],"green":["💚","🍏","🥬","🥗","📗","🟢","🟩"],"blue":["💙","🩵","📘","🔵","🟦","🔷","🔹"],"light":["🩵","🚈","🚨","🚥","🚦","💡"],"purple":["💜","🟣","🟪"],"brown":["🤎","🟤","🟫"],"black":["🖤","🐈‍⬛","🐦‍⬛","✒️","⚫","⬛","◼️","◾","▪️","🔲","🏴"],"grey":["🩶"],"white":["🤍","👨‍🦳","👩‍🦳","🧑‍🦳","🧑‍🦯","👨‍🦯","👩‍🦯","💮","🦯","❔","❕","⚪","⬜","◻️","◽","▫️","🔳","🏳️"],"mark":["💋","‼️","⁉️","❓","❔","❕","❗","✅","✔️","❌","❎","〽️","™️"],"hundred":["💯"],"points":["💯"],"anger":["💢","🗯️"],"symbol":["💢","♿","🚼","⚛️","☮️","⚧️","⚕️","♻️","🔰"],"collision":["💥"],"dizzy":["💫"],"droplets":["💦"],"dash":["💨","〰️"],"away":["💨"],"hole":["🕳️","⛳"],"speech":["💬","👁️‍🗨️","🗨️"],"balloon":["💬","💭","🎈"],"bubble":["👁️‍🗨️","🗨️","🗯️","🧋"],"left":["🗨️","👈","🤛","🔍","🛅","↙️","⬅️","↖️","↔️","↩️","↪️"],"right":["🗯️","👉","🤜","🔎","↗️","➡️","↘️","↔️","↩️","↪️","⤴️","⤵️"],"thought":["💭"],"zzz":["💤"],"wave":["👋","🌊"],"fingers":["🖐️","🤌","🤞"],"splayed":["🖐️"],"vulcan":["🖖"],"rightwards":["🫱","🫸"],"leftwards":["🫲","🫷"],"palm":["🫳","🫴","🌴"],"up":["🫴","👆","☝️","👍","🤲","📄","🗞️","⬆️","↗️","↖️","↕️","⤴️","⏫","🆙","🔺"],"push":["🫷","🫸"],"ok":["👌","🙆","🙆‍♂️","🙆‍♀️","🆗"],"pinched":["🤌"],"pinch":["🤏"],"victory":["✌️"],"index":["🫰","👈","👉","👆","👇","☝️","🫵","🗂️","📇"],"finger":["🫰","🖕"],"thumb":["🫰"],"you":["🤟"],"gesture":["🤟","🙅","🙅‍♂️","🙅‍♀️","🙆","🙆‍♂️","🙆‍♀️"],"sign":["🤘","🛑","🏧","🚮","♀️","♂️","🟰","💲"],"call":["🤙"],"me":["🤙"],"backhand":["👈","👉","👆","👇"],"point":["👈","👉","👆","👇","☝️","🫵"],"middle":["🖕"],"at":["🫵","🌆","🌉"],"viewer":["🫵"],"thumbs":["👍","👎"],"fist":["✊","👊","🤛","🤜"],"oncome":["👊","🚍","🚔","🚖","🚘"],"clap":["👏"],"raise":["🙌","🙋","🙋‍♂️","🙋‍♀️"],"palms":["🤲"],"together":["🤲"],"handshake":["🤝"],"folded":["🙏"],"write":["✍️"],"nail":["💅"],"polish":["💅"],"selfie":["🤳"],"flexed":["💪"],"biceps":["💪"],"mechanical":["🦾","🦿"],"arm":["🦾"],"leg":["🦿","🦵","🍗"],"foot":["🦶"],"ear":["👂","🦻","🌽"],"aid":["🦻"],"brain":["🧠"],"anatomical":["🫀"],"lungs":["🫁"],"tooth":["🦷"],"bone":["🦴","🍖"],"bite":["🫦"],"lip":["🫦"],"baby":["👶","👩‍🍼","👨‍🍼","🧑‍🍼","👼","🐤","🐥","🍼","🚼"],"child":["🧒"],"boy":["👦","👨‍👩‍👦","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👨‍👦","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👩‍👩‍👦","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👨‍👦","👨‍👦‍👦","👨‍👧‍👦","👩‍👦","👩‍👦‍👦","👩‍👧‍👦"],"girl":["👧","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👧‍👧","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👧‍👧","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👧‍👧","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"person":["🧑","👱","🧔","🧑‍🦰","🧑‍🦱","🧑‍🦳","🧑‍🦲","🧓","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","🫅","👳","👲","🤵","👰","🫄","🧑‍🍼","💆","💇","🚶","🧍","🧎","🧑‍🦯","🧑‍🦼","🧑‍🦽","🏃","🕴️","🧖","🧗","🤺","🏌️","🏄","🚣","🏊","⛹️","🏋️","🚴","🚵","🤸","🤽","🤾","🤹","🧘","🛀","🛌"],"blond":["👱","👱‍♀️","👱‍♂️"],"hair":["👱","👨‍🦰","👨‍🦱","👨‍🦳","👩‍🦰","🧑‍🦰","👩‍🦱","🧑‍🦱","👩‍🦳","🧑‍🦳","👱‍♀️","👱‍♂️","🪮"],"man":["👨","🧔‍♂️","👨‍🦰","👨‍🦱","👨‍🦳","👨‍🦲","👱‍♂️","👴","🙍‍♂️","🙎‍♂️","🙅‍♂️","🙆‍♂️","💁‍♂️","🙋‍♂️","🧏‍♂️","🙇‍♂️","🤦‍♂️","🤷‍♂️","👨‍⚕️","👨‍🎓","👨‍🏫","👨‍⚖️","👨‍🌾","👨‍🍳","👨‍🔧","👨‍🏭","👨‍💼","👨‍🔬","👨‍💻","👨‍🎤","👨‍🎨","👨‍✈️","👨‍🚀","👨‍🚒","👮‍♂️","🕵️‍♂️","💂‍♂️","👷‍♂️","👳‍♂️","🤵‍♂️","👰‍♂️","🫃","👨‍🍼","🦸‍♂️","🦹‍♂️","🧙‍♂️","🧚‍♂️","🧛‍♂️","🧝‍♂️","🧞‍♂️","🧟‍♂️","💆‍♂️","💇‍♂️","🚶‍♂️","🧍‍♂️","🧎‍♂️","👨‍🦯","👨‍🦼","👨‍🦽","🏃‍♂️","🕺","🧖‍♂️","🧗‍♂️","🏌️‍♂️","🏄‍♂️","🚣‍♂️","🏊‍♂️","⛹️‍♂️","🏋️‍♂️","🚴‍♂️","🚵‍♂️","🤸‍♂️","🤽‍♂️","🤾‍♂️","🤹‍♂️","🧘‍♂️","👫","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍👨","👨‍❤️‍👨","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👞","🇮🇲"],"beard":["🧔","🧔‍♂️","🧔‍♀️"],"woman":["🧔‍♀️","👩","👩‍🦰","👩‍🦱","👩‍🦳","👩‍🦲","👱‍♀️","👵","🙍‍♀️","🙎‍♀️","🙅‍♀️","🙆‍♀️","💁‍♀️","🙋‍♀️","🧏‍♀️","🙇‍♀️","🤦‍♀️","🤷‍♀️","👩‍⚕️","👩‍🎓","👩‍🏫","👩‍⚖️","👩‍🌾","👩‍🍳","👩‍🔧","👩‍🏭","👩‍💼","👩‍🔬","👩‍💻","👩‍🎤","👩‍🎨","👩‍✈️","👩‍🚀","👩‍🚒","👮‍♀️","🕵️‍♀️","💂‍♀️","👷‍♀️","👳‍♀️","🧕","🤵‍♀️","👰‍♀️","🤰","👩‍🍼","🦸‍♀️","🦹‍♀️","🧙‍♀️","🧚‍♀️","🧛‍♀️","🧝‍♀️","🧞‍♀️","🧟‍♀️","💆‍♀️","💇‍♀️","🚶‍♀️","🧍‍♀️","🧎‍♀️","👩‍🦯","👩‍🦼","👩‍🦽","🏃‍♀️","💃","🧖‍♀️","🧗‍♀️","🏌️‍♀️","🏄‍♀️","🚣‍♀️","🏊‍♀️","⛹️‍♀️","🏋️‍♀️","🚴‍♀️","🚵‍♀️","🤸‍♀️","🤽‍♀️","🤾‍♀️","🤹‍♀️","🧘‍♀️","👫","👩‍❤️‍💋‍👨","👩‍❤️‍💋‍👩","👩‍❤️‍👨","👩‍❤️‍👩","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧","👚","👡","👢","👒"],"curly":["👨‍🦱","👩‍🦱","🧑‍🦱","➰","➿"],"bald":["👨‍🦲","👩‍🦲","🧑‍🦲"],"older":["🧓"],"old":["👴","👵","🗝️"],"tip":["💁","💁‍♂️","💁‍♀️"],"deaf":["🧏","🧏‍♂️","🧏‍♀️"],"bow":["🙇","🙇‍♂️","🙇‍♀️","🏹"],"facepalm":["🤦","🤦‍♂️","🤦‍♀️"],"shrug":["🤷","🤷‍♂️","🤷‍♀️"],"health":["🧑‍⚕️","👨‍⚕️","👩‍⚕️"],"worker":["🧑‍⚕️","👨‍⚕️","👩‍⚕️","🧑‍🏭","👨‍🏭","👩‍🏭","🧑‍💼","👨‍💼","👩‍💼","👷","👷‍♂️","👷‍♀️","⛑️"],"student":["🧑‍🎓","👨‍🎓","👩‍🎓"],"teacher":["🧑‍🏫","👨‍🏫","👩‍🏫"],"judge":["🧑‍⚖️","👨‍⚖️","👩‍⚖️"],"farmer":["🧑‍🌾","👨‍🌾","👩‍🌾"],"cook":["🧑‍🍳","👨‍🍳","👩‍🍳","🍳","🇨🇰"],"mechanic":["🧑‍🔧","👨‍🔧","👩‍🔧"],"factory":["🧑‍🏭","👨‍🏭","👩‍🏭","🏭"],"office":["🧑‍💼","👨‍💼","👩‍💼","🏢","🏣","🏤"],"scientist":["🧑‍🔬","👨‍🔬","👩‍🔬"],"technologist":["🧑‍💻","👨‍💻","👩‍💻"],"singer":["🧑‍🎤","👨‍🎤","👩‍🎤"],"artist":["🧑‍🎨","👨‍🎨","👩‍🎨","🎨"],"pilot":["🧑‍✈️","👨‍✈️","👩‍✈️"],"astronaut":["🧑‍🚀","👨‍🚀","👩‍🚀"],"firefighter":["🧑‍🚒","👨‍🚒","👩‍🚒"],"police":["👮","👮‍♂️","👮‍♀️","🚓","🚔","🚨"],"officer":["👮","👮‍♂️","👮‍♀️"],"detective":["🕵️","🕵️‍♂️","🕵️‍♀️"],"guard":["💂","💂‍♂️","💂‍♀️"],"ninja":["🥷"],"construction":["👷","👷‍♂️","👷‍♀️","🏗️","🚧"],"crown":["🫅","👑"],"prince":["🤴"],"princess":["👸"],"wear":["👳","👳‍♂️","👳‍♀️"],"turban":["👳","👳‍♂️","👳‍♀️"],"skullcap":["👲"],"headscarf":["🧕"],"tuxedo":["🤵","🤵‍♂️","🤵‍♀️"],"veil":["👰","👰‍♂️","👰‍♀️"],"pregnant":["🤰","🫃","🫄"],"breast":["🤱"],"feed":["🤱","👩‍🍼","👨‍🍼","🧑‍🍼"],"angel":["👼"],"santa":["🎅"],"claus":["🎅","🤶","🧑‍🎄"],"mrs":["🤶"],"mx":["🧑‍🎄"],"superhero":["🦸","🦸‍♂️","🦸‍♀️"],"supervillain":["🦹","🦹‍♂️","🦹‍♀️"],"mage":["🧙","🧙‍♂️","🧙‍♀️"],"fairy":["🧚","🧚‍♂️","🧚‍♀️"],"vampire":["🧛","🧛‍♂️","🧛‍♀️"],"merperson":["🧜"],"merman":["🧜‍♂️"],"mermaid":["🧜‍♀️"],"elf":["🧝","🧝‍♂️","🧝‍♀️"],"genie":["🧞","🧞‍♂️","🧞‍♀️"],"zombie":["🧟","🧟‍♂️","🧟‍♀️"],"troll":["🧌"],"gett":["💆","💆‍♂️","💆‍♀️","💇","💇‍♂️","💇‍♀️"],"massage":["💆","💆‍♂️","💆‍♀️"],"haircut":["💇","💇‍♂️","💇‍♀️"],"walk":["🚶","🚶‍♂️","🚶‍♀️"],"stand":["🧍","🧍‍♂️","🧍‍♀️"],"kneel":["🧎","🧎‍♂️","🧎‍♀️"],"cane":["🧑‍🦯","👨‍🦯","👩‍🦯","🦯"],"motorized":["🧑‍🦼","👨‍🦼","👩‍🦼","🦼"],"wheelchair":["🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🦽","🦼","♿"],"manual":["🧑‍🦽","👨‍🦽","👩‍🦽","🦽"],"run":["🏃","🏃‍♂️","🏃‍♀️","🎽","👟"],"dance":["💃","🕺"],"suit":["🕴️","♠️","♥️","♦️","♣️"],"levitate":["🕴️"],"people":["👯","🤼","🧑‍🤝‍🧑","🫂"],"bunny":["👯","👯‍♂️","👯‍♀️"],"ears":["👯","👯‍♂️","👯‍♀️"],"men":["👯‍♂️","🤼‍♂️","👬","🚹"],"women":["👯‍♀️","🤼‍♀️","👭","🚺"],"steamy":["🧖","🧖‍♂️","🧖‍♀️"],"room":["🧖","🧖‍♂️","🧖‍♀️","🚹","🚺"],"climb":["🧗","🧗‍♂️","🧗‍♀️"],"fence":["🤺"],"horse":["🏇","🐴","🐎","🎠"],"race":["🏇","🏎️"],"skier":["⛷️"],"snowboarder":["🏂"],"golf":["🏌️","🏌️‍♂️","🏌️‍♀️"],"surf":["🏄","🏄‍♂️","🏄‍♀️"],"row":["🚣","🚣‍♂️","🚣‍♀️"],"boat":["🚣","🚣‍♂️","🚣‍♀️","🛥️"],"swim":["🏊","🏊‍♂️","🏊‍♀️"],"bounce":["⛹️","⛹️‍♂️","⛹️‍♀️"],"ball":["⛹️","⛹️‍♂️","⛹️‍♀️","🍙","🎊","⚽","🎱","🔮","🪩"],"lift":["🏋️","🏋️‍♂️","🏋️‍♀️"],"weights":["🏋️","🏋️‍♂️","🏋️‍♀️"],"bike":["🚴","🚴‍♂️","🚴‍♀️","🚵","🚵‍♂️","🚵‍♀️"],"mountain":["🚵","🚵‍♂️","🚵‍♀️","🏔️","⛰️","🚞","🚠"],"cartwheel":["🤸","🤸‍♂️","🤸‍♀️"],"wrestle":["🤼","🤼‍♂️","🤼‍♀️"],"play":["🤽","🤽‍♂️","🤽‍♀️","🤾","🤾‍♂️","🤾‍♀️","🎴","▶️","⏯️"],"water":["🤽","🤽‍♂️","🤽‍♀️","🐃","🌊","🔫","🚰","🚾","🚱"],"polo":["🤽","🤽‍♂️","🤽‍♀️"],"handball":["🤾","🤾‍♂️","🤾‍♀️"],"juggle":["🤹","🤹‍♂️","🤹‍♀️"],"lotus":["🧘","🧘‍♂️","🧘‍♀️","🪷"],"position":["🧘","🧘‍♂️","🧘‍♀️"],"take":["🛀"],"bath":["🛀"],"bed":["🛌","🛏️"],"couple":["💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩"],"family":["👪","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"bust":["👤"],"silhouette":["👤","👥"],"busts":["👥"],"hug":["🫂"],"footprints":["👣"],"gorilla":["🦍"],"orangutan":["🦧"],"dog":["🐶","🐕","🦮","🐕‍🦺","🌭"],"guide":["🦮"],"service":["🐕‍🦺","🈂️"],"poodle":["🐩"],"wolf":["🐺"],"fox":["🦊"],"raccoon":["🦝"],"lion":["🦁"],"tiger":["🐯","🐅"],"leopard":["🐆"],"moose":["🫎"],"donkey":["🫏"],"unicorn":["🦄"],"zebra":["🦓"],"deer":["🦌"],"bison":["🦬"],"cow":["🐮","🐄"],"ox":["🐂"],"buffalo":["🐃"],"pig":["🐷","🐖","🐽"],"boar":["🐗"],"ram":["🐏"],"ewe":["🐑"],"goat":["🐐"],"camel":["🐪","🐫"],"hump":["🐫"],"llama":["🦙"],"giraffe":["🦒"],"elephant":["🐘"],"mammoth":["🦣"],"rhinoceros":["🦏"],"hippopotamus":["🦛"],"mouse":["🐭","🐁","🖱️","🪤"],"rat":["🐀"],"hamster":["🐹"],"rabbit":["🐰","🐇"],"chipmunk":["🐿️"],"beaver":["🦫"],"hedgehog":["🦔"],"bat":["🦇"],"bear":["🐻","🐻‍❄️","🧸"],"polar":["🐻‍❄️"],"koala":["🐨"],"panda":["🐼"],"sloth":["🦥"],"otter":["🦦"],"skunk":["🦨"],"kangaroo":["🦘"],"badger":["🦡"],"paw":["🐾"],"prints":["🐾"],"turkey":["🦃","🇹🇷"],"chicken":["🐔"],"rooster":["🐓"],"hatch":["🐣"],"chick":["🐣","🐤","🐥"],"front":["🐥"],"bird":["🐦","🐦‍⬛"],"penguin":["🐧"],"dove":["🕊️"],"eagle":["🦅"],"duck":["🦆"],"swan":["🦢"],"owl":["🦉"],"dodo":["🦤"],"feather":["🪶"],"flamingo":["🦩"],"peacock":["🦚"],"parrot":["🦜"],"wing":["🪽"],"goose":["🪿"],"frog":["🐸"],"crocodile":["🐊"],"turtle":["🐢"],"lizard":["🦎"],"snake":["🐍"],"dragon":["🐲","🐉","🀄"],"sauropod":["🦕"],"rex":["🦖"],"spout":["🐳"],"whale":["🐳","🐋"],"dolphin":["🐬"],"seal":["🦭"],"fish":["🐟","🐠","🍥","🎣"],"tropical":["🐠","🍹"],"blowfish":["🐡"],"shark":["🦈"],"octopus":["🐙"],"shell":["🐚"],"coral":["🪸"],"jellyfish":["🪼"],"snail":["🐌"],"butterfly":["🦋"],"bug":["🐛"],"ant":["🐜"],"honeybee":["🐝"],"beetle":["🪲","🐞"],"lady":["🐞"],"cricket":["🦗","🏏"],"cockroach":["🪳"],"spider":["🕷️","🕸️"],"web":["🕸️"],"scorpion":["🦂"],"mosquito":["🦟"],"fly":["🪰","🛸","🥏"],"worm":["🪱"],"microbe":["🦠"],"bouquet":["💐"],"cherry":["🌸"],"blossom":["🌸","🌼"],"flower":["💮","🥀","🎴"],"rosette":["🏵️"],"rose":["🌹"],"wilted":["🥀"],"hibiscus":["🌺"],"sunflower":["🌻"],"tulip":["🌷"],"hyacinth":["🪻"],"seedle":["🌱"],"potted":["🪴"],"plant":["🪴"],"evergreen":["🌲"],"tree":["🌲","🌳","🌴","🎄","🎋"],"deciduous":["🌳"],"cactus":["🌵"],"sheaf":["🌾"],"rice":["🌾","🍘","🍙","🍚","🍛"],"herb":["🌿"],"shamrock":["☘️"],"four":["🍀","🕓","🕟"],"leaf":["🍀","🍁","🍂","🍃"],"clover":["🍀"],"maple":["🍁"],"fallen":["🍂"],"flutter":["🍃"],"wind":["🍃","🌬️","🎐"],"empty":["🪹"],"nest":["🪹","🪺","🪆"],"eggs":["🪺"],"mushroom":["🍄"],"grapes":["🍇"],"melon":["🍈"],"watermelon":["🍉"],"tangerine":["🍊"],"lemon":["🍋"],"banana":["🍌"],"pineapple":["🍍"],"mango":["🥭"],"apple":["🍎","🍏"],"pear":["🍐"],"peach":["🍑"],"cherries":["🍒"],"strawberry":["🍓"],"blueberries":["🫐"],"kiwi":["🥝"],"fruit":["🥝"],"tomato":["🍅"],"olive":["🫒"],"coconut":["🥥"],"avocado":["🥑"],"eggplant":["🍆"],"potato":["🥔","🍠"],"carrot":["🥕"],"corn":["🌽"],"pepper":["🌶️","🫑"],"bell":["🫑","🛎️","🔔","🔕"],"cucumber":["🥒"],"leafy":["🥬"],"broccoli":["🥦"],"garlic":["🧄"],"onion":["🧅"],"peanuts":["🥜"],"beans":["🫘"],"chestnut":["🌰"],"ginger":["🫚"],"root":["🫚"],"pea":["🫛"],"pod":["🫛"],"bread":["🍞","🥖"],"croissant":["🥐"],"baguette":["🥖"],"flatbread":["🫓","🥙"],"pretzel":["🥨"],"bagel":["🥯"],"pancakes":["🥞"],"waffle":["🧇"],"cheese":["🧀"],"wedge":["🧀"],"meat":["🍖","🥩"],"poultry":["🍗"],"cut":["🥩"],"bacon":["🥓"],"hamburger":["🍔"],"french":["🍟","🇬🇫","🇵🇫","🇹🇫"],"fries":["🍟"],"pizza":["🍕"],"sandwich":["🥪","🇬🇸"],"taco":["🌮"],"burrito":["🌯"],"tamale":["🫔"],"stuffed":["🥙"],"falafel":["🧆"],"egg":["🥚"],"shallow":["🥘"],"pan":["🥘"],"pot":["🍲","🍯"],"fondue":["🫕"],"bowl":["🥣","🍜","🎳"],"spoon":["🥣","🥄"],"salad":["🥗"],"popcorn":["🍿"],"butter":["🧈"],"salt":["🧂"],"canned":["🥫"],"bento":["🍱"],"box":["🍱","🥡","🧃","🥊","🗳️","🗃️","☑️"],"cracker":["🍘"],"cooked":["🍚"],"curry":["🍛"],"spaghetti":["🍝"],"roasted":["🍠"],"sweet":["🍠"],"oden":["🍢"],"sushi":["🍣"],"fried":["🍤"],"shrimp":["🍤","🦐"],"cake":["🍥","🥮","🎂"],"swirl":["🍥"],"moon":["🥮","🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘","🌙","🌚","🌛","🌜","🌝","🎑"],"dango":["🍡"],"dumple":["🥟"],"fortune":["🥠"],"cookie":["🥠","🍪"],"takeout":["🥡"],"crab":["🦀"],"lobster":["🦞"],"squid":["🦑"],"oyster":["🦪"],"soft":["🍦"],"ice":["🍦","🍧","🍨","🧊","🏒","⛸️"],"cream":["🍦","🍨"],"shaved":["🍧"],"doughnut":["🍩"],"birthday":["🎂"],"shortcake":["🍰"],"cupcake":["🧁"],"pie":["🥧"],"chocolate":["🍫"],"bar":["🍫","📊"],"candy":["🍬"],"lollipop":["🍭"],"custard":["🍮"],"honey":["🍯"],"bottle":["🍼","🍾","🧴"],"glass":["🥛","🍷","🍸","🥃","🔍","🔎"],"milk":["🥛"],"beverage":["☕","🧃"],"teapot":["🫖"],"teacup":["🍵"],"handle":["🍵"],"sake":["🍶"],"pop":["🍾"],"cork":["🍾"],"wine":["🍷"],"cocktail":["🍸"],"drink":["🍹"],"beer":["🍺","🍻"],"mug":["🍺"],"clink":["🍻","🥂"],"mugs":["🍻"],"glasses":["🥂","👓"],"tumbler":["🥃"],"pour":["🫗"],"liquid":["🫗"],"cup":["🥤"],"straw":["🥤"],"tea":["🧋"],"mate":["🧉"],"chopsticks":["🥢"],"fork":["🍽️","🍴"],"knife":["🍽️","🍴","🔪"],"plate":["🍽️"],"kitchen":["🔪"],"jar":["🫙"],"amphora":["🏺"],"globe":["🌍","🌎","🌏","🌐"],"show":["🌍","🌎","🌏"],"europe":["🌍"],"africa":["🌍","🇿🇦"],"americas":["🌎"],"asia":["🌏"],"australia":["🌏","🇦🇺"],"meridians":["🌐"],"world":["🗺️"],"map":["🗺️","🗾"],"japan":["🗾","🇯🇵"],"compass":["🧭"],"snow":["🏔️","🌨️","⛄"],"capped":["🏔️"],"volcano":["🌋"],"mount":["🗻"],"fuji":["🗻"],"camp":["🏕️"],"beach":["🏖️"],"umbrella":["🏖️","🌂","☂️","☔","⛱️"],"desert":["🏜️","🏝️"],"island":["🏝️","🇦🇨","🇧🇻","🇨🇵","🇨🇽","🇳🇫"],"national":["🏞️"],"park":["🏞️"],"stadium":["🏟️"],"classical":["🏛️"],"build":["🏛️","🏗️","🏢"],"brick":["🧱"],"rock":["🪨"],"wood":["🪵"],"hut":["🛖"],"houses":["🏘️"],"derelict":["🏚️"],"house":["🏚️","🏠","🏡"],"garden":["🏡"],"japanese":["🏣","🏯","🎎","🔰","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵"],"post":["🏣","🏤"],"hospital":["🏥"],"bank":["🏦"],"hotel":["🏨","🏩"],"convenience":["🏪"],"store":["🏪","🏬"],"school":["🏫"],"department":["🏬"],"castle":["🏯","🏰"],"wed":["💒"],"tokyo":["🗼"],"tower":["🗼"],"statue":["🗽"],"liberty":["🗽"],"church":["⛪"],"mosque":["🕌"],"hindu":["🛕"],"temple":["🛕"],"synagogue":["🕍"],"shinto":["⛩️"],"shrine":["⛩️"],"kaaba":["🕋"],"fountain":["⛲","🖋️"],"tent":["⛺","🎪"],"foggy":["🌁"],"night":["🌃","🌉"],"stars":["🌃"],"cityscape":["🏙️","🌆"],"sunrise":["🌄","🌅"],"mountains":["🌄"],"dusk":["🌆"],"sunset":["🌇"],"bridge":["🌉"],"springs":["♨️"],"carousel":["🎠"],"playground":["🛝"],"slide":["🛝"],"ferris":["🎡"],"wheel":["🎡","🛞","☸️"],"roller":["🎢","🛼"],"coaster":["🎢"],"barber":["💈"],"pole":["💈","🎣"],"circus":["🎪"],"locomotive":["🚂"],"railway":["🚃","🚞","🛤️","🚟"],"car":["🚃","🚋","🚓","🚔","🏎️","🚨"],"high":["🚄","⚡","👠","🔊"],"speed":["🚄"],"train":["🚄","🚅","🚆"],"bullet":["🚅"],"metro":["🚇"],"rail":["🚈"],"station":["🚉"],"tram":["🚊","🚋"],"monorail":["🚝"],"bus":["🚌","🚍","🚏"],"trolleybus":["🚎"],"minibus":["🚐"],"ambulance":["🚑"],"engine":["🚒"],"taxi":["🚕","🚖"],"automobile":["🚗","🚘"],"sport":["🚙"],"utility":["🚙"],"vehicle":["🚙"],"pickup":["🛻"],"truck":["🛻","🚚"],"delivery":["🚚"],"articulated":["🚛"],"lorry":["🚛"],"tractor":["🚜"],"motorcycle":["🏍️"],"motor":["🛵","🛥️"],"scooter":["🛵","🛴"],"auto":["🛺"],"rickshaw":["🛺"],"bicycle":["🚲"],"kick":["🛴"],"skateboard":["🛹"],"skate":["🛼","⛸️"],"stop":["🚏","🛑","⏹️"],"motorway":["🛣️"],"track":["🛤️","⏭️","⏮️"],"oil":["🛢️"],"drum":["🛢️","🥁","🪘"],"fuel":["⛽"],"pump":["⛽"],"horizontal":["🚥"],"traffic":["🚥","🚦"],"vertical":["🚦","🔃"],"anchor":["⚓"],"ring":["🛟","💍"],"buoy":["🛟"],"sailboat":["⛵"],"canoe":["🛶"],"speedboat":["🚤"],"passenger":["🛳️"],"ship":["🛳️","🚢"],"ferry":["⛴️"],"airplane":["✈️","🛩️","🛫","🛬"],"small":["🛩️","🌤️","◾","◽","▪️","▫️","🔸","🔹"],"departure":["🛫"],"arrival":["🛬"],"parachute":["🪂"],"seat":["💺"],"helicopter":["🚁"],"suspension":["🚟"],"cableway":["🚠"],"aerial":["🚡"],"tramway":["🚡"],"satellite":["🛰️","📡"],"rocket":["🚀"],"saucer":["🛸"],"bellhop":["🛎️"],"luggage":["🧳","🛅"],"hourglass":["⌛","⏳"],"done":["⌛","⏳"],"not":["⏳","🈶"],"watch":["⌚"],"alarm":["⏰"],"clock":["⏰","⏲️","🕰️","🕛","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚"],"stopwatch":["⏱️"],"timer":["⏲️"],"mantelpiece":["🕰️"],"twelve":["🕛","🕧"],"thirty":["🕧","🕜","🕝","🕞","🕟","🕠","🕡","🕢","🕣","🕤","🕥","🕦"],"one":["🕐","🕜","🩱","🔞"],"three":["🕒","🕞"],"five":["🕔","🕠"],"six":["🕕","🕡","🔯"],"seven":["🕖","🕢"],"eight":["🕗","🕣","✳️","✴️"],"nine":["🕘","🕤"],"ten":["🕙","🕥"],"eleven":["🕚","🕦"],"new":["🌑","🌚","🆕","🇳🇨","🇳🇿","🇵🇬"],"wax":["🌒","🌔"],"crescent":["🌒","🌘","🌙","☪️"],"first":["🌓","🌛"],"quarter":["🌓","🌗","🌛","🌜"],"gibbous":["🌔","🌖"],"full":["🌕","🌝"],"wane":["🌖","🌘"],"last":["🌗","🌜","⏮️"],"sun":["☀️","🌞","⛅","🌤️","🌥️","🌦️"],"ringed":["🪐"],"planet":["🪐"],"glow":["🌟"],"shoot":["🌠"],"milky":["🌌"],"way":["🌌"],"cloud":["☁️","⛅","⛈️","🌤️","🌥️","🌦️","🌧️","🌨️","🌩️"],"behind":["⛅","🌤️","🌥️","🌦️"],"lightning":["⛈️","🌩️"],"rain":["⛈️","🌦️","🌧️","☔"],"large":["🌥️","⬛","⬜","🔶","🔷"],"tornado":["🌪️"],"fog":["🌫️"],"cyclone":["🌀"],"rainbow":["🌈","🏳️‍🌈"],"drops":["☔"],"ground":["⛱️"],"voltage":["⚡"],"snowflake":["❄️"],"snowman":["☃️","⛄"],"comet":["☄️"],"droplet":["💧"],"jack":["🎃"],"lantern":["🎃","🏮"],"christmas":["🎄","🇨🇽"],"fireworks":["🎆"],"sparkler":["🎇"],"firecracker":["🧨"],"sparkles":["✨"],"popper":["🎉"],"confetti":["🎊"],"tanabata":["🎋"],"pine":["🎍"],"dolls":["🎎","🪆"],"carp":["🎏"],"streamer":["🎏"],"chime":["🎐"],"view":["🎑"],"ceremony":["🎑"],"envelope":["🧧","✉️","📨","📩"],"wrapped":["🎁"],"gift":["🎁"],"reminder":["🎗️"],"admission":["🎟️"],"tickets":["🎟️"],"ticket":["🎫"],"military":["🎖️","🪖"],"medal":["🎖️","🏅","🥇","🥈","🥉"],"trophy":["🏆"],"sports":["🏅"],"1st":["🥇"],"place":["🥇","🥈","🥉","🛐"],"2nd":["🥈"],"3rd":["🥉"],"soccer":["⚽"],"baseball":["⚾"],"softball":["🥎"],"basketball":["🏀"],"volleyball":["🏐"],"american":["🏈","🇦🇸"],"football":["🏈","🏉"],"rugby":["🏉"],"tennis":["🎾"],"disc":["🥏"],"game":["🏏","🎮","🎲"],"field":["🏑"],"hockey":["🏑","🏒"],"lacrosse":["🥍"],"ping":["🏓"],"pong":["🏓"],"badminton":["🏸"],"glove":["🥊"],"martial":["🥋"],"arts":["🥋","🎭"],"uniform":["🥋"],"goal":["🥅"],"net":["🥅"],"flag":["⛳","📫","📪","📬","📭","🏁","🚩","🏴","🏳️","🏳️‍🌈","🏳️‍⚧️","🏴‍☠️","🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺","🇦🇼","🇦🇽","🇦🇿","🇧🇦","🇧🇧","🇧🇩","🇧🇪","🇧🇫","🇧🇬","🇧🇭","🇧🇮","🇧🇯","🇧🇱","🇧🇲","🇧🇳","🇧🇴","🇧🇶","🇧🇷","🇧🇸","🇧🇹","🇧🇻","🇧🇼","🇧🇾","🇧🇿","🇨🇦","🇨🇨","🇨🇩","🇨🇫","🇨🇬","🇨🇭","🇨🇮","🇨🇰","🇨🇱","🇨🇲","🇨🇳","🇨🇴","🇨🇵","🇨🇷","🇨🇺","🇨🇻","🇨🇼","🇨🇽","🇨🇾","🇨🇿","🇩🇪","🇩🇬","🇩🇯","🇩🇰","🇩🇲","🇩🇴","🇩🇿","🇪🇦","🇪🇨","🇪🇪","🇪🇬","🇪🇭","🇪🇷","🇪🇸","🇪🇹","🇪🇺","🇫🇮","🇫🇯","🇫🇰","🇫🇲","🇫🇴","🇫🇷","🇬🇦","🇬🇧","🇬🇩","🇬🇪","🇬🇫","🇬🇬","🇬🇭","🇬🇮","🇬🇱","🇬🇲","🇬🇳","🇬🇵","🇬🇶","🇬🇷","🇬🇸","🇬🇹","🇬🇺","🇬🇼","🇬🇾","🇭🇰","🇭🇲","🇭🇳","🇭🇷","🇭🇹","🇭🇺","🇮🇨","🇮🇩","🇮🇪","🇮🇱","🇮🇲","🇮🇳","🇮🇴","🇮🇶","🇮🇷","🇮🇸","🇮🇹","🇯🇪","🇯🇲","🇯🇴","🇯🇵","🇰🇪","🇰🇬","🇰🇭","🇰🇮","🇰🇲","🇰🇳","🇰🇵","🇰🇷","🇰🇼","🇰🇾","🇰🇿","🇱🇦","🇱🇧","🇱🇨","🇱🇮","🇱🇰","🇱🇷","🇱🇸","🇱🇹","🇱🇺","🇱🇻","🇱🇾","🇲🇦","🇲🇨","🇲🇩","🇲🇪","🇲🇫","🇲🇬","🇲🇭","🇲🇰","🇲🇱","🇲🇲","🇲🇳","🇲🇴","🇲🇵","🇲🇶","🇲🇷","🇲🇸","🇲🇹","🇲🇺","🇲🇻","🇲🇼","🇲🇽","🇲🇾","🇲🇿","🇳🇦","🇳🇨","🇳🇪","🇳🇫","🇳🇬","🇳🇮","🇳🇱","🇳🇴","🇳🇵","🇳🇷","🇳🇺","🇳🇿","🇴🇲","🇵🇦","🇵🇪","🇵🇫","🇵🇬","🇵🇭","🇵🇰","🇵🇱","🇵🇲","🇵🇳","🇵🇷","🇵🇸","🇵🇹","🇵🇼","🇵🇾","🇶🇦","🇷🇪","🇷🇴","🇷🇸","🇷🇺","🇷🇼","🇸🇦","🇸🇧","🇸🇨","🇸🇩","🇸🇪","🇸🇬","🇸🇭","🇸🇮","🇸🇯","🇸🇰","🇸🇱","🇸🇲","🇸🇳","🇸🇴","🇸🇷","🇸🇸","🇸🇹","🇸🇻","🇸🇽","🇸🇾","🇸🇿","🇹🇦","🇹🇨","🇹🇩","🇹🇫","🇹🇬","🇹🇭","🇹🇯","🇹🇰","🇹🇱","🇹🇲","🇹🇳","🇹🇴","🇹🇷","🇹🇹","🇹🇻","🇹🇼","🇹🇿","🇺🇦","🇺🇬","🇺🇲","🇺🇳","🇺🇸","🇺🇾","🇺🇿","🇻🇦","🇻🇨","🇻🇪","🇻🇬","🇻🇮","🇻🇳","🇻🇺","🇼🇫","🇼🇸","🇽🇰","🇾🇪","🇾🇹","🇿🇦","🇿🇲","🇿🇼","🏴󠁧󠁢󠁥󠁮󠁧󠁿","🏴󠁧󠁢󠁳󠁣󠁴󠁿","🏴󠁧󠁢󠁷󠁬󠁳󠁿"],"dive":["🤿"],"shirt":["🎽","👕"],"skis":["🎿"],"sled":["🛷"],"curl":["🥌","📃"],"stone":["🥌","💎"],"bullseye":["🎯"],"yo":["🪀"],"kite":["🪁"],"pistol":["🔫"],"pool":["🎱"],"crystal":["🔮"],"magic":["🪄"],"wand":["🪄"],"video":["🎮","📹"],"joystick":["🕹️"],"slot":["🎰"],"machine":["🎰","📠"],"die":["🎲"],"puzzle":["🧩"],"piece":["🧩","🩱"],"teddy":["🧸"],"pinata":["🪅"],"mirror":["🪩","🪞"],"spade":["♠️"],"diamond":["♦️","🔶","🔷","🔸","🔹","💠"],"club":["♣️"],"chess":["♟️"],"pawn":["♟️"],"joker":["🃏"],"mahjong":["🀄"],"cards":["🎴"],"perform":["🎭"],"framed":["🖼️"],"picture":["🖼️"],"palette":["🎨"],"thread":["🧵"],"sew":["🪡"],"needle":["🪡"],"yarn":["🧶"],"knot":["🪢"],"goggles":["🥽"],"lab":["🥼"],"coat":["🥼","🧥"],"safety":["🦺","🧷"],"vest":["🦺"],"necktie":["👔"],"jeans":["👖"],"scarf":["🧣"],"gloves":["🧤"],"socks":["🧦"],"dress":["👗"],"kimono":["👘"],"sari":["🥻"],"swimsuit":["🩱"],"briefs":["🩲"],"shorts":["🩳"],"bikini":["👙"],"clothes":["👚"],"fold":["🪭"],"fan":["🪭"],"purse":["👛"],"handbag":["👜"],"clutch":["👝"],"bag":["👝","💰"],"shop":["🛍️","🛒"],"bags":["🛍️"],"backpack":["🎒"],"thong":["🩴"],"sandal":["🩴","👡"],"shoe":["👞","👟","🥿","👠"],"hike":["🥾"],"boot":["🥾","👢"],"flat":["🥿"],"heeled":["👠"],"ballet":["🩰"],"shoes":["🩰"],"pick":["🪮","⛏️","⚒️"],"top":["🎩","🔝"],"graduation":["🎓"],"cap":["🎓","🧢"],"billed":["🧢"],"helmet":["🪖","⛑️"],"rescue":["⛑️"],"prayer":["📿"],"beads":["📿"],"lipstick":["💄"],"gem":["💎"],"muted":["🔇"],"speaker":["🔇","🔈","🔉","🔊"],"low":["🔈","🪫"],"volume":["🔈","🔉","🔊"],"medium":["🔉","◼️","◻️","◾","◽"],"loudspeaker":["📢"],"megaphone":["📣"],"postal":["📯"],"horn":["📯"],"slash":["🔕"],"musical":["🎼","🎵","🎶","🎹"],"score":["🎼"],"note":["🎵"],"notes":["🎶"],"studio":["🎙️"],"microphone":["🎙️","🎤"],"level":["🎚️"],"slider":["🎚️"],"control":["🎛️","🛂"],"knobs":["🎛️"],"headphone":["🎧"],"radio":["📻","🔘"],"saxophone":["🎷"],"accordion":["🪗"],"guitar":["🎸"],"keyboard":["🎹","⌨️"],"trumpet":["🎺"],"violin":["🎻"],"banjo":["🪕"],"long":["🪘"],"maracas":["🪇"],"flute":["🪈"],"mobile":["📱","📲","📵","📴"],"phone":["📱","📲","📴"],"telephone":["☎️","📞"],"receiver":["📞"],"pager":["📟"],"fax":["📠"],"battery":["🔋","🪫"],"electric":["🔌"],"plug":["🔌"],"laptop":["💻"],"desktop":["🖥️"],"computer":["🖥️","🖱️","💽"],"printer":["🖨️"],"trackball":["🖲️"],"disk":["💽","💾","💿"],"floppy":["💾"],"optical":["💿"],"dvd":["📀"],"abacus":["🧮"],"movie":["🎥"],"camera":["🎥","📷","📸","📹"],"film":["🎞️","📽️"],"frames":["🎞️"],"projector":["📽️"],"clapper":["🎬"],"board":["🎬"],"television":["📺"],"flash":["📸"],"videocassette":["📼"],"magnify":["🔍","🔎"],"tilted":["🔍","🔎"],"candle":["🕯️"],"bulb":["💡"],"flashlight":["🔦"],"paper":["🏮","🧻"],"diya":["🪔"],"lamp":["🪔","🛋️"],"notebook":["📔","📓"],"decorative":["📔"],"cover":["📔"],"book":["📕","📖","📗","📘","📙"],"books":["📚"],"ledger":["📒"],"page":["📃","📄"],"scroll":["📜"],"newspaper":["📰","🗞️"],"rolled":["🗞️"],"bookmark":["📑","🔖"],"tabs":["📑"],"label":["🏷️"],"coin":["🪙"],"yen":["💴","💹"],"banknote":["💴","💵","💶","💷"],"dollar":["💵","💲"],"euro":["💶"],"pound":["💷"],"wings":["💸"],"credit":["💳"],"card":["💳","🗂️","📇","🗃️","🪪"],"receipt":["🧾"],"chart":["💹","📈","📉","📊"],"increase":["💹","📈"],"mail":["📧"],"income":["📨"],"outbox":["📤"],"tray":["📤","📥"],"inbox":["📥"],"package":["📦"],"mailbox":["📫","📪","📬","📭"],"lowered":["📪","📭"],"postbox":["📮"],"ballot":["🗳️"],"pencil":["✏️"],"nib":["✒️"],"pen":["🖋️","🖊️","🔏"],"paintbrush":["🖌️"],"crayon":["🖍️"],"memo":["📝"],"briefcase":["💼"],"file":["📁","📂","🗃️","🗄️"],"folder":["📁","📂"],"dividers":["🗂️"],"calendar":["📅","📆","🗓️"],"off":["📆","📴"],"notepad":["🗒️"],"decrease":["📉"],"clipboard":["📋"],"pushpin":["📌","📍"],"round":["📍"],"paperclip":["📎"],"linked":["🖇️"],"paperclips":["🖇️"],"straight":["📏"],"ruler":["📏","📐"],"triangular":["📐","🚩"],"scissors":["✂️"],"cabinet":["🗄️"],"wastebasket":["🗑️"],"locked":["🔒","🔏","🔐"],"unlocked":["🔓"],"key":["🔐","🔑","🗝️"],"hammer":["🔨","⚒️","🛠️"],"axe":["🪓"],"wrench":["🛠️","🔧"],"dagger":["🗡️"],"swords":["⚔️"],"bomb":["💣"],"boomerang":["🪃"],"shield":["🛡️"],"carpentry":["🪚"],"saw":["🪚"],"screwdriver":["🪛"],"nut":["🔩"],"bolt":["🔩"],"gear":["⚙️"],"clamp":["🗜️"],"balance":["⚖️"],"scale":["⚖️"],"link":["🔗"],"chains":["⛓️"],"hook":["🪝"],"toolbox":["🧰"],"magnet":["🧲"],"ladder":["🪜"],"alembic":["⚗️"],"test":["🧪"],"tube":["🧪"],"petri":["🧫"],"dish":["🧫"],"dna":["🧬"],"microscope":["🔬"],"telescope":["🔭"],"antenna":["📡","📶"],"syringe":["💉"],"drop":["🩸"],"blood":["🩸","🅰️","🆎","🅱️","🅾️"],"pill":["💊"],"adhesive":["🩹"],"crutch":["🩼"],"stethoscope":["🩺"],"ray":["🩻"],"door":["🚪"],"elevator":["🛗"],"window":["🪟"],"couch":["🛋️"],"chair":["🪑"],"toilet":["🚽"],"plunger":["🪠"],"shower":["🚿"],"bathtub":["🛁"],"trap":["🪤"],"razor":["🪒"],"lotion":["🧴"],"pin":["🧷"],"broom":["🧹"],"basket":["🧺"],"bucket":["🪣"],"soap":["🧼"],"bubbles":["🫧"],"toothbrush":["🪥"],"sponge":["🧽"],"extinguisher":["🧯"],"cart":["🛒"],"cigarette":["🚬"],"coffin":["⚰️"],"headstone":["🪦"],"funeral":["⚱️"],"urn":["⚱️"],"nazar":["🧿"],"amulet":["🧿"],"hamsa":["🪬"],"moai":["🗿"],"placard":["🪧"],"identification":["🪪"],"atm":["🏧"],"litter":["🚮","🚯"],"bin":["🚮"],"potable":["🚰","🚱"],"restroom":["🚻"],"closet":["🚾"],"passport":["🛂"],"customs":["🛃"],"baggage":["🛄"],"claim":["🛄"],"warn":["⚠️"],"children":["🚸"],"cross":["🚸","✝️","☦️","❌","❎"],"entry":["⛔"],"prohibited":["🚫","🈲"],"bicycles":["🚳"],"smoke":["🚭"],"non":["🚱"],"pedestrians":["🚷"],"phones":["📵"],"under":["🔞"],"eighteen":["🔞"],"radioactive":["☢️"],"biohazard":["☣️"],"curve":["↩️","↪️","⤴️","⤵️"],"clockwise":["🔃"],"arrows":["🔃","🔄"],"counterclockwise":["🔄"],"button":["🔄","🔀","🔁","🔂","▶️","⏩","⏭️","⏯️","◀️","⏪","⏮️","🔼","⏫","🔽","⏬","⏸️","⏹️","⏺️","⏏️","🔅","🔆","✅","❎","🅰️","🆎","🅱️","🆑","🆒","🆓","🆔","🆕","🆖","🅾️","🆗","🅿️","🆘","🆙","🆚","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵","🔘","🔳","🔲"],"end":["🔚"],"soon":["🔜"],"worship":["🛐"],"atom":["⚛️"],"om":["🕉️"],"david":["✡️"],"dharma":["☸️"],"yin":["☯️"],"yang":["☯️"],"latin":["✝️","🔠","🔡","🔤"],"orthodox":["☦️"],"peace":["☮️"],"menorah":["🕎"],"pointed":["🔯","✴️","🔺","🔻"],"khanda":["🪯"],"aries":["♈"],"taurus":["♉"],"gemini":["♊"],"cancer":["♋"],"leo":["♌"],"virgo":["♍"],"libra":["♎"],"scorpio":["♏"],"sagittarius":["♐"],"capricorn":["♑"],"aquarius":["♒"],"pisces":["♓"],"ophiuchus":["⛎"],"shuffle":["🔀"],"tracks":["🔀"],"repeat":["🔁","🔂"],"single":["🔂"],"fast":["⏩","⏪","⏫","⏬"],"forward":["⏩"],"next":["⏭️"],"or":["⏯️"],"pause":["⏯️","⏸️"],"reverse":["◀️","⏪"],"upwards":["🔼"],"downwards":["🔽"],"record":["⏺️"],"eject":["⏏️"],"cinema":["🎦"],"dim":["🔅"],"bright":["🔆"],"bars":["📶"],"wireless":["🛜"],"vibration":["📳"],"mode":["📳"],"female":["♀️"],"male":["♂️"],"transgender":["⚧️","🏳️‍⚧️"],"multiply":["✖️"],"plus":["➕"],"minus":["➖"],"divide":["➗"],"heavy":["🟰","💲"],"equals":["🟰"],"infinity":["♾️"],"double":["‼️","➿"],"question":["⁉️","❓","❔"],"wavy":["〰️"],"currency":["💱"],"exchange":["💱"],"recycle":["♻️"],"fleur":["⚜️"],"de":["⚜️"],"lis":["⚜️"],"trident":["🔱"],"emblem":["🔱"],"name":["📛"],"badge":["📛"],"for":["🔰","🈺"],"beginner":["🔰"],"hollow":["⭕"],"circle":["⭕","🔴","🟠","🟡","🟢","🔵","🟣","🟤","⚫","⚪"],"check":["✅","☑️","✔️"],"loop":["➰","➿"],"part":["〽️"],"alternation":["〽️"],"spoked":["✳️"],"asterisk":["✳️"],"copyright":["©️"],"registered":["®️"],"trade":["™️"],"keycap":["#️⃣","*️⃣","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"],"input":["🔠","🔡","🔢","🔣","🔤"],"uppercase":["🔠"],"lowercase":["🔡"],"numbers":["🔢"],"letters":["🔤"],"type":["🅰️","🆎","🅱️","🅾️"],"ab":["🆎"],"cl":["🆑"],"cool":["🆒"],"free":["🆓","🈶","🈚"],"information":["ℹ️"],"id":["🆔"],"circled":["Ⓜ️"],"ng":["🆖"],"sos":["🆘"],"vs":["🆚"],"here":["🈁"],"charge":["🈂️","🈶","🈚"],"monthly":["🈷️"],"amount":["🈷️"],"reserved":["🈯"],"bargain":["🉐"],"discount":["🈹"],"acceptable":["🉑"],"application":["🈸"],"pass":["🈴"],"grade":["🈴"],"vacancy":["🈳","🈵"],"congratulations":["㊗️"],"secret":["㊙️"],"business":["🈺"],"square":["🟥","🟧","🟨","🟩","🟦","🟪","🟫","⬛","⬜","◼️","◻️","◾","◽","▪️","▫️","🔳","🔲"],"triangle":["🔺","🔻"],"dot":["💠"],"chequered":["🏁"],"flags":["🎌"],"pirate":["🏴‍☠️"],"ascension":["🇦🇨"],"andorra":["🇦🇩"],"united":["🇦🇪","🇬🇧","🇺🇳","🇺🇸"],"arab":["🇦🇪"],"emirates":["🇦🇪"],"afghanistan":["🇦🇫"],"antigua":["🇦🇬"],"barbuda":["🇦🇬"],"anguilla":["🇦🇮"],"albania":["🇦🇱"],"armenia":["🇦🇲"],"angola":["🇦🇴"],"antarctica":["🇦🇶"],"argentina":["🇦🇷"],"samoa":["🇦🇸","🇼🇸"],"austria":["🇦🇹"],"aruba":["🇦🇼"],"aland":["🇦🇽"],"islands":["🇦🇽","🇨🇨","🇨🇰","🇫🇰","🇫🇴","🇬🇸","🇭🇲","🇮🇨","🇰🇾","🇲🇭","🇲🇵","🇵🇳","🇸🇧","🇹🇨","🇺🇲","🇻🇬","🇻🇮"],"azerbaijan":["🇦🇿"],"bosnia":["🇧🇦"],"herzegovina":["🇧🇦"],"barbados":["🇧🇧"],"bangladesh":["🇧🇩"],"belgium":["🇧🇪"],"burkina":["🇧🇫"],"faso":["🇧🇫"],"bulgaria":["🇧🇬"],"bahrain":["🇧🇭"],"burundi":["🇧🇮"],"benin":["🇧🇯"],"st":["🇧🇱","🇰🇳","🇱🇨","🇲🇫","🇵🇲","🇸🇭","🇻🇨"],"barthelemy":["🇧🇱"],"bermuda":["🇧🇲"],"brunei":["🇧🇳"],"bolivia":["🇧🇴"],"caribbean":["🇧🇶"],"netherlands":["🇧🇶","🇳🇱"],"brazil":["🇧🇷"],"bahamas":["🇧🇸"],"bhutan":["🇧🇹"],"bouvet":["🇧🇻"],"botswana":["🇧🇼"],"belarus":["🇧🇾"],"belize":["🇧🇿"],"canada":["🇨🇦"],"cocos":["🇨🇨"],"keel":["🇨🇨"],"congo":["🇨🇩","🇨🇬"],"kinshasa":["🇨🇩"],"central":["🇨🇫"],"african":["🇨🇫"],"republic":["🇨🇫","🇩🇴"],"brazzaville":["🇨🇬"],"switzerland":["🇨🇭"],"cote":["🇨🇮"],"ivoire":["🇨🇮"],"chile":["🇨🇱"],"cameroon":["🇨🇲"],"china":["🇨🇳","🇭🇰","🇲🇴"],"colombia":["🇨🇴"],"clipperton":["🇨🇵"],"costa":["🇨🇷"],"rica":["🇨🇷"],"cuba":["🇨🇺"],"cape":["🇨🇻"],"verde":["🇨🇻"],"curacao":["🇨🇼"],"cyprus":["🇨🇾"],"czechia":["🇨🇿"],"germany":["🇩🇪"],"diego":["🇩🇬"],"garcia":["🇩🇬"],"djibouti":["🇩🇯"],"denmark":["🇩🇰"],"dominica":["🇩🇲"],"dominican":["🇩🇴"],"algeria":["🇩🇿"],"ceuta":["🇪🇦"],"melilla":["🇪🇦"],"ecuador":["🇪🇨"],"estonia":["🇪🇪"],"egypt":["🇪🇬"],"western":["🇪🇭"],"sahara":["🇪🇭"],"eritrea":["🇪🇷"],"spain":["🇪🇸"],"ethiopia":["🇪🇹"],"european":["🇪🇺"],"union":["🇪🇺"],"finland":["🇫🇮"],"fiji":["🇫🇯"],"falkland":["🇫🇰"],"micronesia":["🇫🇲"],"faroe":["🇫🇴"],"france":["🇫🇷"],"gabon":["🇬🇦"],"kingdom":["🇬🇧"],"grenada":["🇬🇩"],"georgia":["🇬🇪","🇬🇸"],"guiana":["🇬🇫"],"guernsey":["🇬🇬"],"ghana":["🇬🇭"],"gibraltar":["🇬🇮"],"greenland":["🇬🇱"],"gambia":["🇬🇲"],"guinea":["🇬🇳","🇬🇶","🇬🇼","🇵🇬"],"guadeloupe":["🇬🇵"],"equatorial":["🇬🇶"],"greece":["🇬🇷"],"south":["🇬🇸","🇰🇷","🇸🇸","🇿🇦"],"guatemala":["🇬🇹"],"guam":["🇬🇺"],"bissau":["🇬🇼"],"guyana":["🇬🇾"],"hong":["🇭🇰"],"kong":["🇭🇰"],"sar":["🇭🇰","🇲🇴"],"heard":["🇭🇲"],"mcdonald":["🇭🇲"],"honduras":["🇭🇳"],"croatia":["🇭🇷"],"haiti":["🇭🇹"],"hungary":["🇭🇺"],"canary":["🇮🇨"],"indonesia":["🇮🇩"],"ireland":["🇮🇪"],"israel":["🇮🇱"],"isle":["🇮🇲"],"india":["🇮🇳"],"british":["🇮🇴","🇻🇬"],"indian":["🇮🇴"],"ocean":["🇮🇴"],"territory":["🇮🇴"],"iraq":["🇮🇶"],"iran":["🇮🇷"],"iceland":["🇮🇸"],"italy":["🇮🇹"],"jersey":["🇯🇪"],"jamaica":["🇯🇲"],"jordan":["🇯🇴"],"kenya":["🇰🇪"],"kyrgyzstan":["🇰🇬"],"cambodia":["🇰🇭"],"kiribati":["🇰🇮"],"comoros":["🇰🇲"],"kitts":["🇰🇳"],"nevis":["🇰🇳"],"north":["🇰🇵","🇲🇰"],"korea":["🇰🇵","🇰🇷"],"kuwait":["🇰🇼"],"cayman":["🇰🇾"],"kazakhstan":["🇰🇿"],"laos":["🇱🇦"],"lebanon":["🇱🇧"],"lucia":["🇱🇨"],"liechtenstein":["🇱🇮"],"sri":["🇱🇰"],"lanka":["🇱🇰"],"liberia":["🇱🇷"],"lesotho":["🇱🇸"],"lithuania":["🇱🇹"],"luxembourg":["🇱🇺"],"latvia":["🇱🇻"],"libya":["🇱🇾"],"morocco":["🇲🇦"],"monaco":["🇲🇨"],"moldova":["🇲🇩"],"montenegro":["🇲🇪"],"martin":["🇲🇫"],"madagascar":["🇲🇬"],"marshall":["🇲🇭"],"macedonia":["🇲🇰"],"mali":["🇲🇱"],"myanmar":["🇲🇲"],"burma":["🇲🇲"],"mongolia":["🇲🇳"],"macao":["🇲🇴"],"northern":["🇲🇵"],"mariana":["🇲🇵"],"martinique":["🇲🇶"],"mauritania":["🇲🇷"],"montserrat":["🇲🇸"],"malta":["🇲🇹"],"mauritius":["🇲🇺"],"maldives":["🇲🇻"],"malawi":["🇲🇼"],"mexico":["🇲🇽"],"malaysia":["🇲🇾"],"mozambique":["🇲🇿"],"namibia":["🇳🇦"],"caledonia":["🇳🇨"],"niger":["🇳🇪"],"norfolk":["🇳🇫"],"nigeria":["🇳🇬"],"nicaragua":["🇳🇮"],"norway":["🇳🇴"],"nepal":["🇳🇵"],"nauru":["🇳🇷"],"niue":["🇳🇺"],"zealand":["🇳🇿"],"oman":["🇴🇲"],"panama":["🇵🇦"],"peru":["🇵🇪"],"polynesia":["🇵🇫"],"papua":["🇵🇬"],"philippines":["🇵🇭"],"pakistan":["🇵🇰"],"poland":["🇵🇱"],"pierre":["🇵🇲"],"miquelon":["🇵🇲"],"pitcairn":["🇵🇳"],"puerto":["🇵🇷"],"rico":["🇵🇷"],"palestinian":["🇵🇸"],"territories":["🇵🇸","🇹🇫"],"portugal":["🇵🇹"],"palau":["🇵🇼"],"paraguay":["🇵🇾"],"qatar":["🇶🇦"],"reunion":["🇷🇪"],"romania":["🇷🇴"],"serbia":["🇷🇸"],"russia":["🇷🇺"],"rwanda":["🇷🇼"],"saudi":["🇸🇦"],"arabia":["🇸🇦"],"solomon":["🇸🇧"],"seychelles":["🇸🇨"],"sudan":["🇸🇩","🇸🇸"],"sweden":["🇸🇪"],"singapore":["🇸🇬"],"helena":["🇸🇭"],"slovenia":["🇸🇮"],"svalbard":["🇸🇯"],"jan":["🇸🇯"],"mayen":["🇸🇯"],"slovakia":["🇸🇰"],"sierra":["🇸🇱"],"leone":["🇸🇱"],"san":["🇸🇲"],"marino":["🇸🇲"],"senegal":["🇸🇳"],"somalia":["🇸🇴"],"suriname":["🇸🇷"],"sao":["🇸🇹"],"tome":["🇸🇹"],"principe":["🇸🇹"],"el":["🇸🇻"],"salvador":["🇸🇻"],"sint":["🇸🇽"],"maarten":["🇸🇽"],"syria":["🇸🇾"],"eswatini":["🇸🇿"],"tristan":["🇹🇦"],"da":["🇹🇦"],"cunha":["🇹🇦"],"turks":["🇹🇨"],"caicos":["🇹🇨"],"chad":["🇹🇩"],"southern":["🇹🇫"],"togo":["🇹🇬"],"thailand":["🇹🇭"],"tajikistan":["🇹🇯"],"tokelau":["🇹🇰"],"timor":["🇹🇱"],"leste":["🇹🇱"],"turkmenistan":["🇹🇲"],"tunisia":["🇹🇳"],"tonga":["🇹🇴"],"trinidad":["🇹🇹"],"tobago":["🇹🇹"],"tuvalu":["🇹🇻"],"taiwan":["🇹🇼"],"tanzania":["🇹🇿"],"ukraine":["🇺🇦"],"uganda":["🇺🇬"],"us":["🇺🇲","🇻🇮"],"outly":["🇺🇲"],"nations":["🇺🇳"],"states":["🇺🇸"],"uruguay":["🇺🇾"],"uzbekistan":["🇺🇿"],"vatican":["🇻🇦"],"city":["🇻🇦"],"vincent":["🇻🇨"],"grenadines":["🇻🇨"],"venezuela":["🇻🇪"],"virgin":["🇻🇬","🇻🇮"],"vietnam":["🇻🇳"],"vanuatu":["🇻🇺"],"wallis":["🇼🇫"],"futuna":["🇼🇫"],"kosovo":["🇽🇰"],"yemen":["🇾🇪"],"mayotte":["🇾🇹"],"zambia":["🇿🇲"],"zimbabwe":["🇿🇼"],"england":["🏴󠁧󠁢󠁥󠁮󠁧󠁿"],"scotland":["🏴󠁧󠁢󠁳󠁣󠁴󠁿"],"wales":["🏴󠁧󠁢󠁷󠁬󠁳󠁿"]}
-},{}],71:[function(require,module,exports){
-arguments[4][36][0].apply(exports,arguments)
-},{"dup":36}],72:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
+arguments[4][37][0].apply(exports,arguments)
+},{"dup":37}],83:[function(require,module,exports){
 /*
 	String Kit
 
@@ -35036,7 +38152,7 @@ module.exports = function( str ) {
 
 
 
-},{"./json-data/latinize-map.json":71}],73:[function(require,module,exports){
+},{"./json-data/latinize-map.json":82}],84:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
   "version": "0.5.1",
@@ -35053,6 +38169,7 @@ module.exports={
     "image-size": "^1.0.2",
     "opentype.js": "^1.3.4",
     "palette-shade": "^0.1.3",
+    "seventh": "^0.9.2",
     "string-kit": "^0.18.0"
   },
   "scripts": {
@@ -35087,9 +38204,9 @@ module.exports={
   }
 }
 
-},{}],74:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 
-},{}],75:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -35241,7 +38358,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],76:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * The buffer module from node.js, for the browser.
@@ -37022,7 +40139,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":75,"buffer":76,"ieee754":77}],77:[function(require,module,exports){
+},{"base64-js":86,"buffer":87,"ieee754":88}],88:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -37109,7 +40226,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],78:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -37132,7 +40249,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],79:[function(require,module,exports){
+},{}],90:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -37665,7 +40782,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":80}],80:[function(require,module,exports){
+},{"_process":91}],91:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -37851,5 +40968,84 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[25])(25)
+},{}],92:[function(require,module,exports){
+(function (setImmediate,clearImmediate){(function (){
+var nextTick = require('process/browser.js').nextTick;
+var apply = Function.prototype.apply;
+var slice = Array.prototype.slice;
+var immediateIds = {};
+var nextImmediateId = 0;
+
+// DOM APIs, for completeness
+
+exports.setTimeout = function() {
+  return new Timeout(apply.call(setTimeout, window, arguments), clearTimeout);
+};
+exports.setInterval = function() {
+  return new Timeout(apply.call(setInterval, window, arguments), clearInterval);
+};
+exports.clearTimeout =
+exports.clearInterval = function(timeout) { timeout.close(); };
+
+function Timeout(id, clearFn) {
+  this._id = id;
+  this._clearFn = clearFn;
+}
+Timeout.prototype.unref = Timeout.prototype.ref = function() {};
+Timeout.prototype.close = function() {
+  this._clearFn.call(window, this._id);
+};
+
+// Does not start the time, just sets up the members needed.
+exports.enroll = function(item, msecs) {
+  clearTimeout(item._idleTimeoutId);
+  item._idleTimeout = msecs;
+};
+
+exports.unenroll = function(item) {
+  clearTimeout(item._idleTimeoutId);
+  item._idleTimeout = -1;
+};
+
+exports._unrefActive = exports.active = function(item) {
+  clearTimeout(item._idleTimeoutId);
+
+  var msecs = item._idleTimeout;
+  if (msecs >= 0) {
+    item._idleTimeoutId = setTimeout(function onTimeout() {
+      if (item._onTimeout)
+        item._onTimeout();
+    }, msecs);
+  }
+};
+
+// That's not how node.js implements it but the exposed api is the same.
+exports.setImmediate = typeof setImmediate === "function" ? setImmediate : function(fn) {
+  var id = nextImmediateId++;
+  var args = arguments.length < 2 ? false : slice.call(arguments, 1);
+
+  immediateIds[id] = true;
+
+  nextTick(function onNextTick() {
+    if (immediateIds[id]) {
+      // fn.call() is faster so we optimize for the common use-case
+      // @see http://jsperf.com/call-apply-segu
+      if (args) {
+        fn.apply(null, args);
+      } else {
+        fn.call(null);
+      }
+      // Prevent ids from leaking
+      exports.clearImmediate(id);
+    }
+  });
+
+  return id;
+};
+
+exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate : function(id) {
+  delete immediateIds[id];
+};
+}).call(this)}).call(this,require("timers").setImmediate,require("timers").clearImmediate)
+},{"process/browser.js":91,"timers":92}]},{},[26])(26)
 });

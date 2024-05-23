@@ -46,7 +46,7 @@ async function dynamicTest() {
 		width: 50 ,
 		height: 50 ,
 		style: {
-			fill: '#4a4' ,
+			fill: '#44a' ,
 		} ,
 		dynamic: {
 			boundingBox: {
@@ -56,14 +56,14 @@ async function dynamicTest() {
 				height: 50
 			} ,
 			statusMorph: {
-				on: {
-					style: {
-						fill: '#4a4' ,
-					}
-				} ,
-				off: {
+				neutral: {
 					style: {
 						fill: '#a44' ,
+					}
+				} ,
+				hover: {
+					style: {
+						fill: '#4a4' ,
 					}
 				}
 			}
@@ -85,6 +85,9 @@ async function dynamicTest() {
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
 	await vg.renderCanvas( ctx ) ;
+	//svgKit.canvas.dynamicEventManager( $canvas , ctx , vg ) ;
+	var manager = new svgKit.DynamicManager( ctx , vg ) ;
+	manager.manageBrowserCanvas() ;
 	return ;
 	
 	for ( ;; ) {
