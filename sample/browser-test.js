@@ -1,7 +1,7 @@
 
 "use strict" ;
 
-async function bookSourceFlowTest() {
+async function dynamicTest() {
 	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
 	console.log( rawDoc ) ;
 
@@ -70,7 +70,74 @@ async function bookSourceFlowTest() {
 		}
 	} ) ;
 	vg.addEntity( vgRect ) ;
-	vg.setAllDynamicAreaStatus( 'off' ) ;
+
+
+	// Render
+
+	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+
+	var $canvas = document.getElementById( 'canvas' ) ;
+	var ctx = $canvas.getContext( '2d' ) ;
+
+	// Display using the Canvas renderer
+	$canvas.classList.remove( 'hidden' ) ;
+	await vg.renderCanvas( ctx ) ;
+	return ;
+	
+	for ( ;; ) {
+		await timeout( 100 ) ;
+		/*
+		vg.setAllDynamicAreaStatus( Math.random() > 0.5 ? 'on' : 'off' ) ;
+		await vg.renderCanvas( ctx ) ;
+		//*/
+		vg.setDynamicPointer() ;
+		await vg.renderDynamicCanvas( ctx ) ;
+	}
+}
+
+
+
+async function bookSourceFlowTest() {
+	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
+	console.log( rawDoc ) ;
+
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: false
+	} ) ;
+
+	var vgFlowingText = new svgKit.VGFlowingText( {
+		x: 20 ,
+		y: 50 ,
+		//width: 400 , height: 200 ,
+		width: 300 , height: 400 ,
+		//clip: false ,
+		debugContainer: true ,
+		//textWrapping: 'ellipsis' ,
+		textWrapping: 'wordWrap' ,
+		//textVerticalAlignment: 'bottom' ,
+		//textHorizontalAlignment: 'center' ,
+		attr: {
+			fontSize: 20 ,
+			color: '#444' ,
+			//outline: true ,
+			//frameCornerRadius: '0.2em' ,
+			//frameOutlineWidth: '0.1em' ,
+			//outlineColor: '#afa' ,
+			//lineOutline: true ,
+			//lineColor: '#559'
+		} ,
+		//markupText: rawDoc ,
+        structuredText: [
+            { text: "Hello world!\nWhat " } ,
+            { text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
+            { text: "world!" }
+        ]
+	} ) ;
+	vg.addEntity( vgFlowingText ) ;
 
 	renderAll( vg ) ;
 
@@ -386,7 +453,14 @@ async function renderAll( vg ) {
 	$svgText.appendChild( anchor ) ;
 }
 
+function timeout( time ) {
+	return new Promise( resolve => {
+		setTimeout( resolve , time ) ;
+	} ) ;
+}
+
 //svgKit.domKit.ready( test ) ;
 //svgKit.domKit.ready( flowTest ) ;
-svgKit.domKit.ready( bookSourceFlowTest ) ;
+//svgKit.domKit.ready( bookSourceFlowTest ) ;
+svgKit.domKit.ready( dynamicTest ) ;
 
