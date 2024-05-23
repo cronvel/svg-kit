@@ -57,19 +57,73 @@ async function dynamicTest() {
 			} ,
 			statusMorph: {
 				neutral: {
-					style: {
-						fill: '#a44' ,
+					morph: {
+						style: {
+							fill: '#a44' ,
+						}
 					}
 				} ,
 				hover: {
-					style: {
-						fill: '#4a4' ,
+					morph: {
+						style: {
+							fill: '#4a4' ,
+						}
 					}
 				}
 			}
 		}
 	} ) ;
 	vg.addEntity( vgRect ) ;
+
+	var vgRect2 = new svgKit.VGRect( {
+		x: 50 ,
+		y: 300 ,
+		width: 150 ,
+		height: 50 ,
+		style: {
+			fill: '#44a' ,
+		} ,
+		dynamic: {
+			boundingBox: {
+				x: 50 ,
+				y: 300 ,
+				width: 150 ,
+				height: 50 ,
+			} ,
+			everyTick: 2 ,
+			statusMorph: {
+				neutral: {
+					frames: [
+						{
+							ticks: 2 ,
+							morph: {
+								style: {
+									fill: '#4a4' ,
+								}
+							}
+						} ,
+						{
+							ticks: 1 ,
+							morph: {
+								style: {
+									fill: '#a44' ,
+								}
+							}
+						} ,
+						{
+							ticks: 4 ,
+							morph: {
+								style: {
+									fill: '#44a' ,
+								}
+							}
+						} ,
+					]
+				}
+			}
+		}
+	} ) ;
+	vg.addEntity( vgRect2 ) ;
 
 
 	// Render
