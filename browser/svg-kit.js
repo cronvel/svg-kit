@@ -149,6 +149,7 @@ BoundingBox.prototype.isInside = function( coords ) {
 const BoundingBox = require( './BoundingBox.js' ) ;
 
 
+
 function DynamicArea( entity , params ) {
 	// A status change will trigger the redraw.
 	// Can be things like on/off, or a tick number for animation.
@@ -166,7 +167,9 @@ function DynamicArea( entity , params ) {
 
 	this.statusMorph = {} ;
 
-	this.needRedraw = false ;
+	this.noRedraw = params.noRedraw || false ;		// If set, this dynamic area is not used to trigger redraw (probably just to send event back)
+	this.outdated = false ;		// If set, redraw is needed
+	this.backgroundImageData = null ;	// Image data stored for the redraw
 
 	// Non-enumerable properties (better for displaying the data)
 	Object.defineProperties( this , {
@@ -175,8 +178,8 @@ function DynamicArea( entity , params ) {
 
 	this.set( params ) ;
 
-	// Force needRedraw back to false after .set()
-	this.needRedraw = false ;
+	// Force outdated back to false after .set()
+	this.outdated = false ;
 }
 
 module.exports = DynamicArea ;
@@ -192,7 +195,7 @@ DynamicArea.prototype.set = function( params ) {
 			if ( ! this.availableStatus.has( key ) ) { this.availableStatus.add( key ) ; }
 			if ( ! this.statusMorph[ key ] ) { this.statusMorph[ key ] = {} ; }
 			Object.assign( this.statusMorph[ key ] , params.statusMorph[ key ] ) ;
-			this.needRedraw = true ;
+			if ( ! this.noRedraw ) { this.outdated = true ; }
 		}
 	}
 
@@ -209,8 +212,25 @@ DynamicArea.prototype.setStatus = function( status ) {
 	if ( status && status !== this.status && this.availableStatus.has( status ) ) {
 		this.status = status ;
 		this.entity.set( this.statusMorph[ status ] ) ;
-		this.needRedraw = true ;
+		if ( ! this.noRedraw ) { this.outdated = true ; }
 	}
+} ;
+
+
+
+DynamicArea.prototype.save = function( canvasCtx ) {
+	if ( this.noRedraw ) { return ; }
+	this.backgroundImageData = canvasCtx.getImageData(
+		this.boundingBox.x , this.boundingBox.y ,
+		this.boundingBox.width , this.boundingBox.height
+	) ;
+} ;
+
+
+
+DynamicArea.prototype.restore = function( canvasCtx ) {
+	if ( this.noRedraw ) { return ; }
+	canvasCtx.putImageData( this.backgroundImageData , this.boundingBox.x , this.boundingBox.y ) ;
 } ;
 
 
@@ -256,6 +276,9 @@ function DynamicManager( ctx , vg ) {
 	this.vg = vg ;
 
 	this.canvasListeners = [] ;
+
+	// A debounced redraw
+	this.redraw = Promise.debounceUpdate( { delay: 50 } , () => this.vg.redrawCanvas( this.ctx ) ) ;
 }
 
 module.exports = DynamicManager ;
@@ -266,7 +289,7 @@ DynamicManager.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 
 
 DynamicManager.prototype.onMouseMove = function( x , y ) {
-	let needRedraw = false ;
+	let outdated = false ;
 	let canvasCoords = canvas.screenToCanvasCoords( this.ctx.canvas , { x , y } ) ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
@@ -278,16 +301,12 @@ DynamicManager.prototype.onMouseMove = function( x , y ) {
 			dynamic.setStatus( 'neutral' ) ;
 		}
 
-		if ( dynamic.needRedraw ) {
-			needRedraw = true ;
-			console.log( "Need redraw, status: " + dynamic.status ) ;
+		if ( dynamic.outdated ) {
+			outdated = true ;
 		}
 	}
 
-	if ( needRedraw ) {
-		this.vg.renderCanvas( this.ctx ) ;
-		for ( let dynamic of this.vg.dynamicAreaIterator() ) { dynamic.needRedraw = false ; }
-	}
+	if ( outdated ) { this.redraw() ; }
 } ;
 
 
@@ -991,7 +1010,7 @@ VGEllipse.prototype.svgAttributes = function( master = this ) {
 
 
 
-VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
+VGEllipse.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ;
 
 	canvasCtx.save() ;
@@ -1528,11 +1547,33 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , master = this )
 
 
 // Render the Vector Graphic inside a browser's canvas
-VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , master = this ) {
+VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
 
-	if ( this.renderHookForCanvas ) {
-		await this.renderHookForCanvas( canvasCtx , options , master ) ;
+	var shouldRender = true ;
+
+	if ( isRedraw ) {
+		shouldRender = false ;
+		for ( let dynamic of this.dynamicAreas ) {
+			if ( dynamic.outdated ) {
+				console.log( "restore 1 area for:" , this.__prototypeUID__ ) ;
+				dynamic.restore( canvasCtx ) ;
+				shouldRender = true ;
+			}
+		}
+	}
+	else {
+		for ( let dynamic of this.dynamicAreas ) {
+			if ( ! dynamic.noRedraw ) {
+				dynamic.save( canvasCtx ) ;
+			}
+		}
+	}
+
+	if ( this.renderHookForCanvas && shouldRender ) {
+		console.log( "render for:" , this.__prototypeUID__ ) ;
+		await this.renderHookForCanvas( canvasCtx , options , isRedraw , master ) ;
+		for ( let dynamic of this.dynamicAreas ) { dynamic.outdated = false ; }
 	}
 
 	if ( this.isContainer && this.entities?.length ) {
@@ -1548,17 +1589,23 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , mas
 			canvasCtx.clip( clipPath2D ) ;
 
 			for ( let entity of this.entities ) {
-				await entity.renderCanvas( canvasCtx , options , master ) ;
+				await entity.renderCanvas( canvasCtx , options , isRedraw , master ) ;
 			}
 
 			canvasCtx.restore() ;
 		}
 		else {
 			for ( let entity of this.entities ) {
-				await entity.renderCanvas( canvasCtx , options , master ) ;
+				await entity.renderCanvas( canvasCtx , options , isRedraw , master ) ;
 			}
 		}
 	}
+} ;
+
+
+
+VGEntity.prototype.redrawCanvas = function( canvasCtx , options = {} ) {
+	this.renderCanvas( canvasCtx , options , true ) ;
 } ;
 
 
@@ -3665,7 +3712,7 @@ VGFlowingText.prototype.renderingContainerHookForSvgDom = async function( master
 
 
 
-VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , master = this ) {
+VGFlowingText.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
 
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
@@ -4254,7 +4301,7 @@ VGImage.prototype.renderSvgDomNinePatchImage = function( imageSize , elementList
 
 
 
-VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , master = this ) {
+VGImage.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	canvasCtx.save() ;
 
 	var image = new Image() ;
@@ -4621,7 +4668,7 @@ VGPath.prototype.toD = function() {
 
 
 
-VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
+VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
 	canvas.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
@@ -5321,7 +5368,7 @@ VGRect.prototype.svgAttributes = function( master = this ) {
 
 
 
-VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
+VGRect.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
 
 	canvasCtx.save() ;
@@ -5483,7 +5530,7 @@ VGText.prototype.svgAttributes = function( master = this ) {
 
 
 
-VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , master = this ) {
+VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y : 0 ,
 		style = this.style ,
 		fill = false ,
