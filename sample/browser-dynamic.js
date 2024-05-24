@@ -2,8 +2,7 @@
 "use strict" ;
 
 async function dynamicTest() {
-	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
-	console.log( rawDoc ) ;
+	//var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ; console.log( rawDoc ) ;
 
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -32,11 +31,17 @@ async function dynamicTest() {
 			//lineColor: '#559'
 		} ,
 		//markupText: rawDoc ,
-        structuredText: [
-            { text: "Hello world!\nWhat " } ,
-            { text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
-            { text: "world!" }
-        ]
+		structuredText: [
+			{ text: "Hello world!\nWhat a " } ,
+			//{ text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
+			{
+				text: "wonderful" ,
+				attr: { color: '#888' } ,
+				hover: { attr: { color: '#933' } } ,
+				click: { emit: { name: 'click' , data: { text: "wonderful" } } , attr: { color: '#339' } }
+			} ,
+			{ text: " world!" }
+		]
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
