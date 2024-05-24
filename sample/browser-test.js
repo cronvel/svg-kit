@@ -31,12 +31,7 @@ async function bookSourceFlowTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
-		//markupText: rawDoc ,
-        structuredText: [
-            { text: "Hello world!\nWhat " } ,
-            { text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
-            { text: "world!" }
-        ]
+		markupText: rawDoc
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
