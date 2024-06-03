@@ -161,7 +161,6 @@ async function dynamicTest() {
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
 	await vg.renderCanvas( ctx ) ;
-	//svgKit.canvas.dynamicEventManager( $canvas , ctx , vg ) ;
 	var manager = new svgKit.DynamicManager( ctx , vg ) ;
 	manager.manageBrowserCanvas() ;
 
@@ -172,14 +171,5 @@ async function dynamicTest() {
 
 
 
-function timeout( time ) {
-	return new Promise( resolve => {
-		setTimeout( resolve , time ) ;
-	} ) ;
-}
-
-//svgKit.domKit.ready( test ) ;
-//svgKit.domKit.ready( flowTest ) ;
-//svgKit.domKit.ready( bookSourceFlowTest ) ;
 svgKit.domKit.ready( dynamicTest ) ;
 

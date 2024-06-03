@@ -351,6 +351,5 @@ async function renderAll( vg ) {
 
 //svgKit.domKit.ready( test ) ;
 //svgKit.domKit.ready( flowTest ) ;
-//svgKit.domKit.ready( bookSourceFlowTest ) ;
 svgKit.domKit.ready( bookSourceFlowTest ) ;
 
