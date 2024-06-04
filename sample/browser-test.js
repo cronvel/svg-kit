@@ -83,8 +83,8 @@ async function flowTest() {
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
-	//renderAll( vg ) ;
-	renderCanvas( vg ) ;
+	//renderCanvas( vg ) ;
+	renderAll( vg ) ;
 }
 
 
@@ -374,7 +374,7 @@ async function renderCanvas( vg ) {
 	await vg.renderCanvas( ctx ) ;
 }
 
-//svgKit.domKit.ready( test ) ;
-svgKit.domKit.ready( flowTest ) ;
+svgKit.domKit.ready( test ) ;
+//svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
 
