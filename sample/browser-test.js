@@ -83,7 +83,8 @@ async function flowTest() {
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
-	renderAll( vg ) ;
+	//renderAll( vg ) ;
+	renderCanvas( vg ) ;
 }
 
 
@@ -349,7 +350,31 @@ async function renderAll( vg ) {
 	$svgText.appendChild( anchor ) ;
 }
 
+async function renderCanvas( vg ) {
+	var $canvas = document.getElementById( 'canvas' ) ;
+
+	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+
+	// Preload everything...
+	//await svgKit.fontLib.preloadFontFamily( 'serif' ) ;
+	/*
+	await svgKit.fontLib.getFontAsync( 'serif' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'italic' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' ) ;
+	await svgKit.fontLib.getFontAsync( 'serif' , 'bold' , 'italic' ) ;
+	//*/
+
+	var ctx = $canvas.getContext( '2d' ) ;
+
+	// Display using the Canvas renderer
+	$canvas.classList.remove( 'hidden' ) ;
+	await vg.renderCanvas( ctx ) ;
+}
+
 //svgKit.domKit.ready( test ) ;
-//svgKit.domKit.ready( flowTest ) ;
-svgKit.domKit.ready( bookSourceFlowTest ) ;
+svgKit.domKit.ready( flowTest ) ;
+//svgKit.domKit.ready( bookSourceFlowTest ) ;
 
