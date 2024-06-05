@@ -47,7 +47,16 @@ async function dynamicTest() {
 						height: 50
 					} ,
 					statusData: {
-						hover: { attr: { color: '#933' } }
+						base: {
+							morph: {
+								attr: { color: '#33c' }
+							}
+						} ,
+						hover: {
+							morph: {
+								attr: { color: '#c33' }
+							}
+						}
 					}
 				}
 			} ,
@@ -108,6 +117,7 @@ async function dynamicTest() {
 	} ) ;
 	vg.addEntity( vgRect1 ) ;
 
+	/*
 	var vgRect2 = new svgKit.VGRect( {
 		x: 50 ,
 		y: 300 ,
@@ -157,6 +167,7 @@ async function dynamicTest() {
 		}
 	} ) ;
 	vg.addEntity( vgRect2 ) ;
+	//*/
 
 
 	// Render
@@ -174,6 +185,9 @@ async function dynamicTest() {
 	await vg.renderCanvas( ctx ) ;
 	var manager = new svgKit.DynamicManager( ctx , vg ) ;
 	manager.manageBrowserCanvas() ;
+
+	console.warn( "==> vg:" , vg ) ;
+	console.warn( "==> pseudoEntity:" , vgFlowingText.pseudoEntities[ 2 ] ) ;
 
 	manager.on( "ok" , () => {
 		console.log( "OK pressed" ) ;

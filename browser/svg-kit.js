@@ -221,6 +221,7 @@ DynamicArea.prototype.setStatusMorph = function( statusName , data ) {
 
 DynamicArea.prototype.setStatus = function( status ) {
 	if ( status && status !== this.status && this.availableStatus.has( status ) ) {
+		//console.warn( "DynamicArea#setStatus() for:" , this.entity.__prototypeUID__ ) ;
 		this.status = status ;
 		this.updateMorph() ;
 
@@ -241,6 +242,7 @@ DynamicArea.prototype.setTick = function( tick ) {
 
 
 DynamicArea.prototype.updateMorph = function() {
+	//console.warn( "> DynamicArea#updateMorph() for:" , this.entity.__prototypeUID__ ) ;
 	var data = this.statusData[ this.status ] ;
 	if ( ! data ) { return ; }
 
@@ -1415,6 +1417,10 @@ VGEntity.prototype.setAllDynamicAreaStatus = function( status ) {
 		dynamic.setStatus( status ) ;
 	}
 
+	if ( this.isPseudoContainer ) {
+		this.pseudoEntities.forEach( pseudoEntity => pseudoEntity.setAllDynamicAreaStatus( status ) ) ;
+	}
+
 	if ( this.isContainer ) {
 		this.entities.forEach( entity => entity.setAllDynamicAreaStatus( status ) ) ;
 	}
@@ -1425,6 +1431,12 @@ VGEntity.prototype.setAllDynamicAreaStatus = function( status ) {
 VGEntity.prototype.dynamicAreaIterator = function* () {
 	for ( let dynamic of this.dynamicAreas ) {
 		yield dynamic ;
+	}
+
+	if ( this.isPseudoContainer ) {
+		for ( let pseudoEntity of this.pseudoEntities ) {
+			yield * pseudoEntity.dynamicAreaIterator() ;
+		}
 	}
 
 	if ( this.isContainer ) {
@@ -2068,7 +2080,7 @@ module.exports = StructuredTextLine ;
 StructuredTextLine.prototype.fuseEqualAttr = function() {
 	if ( this.parts.length <= 1 ) { return ; }
 
-	console.warn( "!!! BF .fuseEqualAttr()" , this.parts ) ;
+	//console.warn( "!!! BF .fuseEqualAttr()" , this.parts ) ;
 	let lastPart = this.parts[ 0 ] ; // IStructuredTextPart
 	let lastInsertedPart = lastPart ; // IStructuredTextPart
 	const outputParts = [ lastPart ] ; // StructuredText
@@ -2076,7 +2088,7 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 	for ( let index = 1 ; index < this.parts.length ; index ++ ) {
 		const part = this.parts[ index ] ;
 
-		if ( ! part.imageUrl && ! lastPart.imageUrl && part.attr.isEqual( lastPart.attr ) ) {
+		if ( ! part.imageUrl && ! lastPart.imageUrl && part.dynamic === lastPart.dynamic && part.attr.isEqual( lastPart.attr ) ) {
 			lastInsertedPart.text += part.text ;
 
 			// Note that it's always defined at that point
@@ -2093,7 +2105,7 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 	}
 
 	this.parts = outputParts ;
-	console.warn( "!!! AFT .fuseEqualAttr()" , this.parts ) ;
+	//console.warn( "!!! AFT .fuseEqualAttr()" , this.parts ) ;
 } ;
 
 
@@ -3541,7 +3553,7 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 	for ( let part of line ) {
 		part.splitIntoWords( outputParts ) ;
 	}
-	console.warn( "??? AFT splitIntoWords()" , outputParts.map( e => ( { text: e.text , imageUrl: e.imageUrl } ) ) ) ;
+	//console.warn( "??? AFT splitIntoWords()" , outputParts.map( e => ( { text: e.text , imageUrl: e.imageUrl } ) ) ) ;
 
 	let lastTestLineMetrics = new TextMetrics() ;
 	let testLineMetrics = new TextMetrics() ;
@@ -4181,8 +4193,8 @@ VGFlowingTextImagePart.prototype.renderHookForCanvas = async function( canvasCtx
 
 const VGPseudoEntity = require( '../VGPseudoEntity.js' ) ;
 
-//const TextAttribute = require( './TextAttribute.js' ) ;
-//const TextMetrics = require( './TextMetrics.js' ) ;
+const TextAttribute = require( './TextAttribute.js' ) ;
+const TextMetrics = require( './TextMetrics.js' ) ;
 //const BoundingBox = require( '../BoundingBox.js' ) ;
 
 const fontLib = require( '../fontLib.js' ) ;
@@ -4221,8 +4233,17 @@ VGFlowingTextPart.prototype.set = function( params ) {
 	VGPseudoEntity.prototype.set.call( this , params ) ;
 
 	if ( params.text !== undefined ) { this.text = params.text ; }
-	if ( params.metrics ) { this.metrics = params.metrics ; }
-	if ( params.attr ) { this.attr = params.attr ; }
+
+	if ( params.metrics ) {
+		if ( params.metrics instanceof TextMetrics ) { this.metrics = params.metrics ; }
+		// TextMetrics.set() does not exist ATM
+		//else { this.metrics.set( params.metrics ) ; }
+	}
+
+	if ( params.attr ) {
+		if ( params.attr instanceof TextAttribute ) { this.attr = params.attr ; }
+		else { this.attr.set( params.attr ) ; }
+	}
 } ;
 
 
@@ -4493,7 +4514,7 @@ VGFlowingTextPart.prototype.renderHookForPath2D = async function( path2D , canva
 } ;
 
 
-},{"../../package.json":90,"../VGPseudoEntity.js":22,"../canvas.js":25,"../fontLib.js":26}],18:[function(require,module,exports){
+},{"../../package.json":90,"../VGPseudoEntity.js":22,"../canvas.js":25,"../fontLib.js":26,"./TextAttribute.js":13,"./TextMetrics.js":14}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
