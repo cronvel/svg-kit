@@ -40,21 +40,16 @@ async function dynamicTest() {
 				hover: { attr: { color: '#933' } } ,
 				click: { emit: { name: 'click' , data: { text: "wonderful" } } , attr: { color: '#339' } } ,
 				dynamic: {
-					boundingBox: {
-						x: 10 ,
-						y: 200 ,
-						width: 50 ,
-						height: 50
-					} ,
+					//boundingBox: { x: 10 , y: 200 , width: 50 , height: 50 } ,
 					statusData: {
 						base: {
 							morph: {
-								attr: { color: '#33c' }
+								attr: { color: '#33c' , underline: false }
 							}
 						} ,
 						hover: {
 							morph: {
-								attr: { color: '#c33' }
+								attr: { color: '#c33' , underline: true }
 							}
 						}
 					}
@@ -122,12 +117,6 @@ async function dynamicTest() {
 			fill: '#44a' ,
 		} ,
 		dynamic: {
-			boundingBox: {
-				x: 50 ,
-				y: 300 ,
-				width: 150 ,
-				height: 50 ,
-			} ,
 			everyTick: 2 ,
 			statusData: {
 				base: {
