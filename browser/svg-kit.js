@@ -29,7 +29,7 @@
 
 
 
-function BoundingBox( xmin , ymin , xmax , ymax ) {
+function BoundingBox( xmin = 0 , ymin = 0 , xmax = 0 , ymax = 0 ) {
 	this.xmin = 0 ;
 	this.ymin = 0 ;
 	this.xmax = 0 ;
@@ -51,6 +51,14 @@ module.exports = BoundingBox ;
 
 
 BoundingBox.prototype.set = function( params ) {
+	if ( params instanceof BoundingBox ) {
+		this.xmin = params.xmin ;
+		this.ymin = params.ymin ;
+		this.xmax = params.xmax ;
+		this.ymax = params.ymax ;
+		return ;
+	}
+
 	if ( params.xmin !== undefined ) { this.xmin = params.xmin ; }
 	if ( params.ymin !== undefined ) { this.ymin = params.ymin ; }
 	if ( params.xmax !== undefined ) { this.xmax = params.xmax ; }
@@ -164,7 +172,7 @@ function DynamicArea( entity , params ) {
 	// Should be a Path2D, from time to time, we will have to check if some events are inside the area or not.
 	// The boundingBox act as a fast early out test.
 	this.area = null ;
-	this.boundingBox = new BoundingBox( 0 , 0 , 0 , 0 ) ;
+	this.boundingBox = new BoundingBox( entity.boundingBox ) ;
 
 	this.statusData = {} ;
 	this.morph = null ;
@@ -671,9 +679,8 @@ function VG( params ) {
 	this.root = this ;	// This is the root element
 
 	this.id = ( params && params.id ) || 'vg_' + ( autoId ++ ) ;
-	this.viewBox = {
-		x: 0 , y: 0 , width: 100 , height: 100
-	} ;
+	this.viewBox = this.boundingBox ; 
+	this.viewBox.set( { x: 0 , y: 0 , width: 100 , height: 100 } ) ;
 
 	this.palette = DEFAULT_PALETTE ;
 	this.invertY = false ;
@@ -698,27 +705,11 @@ VG.prototype.svgTag = 'svg' ;
 
 
 
-VG.prototype.svgAttributes = function( master = this ) {
-	var attr = {
-		xmlns: this.NS ,
-		// xlink is required for image, since href works only on the browser, everywhere else we need xlink:href instead
-		'xmlns:xlink': "http://www.w3.org/1999/xlink" ,
-		viewBox: this.viewBox.x + ' ' + ( this.root.invertY ? - this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
-	} ;
-
-	return attr ;
-} ;
-
-
-
 VG.prototype.set = function( params ) {
 	VGContainer.prototype.set.call( this , params ) ;
 
 	if ( params.viewBox && typeof params.viewBox === 'object' ) {
-		if ( params.viewBox.x !== undefined ) { this.viewBox.x = params.viewBox.x ; }
-		if ( params.viewBox.y !== undefined ) { this.viewBox.y = params.viewBox.y ; }
-		if ( params.viewBox.width !== undefined ) { this.viewBox.width = params.viewBox.width ; }
-		if ( params.viewBox.height !== undefined ) { this.viewBox.height = params.viewBox.height ; }
+		this.viewBox.set( params.viewBox ) ;
 	}
 
 	if ( params.palette && typeof params.palette === 'object' ) {
@@ -745,11 +736,30 @@ VG.prototype.set = function( params ) {
 VG.prototype.export = function( data = {} ) {
 	VGContainer.prototype.export.call( this , data ) ;
 
-	data.viewBox = this.viewBox ;
+	data.viewBox = {
+		x: this.viewBox.x ,
+		y: this.viewBox.y ,
+		width: this.viewBox.width ,
+		height: this.viewBox.height
+	} ;
+
 	if ( this.css.length ) { data.css = this.css ; }
 	data.invertY = this.invertY ;
 
 	return data ;
+} ;
+
+
+
+VG.prototype.svgAttributes = function( master = this ) {
+	var attr = {
+		xmlns: this.NS ,
+		// xlink is required for image, since href works only on the browser, everywhere else we need xlink:href instead
+		'xmlns:xlink': "http://www.w3.org/1999/xlink" ,
+		viewBox: this.viewBox.x + ' ' + ( this.root.invertY ? - this.viewBox.y - this.viewBox.height : this.viewBox.y ) + ' ' + this.viewBox.width + ' ' + this.viewBox.height
+	} ;
+
+	return attr ;
 } ;
 
 
@@ -1239,6 +1249,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 
 
 
+const BoundingBox = require( './BoundingBox.js' ) ;
 const DynamicArea = require( './DynamicArea.js' ) ;
 
 const fontLib = require( './fontLib.js' ) ;
@@ -1257,6 +1268,7 @@ var autoId = 0 ;
 function VGEntity( params ) {
 	this._id = '_vgEntId_' + ( autoId ++ ) ;	// Used when a VG has to create unique ID automatically (e.g. creating a <clipPath>)
 	this.id = null ;
+	this.boundingBox = new BoundingBox() ;
 	this.class = new Set() ;
 	this.style = {} ;
 	this.data = null ;		// User custom data, e.g. data-* attributes
@@ -1296,6 +1308,8 @@ VGEntity.prototype.svgAttributes = ( master = this ) => ( {} ) ;
 
 VGEntity.prototype.set = function( params ) {
 	if ( params.id !== undefined ) { this.id = params.id || null ; }
+
+	if ( params.boundingBox ) { this.boundingBox.set( params.boundingBox ) ; }
 
 	if ( params.class ) {
 		if ( typeof params.class === 'string' ) {
@@ -2030,7 +2044,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":90,"./DynamicArea.js":2,"./fontLib.js":26,"./misc.js":28,"_process":97,"dom-kit":63,"string-kit/lib/camel":82,"string-kit/lib/escape":85}],10:[function(require,module,exports){
+},{"../package.json":90,"./BoundingBox.js":1,"./DynamicArea.js":2,"./fontLib.js":26,"./misc.js":28,"_process":97,"dom-kit":63,"string-kit/lib/camel":82,"string-kit/lib/escape":85}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6060,17 +6074,17 @@ VGRect.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
 
 
 VGRect.prototype.set = function( params ) {
-	VGEntity.prototype.set.call( this , params ) ;
-
-	if ( params.x !== undefined ) { this.x = params.x ; }
-	if ( params.y !== undefined ) { this.y = params.y ; }
-	if ( params.width !== undefined ) { this.width = params.width ; }
-	if ( params.height !== undefined ) { this.height = params.height ; }
+	if ( params.x !== undefined ) { this.boundingBox.x = this.x = params.x ; }
+	if ( params.y !== undefined ) { this.boundingBox.y = this.y = params.y ; }
+	if ( params.width !== undefined ) { this.boundingBox.width = this.width = params.width ; }
+	if ( params.height !== undefined ) { this.boundingBox.height = this.height = params.height ; }
 
 	// Round corner radius
 	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; }
 	if ( params.rx !== undefined ) { this.rx = params.rx ; }
 	if ( params.ry !== undefined ) { this.ry = params.ry ; }
+
+	VGEntity.prototype.set.call( this , params ) ;
 } ;
 
 

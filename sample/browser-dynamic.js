@@ -74,12 +74,7 @@ async function dynamicTest() {
 			fill: '#44a' ,
 		} ,
 		dynamic: {
-			boundingBox: {
-				x: 10 ,
-				y: 200 ,
-				width: 50 ,
-				height: 50
-			} ,
+			//boundingBox: { x: 10 , y: 200 , width: 50 , height: 50 } ,
 			statusData: {
 				base: {
 					morph: {
