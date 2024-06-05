@@ -38,7 +38,18 @@ async function dynamicTest() {
 				text: "wonderful" ,
 				attr: { color: '#888' } ,
 				hover: { attr: { color: '#933' } } ,
-				click: { emit: { name: 'click' , data: { text: "wonderful" } } , attr: { color: '#339' } }
+				click: { emit: { name: 'click' , data: { text: "wonderful" } } , attr: { color: '#339' } } ,
+				dynamic: {
+					boundingBox: {
+						x: 10 ,
+						y: 200 ,
+						width: 50 ,
+						height: 50
+					} ,
+					statusData: {
+						hover: { attr: { color: '#933' } }
+					}
+				}
 			} ,
 			{ text: " world!" }
 		]
