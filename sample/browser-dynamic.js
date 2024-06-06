@@ -36,24 +36,9 @@ async function dynamicTest() {
 			//{ text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
 			{
 				text: "wonderful" ,
-				attr: { color: '#888' } ,
-				hover: { attr: { color: '#933' } } ,
-				click: { emit: { name: 'click' , data: { text: "wonderful" } } , attr: { color: '#339' } } ,
-				dynamic: {
-					//boundingBox: { x: 10 , y: 200 , width: 50 , height: 50 } ,
-					statusData: {
-						base: {
-							morph: {
-								attr: { color: '#33c' , underline: false }
-							}
-						} ,
-						hover: {
-							morph: {
-								attr: { color: '#c33' , underline: true }
-							}
-						}
-					}
-				}
+				attr: { color: '#33c' , underline: false } ,
+				hover: { attr: { color: '#c33' , underline: true } } ,
+				click: { emit: { name: 'tooltip' , data: { text: "wonderful" } } , attr: { color: '#3c3' } }
 			} ,
 			{ text: " world!" }
 		]
@@ -175,6 +160,10 @@ async function dynamicTest() {
 
 	manager.on( "ok" , () => {
 		console.log( "OK pressed" ) ;
+	} ) ;
+
+	manager.on( "tooltip" , data => {
+		console.log( "Tooltip:" , data ) ;
 	} ) ;
 }
 
