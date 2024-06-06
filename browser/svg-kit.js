@@ -4588,11 +4588,13 @@ VGFlowingTextPart.prototype.renderHookForCanvas = async function( canvasCtx , op
 		this.parent.remainingChar -= this.metrics.charCount ;
 	}
 	else {
-		let path = font.getPath( this.text , this.metrics.x , this.metrics.baselineY + yOffset , fontSize ) ;
+		let text = unicode.truncate( this.text , this.parent.remainingChar ) ;
+		this.parent.remainingChar = 0 ;
+
+		let path = font.getPath( text , this.metrics.x , this.metrics.baselineY + yOffset , fontSize ) ;
 		let pathData = path.toPathData() ;
 		let path2D = new Path2D( pathData ) ;
 		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
-		this.parent.remainingChar -= this.metrics.charCount ;
 	}
 
 	if ( lineThrough ) {
@@ -39698,6 +39700,22 @@ unicode.length = str => {
 
 
 
+// Return a string that does not exceed the character limit
+unicode.truncateLength = unicode.truncate = ( str , limit ) => {
+	var position = 0 , length = 0 ;
+
+	for ( let char of str ) {
+		if ( length === limit ) { return str.slice( 0 , position ) ; }
+		length ++ ;
+		position += char.length ;
+	}
+
+	// The string remains unchanged
+	return str ;
+} ;
+
+
+
 // Return the width of a string in a terminal/monospace font
 unicode.width = str => {
 	// for ... of is unicode-aware
@@ -39728,9 +39746,7 @@ unicode.arrayWidth = ( array , limit ) => {
 var lastTruncateWidth = 0 ;
 unicode.getLastTruncateWidth = () => lastTruncateWidth ;
 
-
-
-// Return a string that does not exceed the limit.
+// Return a string that does not exceed the width limit (taking wide-char into considerations)
 unicode.widthLimit =	// DEPRECATED
 unicode.truncateWidth = ( str , limit ) => {
 	var char , charWidth , position = 0 ;
@@ -39937,7 +39953,7 @@ module.exports={
     "opentype.js": "^1.3.4",
     "palette-shade": "^0.1.3",
     "seventh": "^0.9.2",
-    "string-kit": "^0.18.2"
+    "string-kit": "^0.18.3"
   },
   "scripts": {
     "test": "tea-time -R dot"

@@ -14,6 +14,7 @@ async function dynamicTest() {
 		y: 50 ,
 		//width: 400 , height: 200 ,
 		width: 300 , height: 400 ,
+		charLimit: 4 ,
 		//clip: false ,
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
