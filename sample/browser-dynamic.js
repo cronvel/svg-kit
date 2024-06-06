@@ -14,7 +14,7 @@ async function dynamicTest() {
 		y: 50 ,
 		//width: 400 , height: 200 ,
 		width: 300 , height: 400 ,
-		charLimit: 4 ,
+		charLimit: 27 ,
 		//clip: false ,
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
@@ -37,12 +37,23 @@ async function dynamicTest() {
 			//{ text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
 			{
 				text: "wonderful" ,
-				attr: { color: '#33c' , underline: false } ,
+				attr: { color: '#33c' , underline: true } ,
 				hover: { attr: { color: '#c33' , underline: true } } ,
 				click: { emit: { name: 'tooltip' , data: { text: "wonderful" } } , attr: { color: '#3c3' } }
 			} ,
 			{ text: " world!" }
-		]
+		] ,
+		dynamic: {
+			everyTick: 2 ,
+			statusData: {
+				base: {
+					eachFrame: dynamicArea => {
+						if ( dynamicArea.tick > dynamicArea.entity.charCount ) { return ; }
+						return { charLimit: dynamicArea.tick } ;
+					}
+				}
+			}
+		}
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
