@@ -14,7 +14,7 @@ async function dynamicTest() {
 		y: 50 ,
 		//width: 400 , height: 200 ,
 		width: 300 , height: 400 ,
-		charLimit: 27 ,
+		charLimit: 0 ,
 		//clip: false ,
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
@@ -31,6 +31,7 @@ async function dynamicTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
+		fx: 'slowTyping' ,
 		//markupText: rawDoc ,
 		structuredText: [
 			{ text: "Hello world!\nWhat a " } ,
@@ -44,6 +45,7 @@ async function dynamicTest() {
 			{ text: " world!" }
 		] ,
 		dynamic: {
+			noDraw: true ,
 			everyTick: 2 ,
 			statusData: {
 				base: {
@@ -52,8 +54,24 @@ async function dynamicTest() {
 						return { charLimit: dynamicArea.tick } ;
 					}
 				}
+			} ,
+		} ,
+		/*
+		childrenDynamic: {
+			everyTick: 2 ,
+			statusData: {
+				base: {
+					eachFrame: dynamicArea => {
+						let ent = dynamicArea.entity , 
+							limit = ent.parent.charLimit ,
+							partOffset = ent.charOffset ,
+							partLength = ent.metrics.charCount ;
+						return limit > partOffset && limit <= partOffset + partLength ;
+					}
+				}
 			}
 		}
+		//*/
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
