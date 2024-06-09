@@ -45,7 +45,7 @@ async function dynamicTest() {
 			{ text: " world!" }
 		] ,
 		dynamic: {
-			noDraw: true ,
+			noRedraw: true ,
 			everyTick: 2 ,
 			statusData: {
 				base: {
@@ -56,7 +56,7 @@ async function dynamicTest() {
 				}
 			} ,
 		} ,
-		/*
+		//*
 		childrenDynamic: {
 			everyTick: 2 ,
 			statusData: {

@@ -272,6 +272,7 @@ DynamicArea.prototype.updateMorph = function() {
 	}
 	else if ( data.eachFrame ) {
 		morph = data.eachFrame( this ) ; 
+		console.log( "eachFrame() => " , morph ) ;
 	}
 	else {
 		return ;
@@ -290,6 +291,7 @@ DynamicArea.prototype.updateMorph = function() {
 	this.entity.set( this.morph ) ;
 
 	if ( ! this.noRedraw ) { this.outdated = true ; }
+	//console.log( "==> " , this.noRedraw , this.outdated ) ;
 } ;
 
 
@@ -1373,7 +1375,7 @@ VGEntity.prototype.set = function( params ) {
 		this.setDynamic( params.dynamic ) ;
 	}
 
-	if ( params.childrenDynamic && this.isContainer && this.isPseudoContainer ) {
+	if ( params.childrenDynamic && ( this.isContainer || this.isPseudoContainer ) ) {
 		this.childrenDynamic = params.childrenDynamic ;
 	}
 
@@ -3941,7 +3943,10 @@ VGFlowingText.prototype.computePseudoEntities = async function() {
 			let pseudoEntity =
 				part.imageUrl ? new VGFlowingTextImagePart( part ) :
 				new VGFlowingTextPart( part ) ;
-			if ( this.childrenDynamic ) { pseudoEntity.setDynamic( this.childrenDynamic ) ; }
+			if ( this.childrenDynamic && ! pseudoEntity.dynamicAreas.length ) {
+				console.log( "YEP!" ) ;
+				pseudoEntity.setDynamic( this.childrenDynamic ) ;
+			}
 			this.addPseudoEntity( pseudoEntity ) ;
 		}
 	}
