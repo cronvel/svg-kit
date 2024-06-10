@@ -117,6 +117,12 @@ BoundingBox.prototype.merge = function( bbox ) {
 
 
 
+BoundingBox.prototype.isEqualTo = function( bbox ) {
+	return bbox.xmin === this.xmin && bbox.xmax === this.xmax && bbox.ymin === this.ymin && bbox.ymax === this.ymax ;
+} ;
+
+
+
 BoundingBox.prototype.isInside = function( coords ) {
 	return coords.x >= this.xmin && coords.x <= this.xmax && coords.y >= this.ymin && coords.y <= this.ymax ;
 } ;
@@ -181,6 +187,7 @@ function DynamicArea( entity , params ) {
 	this.noRedraw = params.noRedraw || false ;		// If set, this dynamic area is not used to trigger redraw (probably just to send event back)
 	this.outdated = false ;		// If set, redraw is needed
 	this.backgroundImageData = null ;	// Image data stored for the redraw
+	this.useEntityBackgroundImageData = true ;	// Use the entity's image data instead of the dynamic area one
 
 	// Non-enumerable properties (better for displaying the data)
 	Object.defineProperties( this , {
@@ -211,6 +218,10 @@ DynamicArea.prototype.set = function( params ) {
 
 	if ( params.boundingBox && typeof params.boundingBox === 'object' ) {
 		this.boundingBox.set( params.boundingBox ) ;
+
+		if ( this.useEntityBackgroundImageData && ! this.boundingBox.isEqualTo( this.entity.boundingBox ) ) {
+			this.useEntityBackgroundImageData = false ;
+		}
 	}
 } ;
 
@@ -272,14 +283,12 @@ DynamicArea.prototype.updateMorph = function() {
 	}
 	else if ( data.eachFrame ) {
 		morph = data.eachFrame( this ) ; 
-		console.log( "eachFrame() => " , morph ) ;
 	}
 	else {
 		return ;
 	}
 
 	if ( morph === true ) {
-		console.log( "morph===true" ) ;
 		// Special case: force a redraw without changing anything, mostly for special FX, or random translations like tremors
 		if ( ! this.noRedraw ) { this.outdated = true ; }
 		return ;
@@ -298,17 +307,39 @@ DynamicArea.prototype.updateMorph = function() {
 
 DynamicArea.prototype.save = function( canvasCtx ) {
 	if ( this.noRedraw ) { return ; }
-	this.backgroundImageData = canvasCtx.getImageData(
-		this.boundingBox.x , this.boundingBox.y ,
-		this.boundingBox.width , this.boundingBox.height
-	) ;
+
+
+	if ( this.useEntityBackgroundImageData ) {
+		if ( this.entity.backgroundImageUpdate ) { return ; }
+
+		this.entity.backgroundImageData = canvasCtx.getImageData(
+			this.boundingBox.x , this.boundingBox.y ,
+			this.boundingBox.width , this.boundingBox.height
+		) ;
+
+		this.entity.backgroundImageUpdate = true ;
+	}
+	else {
+		this.backgroundImageData = canvasCtx.getImageData(
+			this.boundingBox.x , this.boundingBox.y ,
+			this.boundingBox.width , this.boundingBox.height
+		) ;
+	}
 } ;
 
 
 
 DynamicArea.prototype.restore = function( canvasCtx ) {
 	if ( this.noRedraw ) { return ; }
-	canvasCtx.putImageData( this.backgroundImageData , this.boundingBox.x , this.boundingBox.y ) ;
+
+	if ( this.useEntityBackgroundImageData ) {
+		if ( this.entity.backgroundImageUpdate ) { return ; }
+		canvasCtx.putImageData( this.entity.backgroundImageData , this.boundingBox.x , this.boundingBox.y ) ;
+		this.entity.backgroundImageUpdate = true ;
+	}
+	else {
+		canvasCtx.putImageData( this.backgroundImageData , this.boundingBox.x , this.boundingBox.y ) ;
+	}
 } ;
 
 
@@ -1305,6 +1336,8 @@ function VGEntity( params ) {
 
 	this.dynamicAreas = [] ;
 	this.childrenDynamic = null ;	// can be transmitted to some children (pseudoEntities)
+	this.backgroundImageData = null ;	// Image data stored for the redraw, only for dynamic areas having the same bounding box as the entity
+	this.backgroundImageUpdate = false ;	// used for draw/redraw only once
 
 	// Non-enumerable properties (better for displaying the data)
 	Object.defineProperties( this , {
@@ -1860,6 +1893,8 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , isR
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
 
 	var shouldRender = true ;
+
+	this.backgroundImageUpdate = false ;
 
 	if ( isRedraw ) {
 		shouldRender = false ;
@@ -3943,9 +3978,8 @@ VGFlowingText.prototype.computePseudoEntities = async function() {
 			let pseudoEntity =
 				part.imageUrl ? new VGFlowingTextImagePart( part ) :
 				new VGFlowingTextPart( part ) ;
-			if ( this.childrenDynamic && ! pseudoEntity.dynamicAreas.length ) {
-				console.log( "YEP!" ) ;
-				pseudoEntity.setDynamic( this.childrenDynamic ) ;
+			if ( this.childrenDynamic ) {
+				pseudoEntity.addDynamicArea( this.childrenDynamic ) ;
 			}
 			this.addPseudoEntity( pseudoEntity ) ;
 		}
@@ -4352,7 +4386,7 @@ VGFlowingTextPart.prototype.svgTag = 'g' ;
 
 
 VGFlowingTextPart.prototype.set = function( params ) {
-	console.warn( "VGFlowingTextPart.prototype.set:" , params ) ;
+	//console.warn( "VGFlowingTextPart.prototype.set:" , params ) ;
 	if ( params.text !== undefined ) { this.text = params.text ; }
 
 	if ( params.metrics ) {
