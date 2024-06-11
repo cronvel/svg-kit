@@ -170,10 +170,8 @@ function DynamicArea( entity , params ) {
 	this.availableStatus = new Set() ;	// The list of status that this dynamic area can have
 	this.status = 'base' ;
 
-	// A tick change will trigger the redraw if the number of tick since the last redraw is ≥ everyTick
-	this.tick = 0 ;
-	this.everyTick = 0 ;		// If non-zero, this area is sensible to time evolution, every X ticks would require a redraw
-	this.lastRedrawTick = 0 ;
+	this.everyTick = 1 ;	// Divide the DynamicManager's tick by this value before setting up the DynamicArea's tick
+	this.tick = 0 ;		// A tick change will trigger the redraw
 
 	// Should be a Path2D, from time to time, we will have to check if some events are inside the area or not.
 	// The boundingBox act as a fast early out test.
@@ -208,6 +206,8 @@ DynamicArea.prototype.__prototypeVersion__ = require( '../package.json' ).versio
 
 
 DynamicArea.prototype.set = function( params ) {
+	if ( params.everyTick ) { this.everyTick = + params.everyTick || 1 ; }
+
 	if ( params.statusData && typeof params.statusData === 'object' ) {
 		for ( let statusName in params.statusData ) {
 			this.setStatusMorph( statusName , params.statusData[ statusName ] ) ;
@@ -254,6 +254,8 @@ DynamicArea.prototype.setStatus = function( status ) {
 
 
 DynamicArea.prototype.setTick = function( tick ) {
+	tick = Math.floor( tick / this.everyTick ) ;
+	if ( tick === this.tick ) { return ; }
 	this.tick = tick ;
 	this.updateMorph() ;
 } ;
@@ -7091,8 +7093,12 @@ exports.slowTyping = exports['slow-typing'] = require( './slowTyping.js' ) ;
 
 
 module.exports = ( params ) => {
-	//let everyTick = params.everyTick || 1 ;
-	let everyTick = 10 ;
+	let everyTick = 1 , multiply = 1 ;
+
+	if ( params.speed ) {
+		if ( params.speed >= 1 ) { multiply = Math.round( params.speed ) ; }
+		else { everyTick = Math.round( 1 / params.speed ) ; }
+	}
 
 	return {
 		dynamic: {
@@ -7101,8 +7107,9 @@ module.exports = ( params ) => {
 			statusData: {
 				base: {
 					eachFrame: dynamicArea => {
-						if ( dynamicArea.tick > dynamicArea.entity.charCount ) { return ; }
-						return { charLimit: dynamicArea.tick } ;
+						let charLimit = dynamicArea.tick * multiply ;
+						if ( charLimit - multiply >= dynamicArea.entity.charCount ) { return ; }
+						return { charLimit } ;
 					}
 				}
 			} ,
@@ -7113,10 +7120,10 @@ module.exports = ( params ) => {
 				base: {
 					eachFrame: dynamicArea => {
 						let ent = dynamicArea.entity , 
-							limit = ent.parent.charLimit ,
+							charLimit = ent.parent.charLimit ,
 							partOffset = ent.charOffset ,
 							partLength = ent.metrics.charCount ;
-						return limit > partOffset && limit <= partOffset + partLength ;
+						return charLimit > partOffset && charLimit - multiply < partOffset + partLength ;
 					}
 				}
 			}

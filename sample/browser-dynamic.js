@@ -32,7 +32,7 @@ async function dynamicTest() {
 			//lineColor: '#559'
 		} ,
 		fx: {
-			slowTyping: {}// everyTick: 10 }
+			slowTyping: { speed: 1 }
 		} ,
 		//markupText: rawDoc ,
 		structuredText: [
@@ -106,7 +106,7 @@ async function dynamicTest() {
 			fill: '#44a' ,
 		} ,
 		dynamic: {
-			everyTick: 20 ,
+			everyTick: 2 ,
 			statusData: {
 				base: {
 					frames: [
