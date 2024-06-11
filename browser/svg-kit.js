@@ -1306,6 +1306,7 @@ const DynamicArea = require( './DynamicArea.js' ) ;
 
 const fontLib = require( './fontLib.js' ) ;
 const misc = require( './misc.js' ) ;
+const fx = require( './fx/fx.js' ) ;
 
 const dom = require( 'dom-kit' ) ;
 const camel = require( 'string-kit/lib/camel' ) ;
@@ -1416,6 +1417,14 @@ VGEntity.prototype.set = function( params ) {
 	if ( params.button !== undefined ) { this.button = params.button || null ; }
 	if ( params.hint !== undefined ) { this.hint = params.hint || null ; }
 	if ( params.area !== undefined ) { this.area = params.area || null ; }
+
+	if ( params.fx && typeof params.fx === 'object' ) {
+		for ( let type in params.fx ) {
+			if ( fx[ type ] ) {
+				this.set( fx[ type ]( params.fx[ type ] ) ) ;
+			}
+		}
+	}
 } ;
 
 
@@ -2113,7 +2122,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":95,"./BoundingBox.js":1,"./DynamicArea.js":2,"./fontLib.js":26,"./misc.js":30,"_process":102,"dom-kit":66,"string-kit/lib/camel":85,"string-kit/lib/escape":88}],10:[function(require,module,exports){
+},{"../package.json":95,"./BoundingBox.js":1,"./DynamicArea.js":2,"./fontLib.js":26,"./fx/fx.js":27,"./misc.js":30,"_process":102,"dom-kit":66,"string-kit/lib/camel":85,"string-kit/lib/escape":88}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7081,7 +7090,38 @@ exports.slowTyping = exports['slow-typing'] = require( './slowTyping.js' ) ;
 
 
 
-module.exports = () => {
+module.exports = ( params ) => {
+	//let everyTick = params.everyTick || 1 ;
+	let everyTick = 10 ;
+
+	return {
+		dynamic: {
+			noRedraw: true ,
+			everyTick ,
+			statusData: {
+				base: {
+					eachFrame: dynamicArea => {
+						if ( dynamicArea.tick > dynamicArea.entity.charCount ) { return ; }
+						return { charLimit: dynamicArea.tick } ;
+					}
+				}
+			} ,
+		} ,
+		childrenDynamic: {
+			everyTick ,
+			statusData: {
+				base: {
+					eachFrame: dynamicArea => {
+						let ent = dynamicArea.entity , 
+							limit = ent.parent.charLimit ,
+							partOffset = ent.charOffset ,
+							partLength = ent.metrics.charCount ;
+						return limit > partOffset && limit <= partOffset + partLength ;
+					}
+				}
+			}
+		}
+	} ;
 } ;
 
 

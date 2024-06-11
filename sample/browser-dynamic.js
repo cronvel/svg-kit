@@ -31,7 +31,9 @@ async function dynamicTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
-		fx: 'slowTyping' ,
+		fx: {
+			slowTyping: {}// everyTick: 10 }
+		} ,
 		//markupText: rawDoc ,
 		structuredText: [
 			{ text: "Hello world!\nWhat a " } ,
@@ -44,34 +46,6 @@ async function dynamicTest() {
 			} ,
 			{ text: " world!" }
 		] ,
-		dynamic: {
-			noRedraw: true ,
-			everyTick: 2 ,
-			statusData: {
-				base: {
-					eachFrame: dynamicArea => {
-						if ( dynamicArea.tick > dynamicArea.entity.charCount ) { return ; }
-						return { charLimit: dynamicArea.tick } ;
-					}
-				}
-			} ,
-		} ,
-		//*
-		childrenDynamic: {
-			everyTick: 2 ,
-			statusData: {
-				base: {
-					eachFrame: dynamicArea => {
-						let ent = dynamicArea.entity , 
-							limit = ent.parent.charLimit ,
-							partOffset = ent.charOffset ,
-							partLength = ent.metrics.charCount ;
-						return limit > partOffset && limit <= partOffset + partLength ;
-					}
-				}
-			}
-		}
-		//*/
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
@@ -122,7 +96,7 @@ async function dynamicTest() {
 	} ) ;
 	vg.addEntity( vgRect1 ) ;
 
-	/*
+	//*
 	var vgRect2 = new svgKit.VGRect( {
 		x: 50 ,
 		y: 300 ,
@@ -132,7 +106,7 @@ async function dynamicTest() {
 			fill: '#44a' ,
 		} ,
 		dynamic: {
-			everyTick: 2 ,
+			everyTick: 20 ,
 			statusData: {
 				base: {
 					frames: [
