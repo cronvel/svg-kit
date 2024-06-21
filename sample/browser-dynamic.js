@@ -21,6 +21,7 @@ async function dynamicTest() {
 		textWrapping: 'wordWrap' ,
 		//textVerticalAlignment: 'bottom' ,
 		//textHorizontalAlignment: 'center' ,
+		lineSpacing: 4 ,
 		attr: {
 			fontSize: 20 ,
 			color: '#444' ,
@@ -48,18 +49,26 @@ async function dynamicTest() {
 			{
 				text: "bobbing text" ,
 				fx: {
-					//bobbing: { amplitude: 4 , period: 20 } ,
-					shaking: { amplitude: 4 , everyTick: 2 } ,
+					bobbing: { amplitude: 4 , period: 20 } ,
+					//shaking: { amplitude: 4 , everyTick: 2 } ,
+					//scramble: { everyTick: 2 } ,
 				}
 			} ,
-			{ text: " just for fun! And more and more and more text for the test..." }
+			{ text: " just for fun! And now I'm" } ,
+			{
+				text: " afraid of the dark " ,
+				fx: {
+					scramble: { everyTick: 2 } ,
+				}
+			} ,
+			{ text: "! And more and more and more text for the test..." }
 		] ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 
 	var vgRect1 = new svgKit.VGRect( {
 		x: 10 ,
-		y: 200 ,
+		y: 220 ,
 		width: 50 ,
 		height: 50 ,
 		style: {

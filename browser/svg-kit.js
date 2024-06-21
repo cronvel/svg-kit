@@ -4403,7 +4403,6 @@ VGFlowingTextPart.prototype.set = function( params ) {
 		this.margin.left = + params.margin.left || 0 ;
 		this.margin.right = + params.margin.right || 0 ;
 		this.computeBoundingBox() ;
-		console.log( "VGFlowingTextPart#set() margin:" , this.margin ) ;
 	}
 
 	if ( params.metrics ) {
@@ -4425,7 +4424,6 @@ VGFlowingTextPart.prototype.set = function( params ) {
 		if ( params.fxData.y ) { this.fxData.y = params.fxData.y ; }
 	}
 
-	if ( params.fx ) { console.log( "VGFlowingTextPart#set() fx:" , params.fx ) ; }
 	VGPseudoEntity.prototype.set.call( this , params ) ;
 } ;
 
@@ -4438,8 +4436,6 @@ VGFlowingTextPart.prototype.computeBoundingBox = function() {
 	this.boundingBox.y = this.metrics.baselineY - this.metrics.ascender - this.margin.top ;
 	this.boundingBox.width = this.metrics.width + 1 + this.margin.left + this.margin.right ;
 	this.boundingBox.height = this.metrics.ascender - this.metrics.descender + 1 + this.margin.top + this.margin.bottom ;
-
-	console.log( "VGFlowingTextPart#computeBoundingBox() metrics part have margin:" , this.margin ) ;
 } ;
 
 
@@ -4672,10 +4668,30 @@ VGFlowingTextPart.prototype.renderHookForCanvas = async function( canvasCtx , op
 		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , lineStyle ) ;
 	}
 
-	let path = font.getPath( text , this.metrics.x + this.fxData.x , this.metrics.baselineY + yOffset + this.fxData.y , fontSize ) ;
-	let pathData = path.toPathData() ;
-	let path2D = new Path2D( pathData ) ;
-	canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
+	if ( this.fxData.perCharacter ) {
+		let pathList = font.getPaths( text , this.metrics.x + this.fxData.x , this.metrics.baselineY + yOffset + this.fxData.y , fontSize ) ;
+		let i = 0 ;
+
+		for ( let path of pathList ) {
+			let fxData = this.fxData.perCharacter[ i ] ;
+			let pathData = path.toPathData() ;
+			let path2D = new Path2D( pathData ) ;
+
+			// There is no simple way to translate a path2D, except by applying a translation to the canvas, then restoring
+			canvasCtx.save() ;
+			canvasCtx.translate( fxData.x || 0 , fxData.y || 0 ) ;
+			canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
+			canvasCtx.restore() ;
+
+			i ++ ;
+		}
+	}
+	else {
+		let path = font.getPath( text , this.metrics.x + this.fxData.x , this.metrics.baselineY + yOffset + this.fxData.y , fontSize ) ;
+		let pathData = path.toPathData() ;
+		let path2D = new Path2D( pathData ) ;
+		canvas.fillAndStrokeUsingSvgStyle( canvasCtx , textStyle , path2D ) ;
+	}
 
 	if ( lineThrough ) {
 		let lineThroughY = this.metrics.baselineY - this.metrics.ascender * 0.25 - lineThickness + yOffset ;
@@ -7161,6 +7177,45 @@ exports.shaking = ( params ) => {
 					eachFrame: dynamicArea => {
 						dynamicArea.entity.fxData.x = ( 2 * Math.random() - 1 ) * amplitude ;
 						dynamicArea.entity.fxData.y = ( 2 * Math.random() - 1 ) * amplitude ;
+						return true ;
+					}
+				}
+			}
+		}
+	} ;
+} ;
+
+
+
+exports.scramble = ( params ) => {
+	var everyTick = + params.everyTick || 2 ,
+		xAmplitude = params.amplitude ?? params.xAmplitude ?? 1 ,
+		yAmplitude = params.amplitude ?? params.yAmplitude ?? 2 ;
+
+	return {
+		margin: { top: xAmplitude + 1 , bottom: xAmplitude + 1 , left: yAmplitude + 1 , right: yAmplitude + 1 } ,
+		dynamic: {
+			everyTick: everyTick ,
+			statusData: {
+				base: {
+					eachFrame: dynamicArea => {
+						if ( ! dynamicArea.entity.fxData.perCharacter ) {
+							dynamicArea.entity.fxData.perCharacter = [] ;
+						}
+
+						let i = 0 ;
+
+						for ( let char of dynamicArea.entity.text ) {
+							dynamicArea.entity.fxData.perCharacter[ i ] = {
+								x: ( 2 * Math.random() - 1 ) * xAmplitude ,
+								y: ( 2 * Math.random() - 1 ) * yAmplitude
+							} ;
+
+							i ++ ;
+						}
+
+						dynamicArea.entity.fxData.perCharacter.length = i ;
+
 						return true ;
 					}
 				}
