@@ -14,7 +14,7 @@ async function dynamicTest() {
 		y: 50 ,
 		//width: 400 , height: 200 ,
 		width: 300 , height: 400 ,
-		charLimit: 0 ,
+		//charLimit: 0 ,
 		//clip: false ,
 		debugContainer: true ,
 		//textWrapping: 'ellipsis' ,
@@ -32,7 +32,7 @@ async function dynamicTest() {
 			//lineColor: '#559'
 		} ,
 		fx: {
-			slowTyping: { speed: 1 }
+			//slowTyping: { speed: 2 }
 		} ,
 		//markupText: rawDoc ,
 		structuredText: [
@@ -44,7 +44,24 @@ async function dynamicTest() {
 				hover: { attr: { color: '#c33' , underline: true } } ,
 				click: { emit: { name: 'tooltip' , data: { text: "wonderful" } } , attr: { color: '#3c3' } }
 			} ,
-			{ text: " world!" }
+			{ text: " world!\nNow some " } ,
+			{
+				text: "bobbing text" ,
+				dynamic: {
+					everyTick: 1 ,
+					statusData: {
+						base: {
+							eachFrame: dynamicArea => {
+								let offset = Math.cos( dynamicArea.tick / 10 ) * 0.3 ;
+								dynamicArea.entity.metrics.baselineY += offset ;
+								return true ;
+							}
+						}
+					}
+				} ,
+				boundingBoxMargin: { top: 5 , bottom: 5 }
+			} ,
+			{ text: " for the fun!" }
 		] ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
@@ -156,7 +173,7 @@ async function dynamicTest() {
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
 	await vg.renderCanvas( ctx ) ;
-	var manager = new svgKit.DynamicManager( ctx , vg ) ;
+	var manager = new svgKit.DynamicManager( ctx , vg , 50 ) ;
 	manager.manageBrowserCanvas() ;
 
 	console.warn( "==> vg:" , vg ) ;
