@@ -36,10 +36,10 @@ async function dynamicTest() {
 		} ,
 		//markupText: rawDoc ,
 		structuredText: [
-			{ text: "Hello world!\nWhat a " } ,
+			{ text: "Hello world! What a " } ,
 			//{ text: "a wonderful " , attr: { color: '#888' } , dynamic: { on: { color: '#933' } , off: { color: '#339' } } } ,
 			{
-				text: "wonderful" ,
+				text: "wonderful wonderful wonderful" ,
 				attr: { color: '#33c' , underline: true } ,
 				hover: { attr: { color: '#c33' , underline: true } } ,
 				click: { emit: { name: 'tooltip' , data: { text: "wonderful" } } , attr: { color: '#3c3' } }
@@ -47,21 +47,12 @@ async function dynamicTest() {
 			{ text: " world!\nNow some " } ,
 			{
 				text: "bobbing text" ,
-				dynamic: {
-					everyTick: 1 ,
-					statusData: {
-						base: {
-							eachFrame: dynamicArea => {
-								let offset = Math.cos( dynamicArea.tick / 10 ) * 0.3 ;
-								dynamicArea.entity.metrics.baselineY += offset ;
-								return true ;
-							}
-						}
-					}
-				} ,
-				boundingBoxMargin: { top: 5 , bottom: 5 }
+				fx: {
+					//bobbing: { amplitude: 4 , period: 20 } ,
+					shaking: { amplitude: 4 , everyTick: 2 } ,
+				}
 			} ,
-			{ text: " for the fun!" }
+			{ text: " just for fun! And more and more and more text for the test..." }
 		] ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
