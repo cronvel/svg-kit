@@ -48,10 +48,27 @@ async function dynamicTest() {
 			{ text: " world!\nNow some " } ,
 			{
 				text: "bobbing text" ,
+				fx: { bobbing: true }
+			} ,
+			{ text: " and then some " } ,
+			{
+				text: "waving text" ,
+				fx: { waving: true }
+			} ,
+			{ text: " just for fun! And now I'm" } ,
+			{
+				text: " afraid of the dark" ,
+				fx: { scramble: { everyTick: 2 } }
+			} ,
+			{ text: " ! And what about a " } ,
+			{
+				text: "nice rainbow effect" ,
+				fx: { rainbow: true }
+			} ,
+			{ text: "? And more " } ,
+			{
+				text: "and more effects" ,
 				fx: {
-					//bobbing: { amplitude: 4 , period: 20 } ,
-					//shaking: { amplitude: 4 , everyTick: 2 } ,
-					//scramble: { everyTick: 2 } ,
 					//bobbing: true ,
 					//shaking: true ,
 					//waving: true ,
@@ -59,31 +76,7 @@ async function dynamicTest() {
 					jumpy: true ,
 				}
 			} ,
-			{ text: " and then some " } ,
-			{
-				text: "waving text" ,
-				fx: {
-					//bobbing: { amplitude: 4 , period: 20 } ,
-					//shaking: { amplitude: 4 , everyTick: 2 } ,
-					//scramble: { everyTick: 2 } ,
-					waving: true ,
-				}
-			} ,
-			{ text: " just for fun! And now I'm" } ,
-			{
-				text: " afraid of the dark" ,
-				fx: {
-					scramble: { everyTick: 2 } ,
-				}
-			} ,
-			{ text: " ! And what about a " } ,
-			{
-				text: "nice rainbow effect" ,
-				fx: {
-					rainbow: true ,
-				}
-			} ,
-			{ text: "? And more and more and more text for the test..." }
+			{ text: ", and more and more text for the test..." }
 		] ,
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
