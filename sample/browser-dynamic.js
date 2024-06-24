@@ -52,6 +52,8 @@ async function dynamicTest() {
 					//bobbing: { amplitude: 4 , period: 20 } ,
 					//shaking: { amplitude: 4 , everyTick: 2 } ,
 					//scramble: { everyTick: 2 } ,
+					//bobbing: true ,
+					//shaking: true ,
 					//waving: true ,
 					//accordion: true ,
 					jumpy: true ,
