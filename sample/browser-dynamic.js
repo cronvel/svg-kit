@@ -49,10 +49,12 @@ async function dynamicTest() {
 			{
 				text: "bobbing text" ,
 				fx: {
-					bobbing: { amplitude: 4 , period: 20 } ,
+					//bobbing: { amplitude: 4 , period: 20 } ,
 					//shaking: { amplitude: 4 , everyTick: 2 } ,
 					//scramble: { everyTick: 2 } ,
 					//waving: true ,
+					//accordion: true ,
+					jumpy: true ,
 				}
 			} ,
 			{ text: " and then some " } ,
