@@ -284,7 +284,7 @@ DynamicArea.prototype.updateMorph = function() {
 		}
 	}
 	else if ( data.eachFrame ) {
-		morph = data.eachFrame( this ) ; 
+		morph = data.eachFrame( this ) ;
 	}
 	else {
 		return ;
@@ -724,8 +724,10 @@ function VG( params ) {
 	this.root = this ;	// This is the root element
 
 	this.id = ( params && params.id ) || 'vg_' + ( autoId ++ ) ;
-	this.viewBox = this.boundingBox ; 
-	this.viewBox.set( { x: 0 , y: 0 , width: 100 , height: 100 } ) ;
+	this.viewBox = this.boundingBox ;
+	this.viewBox.set( {
+		x: 0 , y: 0 , width: 100 , height: 100
+	} ) ;
 
 	this.palette = DEFAULT_PALETTE ;
 	this.invertY = false ;
@@ -1052,7 +1054,7 @@ VGContainer.prototype.removeEntity = function( entity ) {
 
 
 VGContainer.prototype.clearEntities = function() {
-	for ( entity of this.entities ) {
+	for ( let entity of this.entities ) {
 		entity.root = entity.parent = null ;
 	}
 
@@ -2023,7 +2025,7 @@ VGEntity.prototype.renderPath2D = async function( path2D , canvasCtx , options =
 // Useful because of a browser bug, not supporting <g> inside <clipPath> (but Inkscape supports it).
 VGEntity.appendToWithoutGTag = function( $parent , $child ) {
 	if ( $child.tagName === 'g' ) {
-		for ( let $child2 of $child.childNodes ) { 
+		for ( let $child2 of $child.childNodes ) {
 			VGEntity.appendToWithoutGTag( $parent , $child2 ) ;
 		}
 	}
@@ -2381,7 +2383,7 @@ StructuredTextPart.prototype.splitIntoWords = function( intoList = [] ) {
 		intoList.push( this ) ;
 		return intoList ;
 	}
-	
+
 	var match , lastIndex = 0 ;
 	WORD_SPLIT_REGEXP.lastIndex = 0 ;
 
@@ -3341,7 +3343,7 @@ TextMetrics.measureFontText = function( font , fontSize , text ) {
 	var fontOptions = null , count = 0 ;
 	var metrics = TextMetrics.measureFontHeights( font , fontSize ) ;
 	metrics.width = font.getAdvanceWidth( text , fontSize , fontOptions ) ;
-	
+
 	// Probably the fastest way to count chars of an unicode string (BTW text.length dosen't work because of surrogate pairs)
 	for ( let char of text ) { count ++ ; }		/* eslint-disable-line no-unused-vars */
 	metrics.charCount = count ;
@@ -3758,9 +3760,9 @@ VGFlowingText.prototype.parseStructuredTextLineWordWrap = async function( line )
 			let indexOfNextLine = index - removed + 1 ;
 			for ( ; indexOfNextLine <= index ; indexOfNextLine ++ ) {
 				let nextLinePart = outputParts[ indexOfNextLine ] ;
-				
+
 				if ( nextLinePart.imageUrl ) { break ; }
-				
+
 				//console.log( "nextLinePart: '" + nextLinePart.text + "'" ) ;
 				let trimmedText = nextLinePart.text.trimStart() ;
 
@@ -3859,7 +3861,7 @@ VGFlowingText.prototype.computePartsPosition = function() {
 		if ( lastStructuredTextLine ) {
 			// It is a new line, offset it depending on the previous one
 			y += - lastStructuredTextLine.metrics.descender + lastStructuredTextLine.metrics.lineGap + this.lineSpacing ;
-			
+
 			// Manage empty lines
 			if ( lastStructuredTextLine.followUpEmptyLines ) {
 				y += lastStructuredTextLine.followUpEmptyLines * this.attr.getFontSize() ;
@@ -3977,7 +3979,7 @@ VGFlowingText.prototype.computePseudoEntities = async function() {
 	if ( this.arePseudoEntitiesReady ) { return ; }
 
 	if ( ! this.areLinesComputed ) { await this.computeLines() ; }
-	
+
 	this.clearPseudoEntities() ;
 
 	for ( let structuredTextLine of this.structuredTextLines ) {
@@ -6176,7 +6178,7 @@ VGPseudoContainer.prototype.removePseudoEntity = function( pseudoEntity ) {
 
 
 VGPseudoContainer.prototype.clearPseudoEntities = function() {
-	for ( pseudoEntity of this.pseudoEntities ) {
+	for ( let pseudoEntity of this.pseudoEntities ) {
 		pseudoEntity.root = pseudoEntity.parent = null ;
 	}
 
@@ -7142,14 +7144,14 @@ exports.slowTyping = exports['slow-typing'] = ( params ) => {
 						return { charLimit } ;
 					}
 				}
-			} ,
+			}
 		} ,
 		childrenDynamic: {
 			everyTick ,
 			statusData: {
 				base: {
 					eachFrame: dynamicArea => {
-						let ent = dynamicArea.entity , 
+						let ent = dynamicArea.entity ,
 							charLimit = ent.parent.charLimit ,
 							partOffset = ent.charOffset ,
 							partLength = ent.metrics.charCount ;
@@ -7194,7 +7196,9 @@ exports.shaking = ( params ) => {
 		margin = Math.ceil( amplitude + 1 ) ;
 
 	return {
-		margin: { top: margin , bottom: margin , left: margin , right: margin } ,
+		margin: {
+			top: margin , bottom: margin , left: margin , right: margin
+		} ,
 		dynamic: {
 			everyTick ,
 			statusData: {
@@ -7218,7 +7222,9 @@ exports.scramble = ( params ) => {
 		yAmplitude = params.amplitude ?? params.yAmplitude ?? 2 ;
 
 	return {
-		margin: { top: xAmplitude + 1 , bottom: xAmplitude + 1 , left: yAmplitude + 1 , right: yAmplitude + 1 } ,
+		margin: {
+			top: xAmplitude + 1 , bottom: xAmplitude + 1 , left: yAmplitude + 1 , right: yAmplitude + 1
+		} ,
 		dynamic: {
 			everyTick ,
 			statusData: {
@@ -7273,7 +7279,7 @@ exports.waving = ( params ) => {
 							if ( ! fxData ) { fxData = dynamicArea.entity.fxData.perCharacter[ i ] = {} ; }
 
 							fxData.x = 0 ;
- 							//fxData.y = Math.sin( multiply * dynamicArea.tick - i * phaseShift ) * amplitude ;
+							//fxData.y = Math.sin( multiply * dynamicArea.tick - i * phaseShift ) * amplitude ;
 							fxData.y = mathFn.transform.cycleAround( multiply * dynamicArea.tick - i * phaseShift ) * amplitude ;
 
 							i ++ ;
@@ -7301,7 +7307,9 @@ exports.accordion = ( params ) => {
 		xShift = amplitude / 2 ;
 
 	return {
-		margin: { top: 1 , bottom: 1 , left: marginLeftRight , right: marginLeftRight } ,
+		margin: {
+			top: 1 , bottom: 1 , left: marginLeftRight , right: marginLeftRight
+		} ,
 		dynamic: {
 			everyTick ,
 			statusData: {
@@ -7346,7 +7354,9 @@ exports.jumpy = ( params ) => {
 		xShift = amplitude / 2 ;
 
 	return {
-		margin: { top: marginTop , bottom: 1 , left: marginLeftRight , right: marginLeftRight } ,
+		margin: {
+			top: marginTop , bottom: 1 , left: marginLeftRight , right: marginLeftRight
+		} ,
 		dynamic: {
 			everyTick ,
 			statusData: {
@@ -7478,7 +7488,7 @@ exports.sineHalfOutOfX = ( v , div = 2 ) =>
 	Math.floor( v / PI ) % div ? (
 		Math.floor( v / ( PI *  div ) ) % 2
 	) :
-	1 + Math.sin( v - PI_OVER_2 ) / 2 ;
+		1 + Math.sin( v - PI_OVER_2 ) / 2 ;
 
 
 
@@ -7646,7 +7656,7 @@ misc.colorToString = ( color , palette = null ) => {
 		if ( ! palette ) { return FALLBACK_COLOR ; }
 		return palette.getHex( color ) ;
 	}
-	
+
 	return FALLBACK_COLOR ;
 } ;
 
