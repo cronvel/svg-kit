@@ -2663,6 +2663,11 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 		part.frameOutlineColor = "#777" ;   // <-- TEMP
 		part.frameCornerRadius = 5 ;   // <-- TEMP
 	}
+
+	if ( style.fx ) {
+		part.fx = {} ;
+		part.fx[ style.fx ] = true ;
+	}
 } ;
 
 
@@ -17549,6 +17554,7 @@ function Style() {
 	this.bold = null ;
 	this.italic = null ;
 	this.underline = null ;
+	this.fx = null ;
 }
 
 module.exports = Style ;
@@ -17580,6 +17586,7 @@ Style.merge = function( ... styles ) {
 const BOOLEAN_PROPERTIES = new Set( [ 'bold' , 'italic' , 'underline' ] ) ;
 const TEXT_COLOR_PROPERTIES = new Set( [ 'text' , 'tx' , 'foreground' , 'fg' ] ) ;
 const BACKGROUND_COLOR_PROPERTIES = new Set( [ 'background' , 'bg' ] ) ;
+const FX_PROPERTIES = new Set( [ 'fx' ] ) ;
 
 
 
@@ -17590,9 +17597,12 @@ Style.parse = function( str , forTextElement = true ) {
 		let [ property , value ] = part.split( ':' ) ;
 
 		if ( value ) {
-			property = TEXT_COLOR_PROPERTIES.has( property ) ? 'text' :
+			property =
+				TEXT_COLOR_PROPERTIES.has( property ) ? 'text' :
 				BACKGROUND_COLOR_PROPERTIES.has( property ) ? 'background' :
-				forTextElement ? 'text' : 'background' ;
+				FX_PROPERTIES.has( property ) ? 'fx' :
+				forTextElement ? 'text' :
+				'background' ;
 		}
 		else {
 			if ( BOOLEAN_PROPERTIES.has( property ) ) {
@@ -17610,6 +17620,9 @@ Style.parse = function( str , forTextElement = true ) {
 				break ;
 			case 'background' :
 				style.backgroundColor = Color.parse( value ) ;
+				break ;
+			case 'fx' :
+				style.fx = value ;
 				break ;
 		}
 	}
@@ -40513,7 +40526,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":92}],95:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
@@ -40522,7 +40535,7 @@ module.exports={
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "array-kit": "^0.2.6",
-    "book-source": "^0.3.6",
+    "book-source": "^0.3.7",
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "nextgen-events": "^1.5.3",

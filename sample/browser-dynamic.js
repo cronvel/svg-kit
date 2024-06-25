@@ -205,5 +205,75 @@ async function dynamicTest() {
 
 
 
-svgKit.domKit.ready( dynamicTest ) ;
+async function dynamicBookSourceTest() {
+	var rawFxDoc = await ( await fetch( 'docFx.bks' ) ).text() ;
+	console.log( rawFxDoc ) ;
+
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: false
+	} ) ;
+
+	var vgFlowingText = new svgKit.VGFlowingText( {
+		x: 20 ,
+		y: 50 ,
+		//width: 400 , height: 200 ,
+		width: 300 , height: 400 ,
+		//charLimit: 0 ,
+		//clip: false ,
+		debugContainer: true ,
+		//textWrapping: 'ellipsis' ,
+		textWrapping: 'wordWrap' ,
+		//textVerticalAlignment: 'bottom' ,
+		//textHorizontalAlignment: 'center' ,
+		lineSpacing: 5 ,
+		attr: {
+			fontSize: 20 ,
+			color: '#444' ,
+			//outline: true ,
+			//frameCornerRadius: '0.2em' ,
+			//frameOutlineWidth: '0.1em' ,
+			//outlineColor: '#afa' ,
+			//lineOutline: true ,
+			//lineColor: '#559'
+		} ,
+		fx: {
+			//slowTyping: { speed: 2 }
+		} ,
+		markupText: rawFxDoc ,
+	} ) ;
+	vg.addEntity( vgFlowingText ) ;
+
+	// Render
+
+	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
+	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+
+	var $canvas = document.getElementById( 'canvas' ) ;
+	var ctx = $canvas.getContext( '2d' ) ;
+
+	// Display using the Canvas renderer
+	$canvas.classList.remove( 'hidden' ) ;
+	await vg.renderCanvas( ctx ) ;
+	var manager = new svgKit.DynamicManager( ctx , vg , 50 ) ;
+	manager.manageBrowserCanvas() ;
+
+	console.warn( "==> vg:" , vg ) ;
+	console.warn( "==> pseudoEntity:" , vgFlowingText.pseudoEntities[ 2 ] ) ;
+
+	manager.on( "ok" , () => {
+		console.log( "OK pressed" ) ;
+	} ) ;
+
+	manager.on( "tooltip" , data => {
+		console.log( "Tooltip:" , data ) ;
+	} ) ;
+}
+
+
+
+//svgKit.domKit.ready( dynamicTest ) ;
+svgKit.domKit.ready( dynamicBookSourceTest ) ;
 
