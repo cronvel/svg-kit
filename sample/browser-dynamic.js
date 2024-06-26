@@ -48,17 +48,17 @@ async function dynamicTest() {
 			{ text: " world!\nNow some " } ,
 			{
 				text: "bobbing text" ,
-				fx: { bobbing: true }
+				fx: { bob: true }
 			} ,
 			{ text: " and then some " } ,
 			{
 				text: "waving text" ,
-				fx: { waving: true }
+				fx: { wave: true }
 			} ,
 			{ text: " just for fun! And now I'm" } ,
 			{
 				text: " afraid of the dark" ,
-				fx: { scramble: { everyTick: 2 } }
+				fx: { shake: { everyTick: 2 } }
 			} ,
 			{ text: " ! And what about a " } ,
 			{
@@ -69,12 +69,14 @@ async function dynamicTest() {
 			{
 				text: "and more effects" ,
 				fx: {
-					//bobbing: true ,
-					//shaking: true ,
-					//waving: true ,
-					//accordion: true ,
+					//bob: true ,
+					//shake: true ,
+					//quiver: true ,
+					//wave: true ,
+					//spring: true ,
 					//jumpy: true ,
-					pulse: true ,
+					//pulse: true ,
+					fade: true ,
 				}
 			} ,
 			{ text: ", and more and more text for the test..." }
