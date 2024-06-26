@@ -395,7 +395,10 @@ function DynamicManager( ctx , vg , tickTime ) {
 	this.toEmit = [] ;	// Pending events to be emited
 
 	// A debounced redraw
-	this.redraw = Promise.debounceUpdate( { delay: this.tickTime / 2 } , () => this.vg.redrawCanvas( this.ctx ) ) ;
+	this.redraw = Promise.debounceUpdate( { delay: this.tickTime / 2 } , async () => {
+		await this.vg.redrawCanvas( this.ctx ) ;
+		this.emit( 'redraw' ) ;
+	} ) ;
 }
 
 module.exports = DynamicManager ;
@@ -1499,6 +1502,22 @@ VGEntity.prototype.clearDynamicAreas = function() {
 VGEntity.prototype.addDynamicArea = function( params ) {
 	var dynamic = new DynamicArea( this , params ) ;
 	this.dynamicAreas.push( dynamic ) ;
+} ;
+
+
+
+VGEntity.prototype.isDynamic = function( params ) {
+	if ( this.dynamicAreas.length ) { return true ; }
+
+	if ( this.isPseudoContainer ) {
+		if ( this.pseudoEntities.some( pseudoEntity => pseudoEntity.isDynamic() ) ) { return true ; }
+	}
+
+	if ( this.isContainer ) {
+		if ( this.entities.some( entity => entity.isDynamic() ) ) { return true ; }
+	}
+
+	return false ;
 } ;
 
 
@@ -7177,7 +7196,7 @@ exports.bobbing = ( params ) => {
 		marginTopBottom = Math.ceil( amplitude + 1 ) ;
 
 	return {
-		margin: { top: marginTopBottom , bottom: marginTopBottom } ,
+		margin: { top: marginTopBottom , bottom: marginTopBottom , left: 1 , right: 1 } ,
 		dynamic: {
 			everyTick ,
 			statusData: {
@@ -7269,7 +7288,7 @@ exports.waving = ( params ) => {
 		marginTopBottom = Math.ceil( amplitude + 1 ) ;
 
 	return {
-		margin: { top: marginTopBottom , bottom: marginTopBottom } ,
+		margin: { top: marginTopBottom , bottom: marginTopBottom , left: 1 , right: 1 } ,
 		dynamic: {
 			everyTick ,
 			statusData: {
