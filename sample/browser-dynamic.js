@@ -73,7 +73,8 @@ async function dynamicTest() {
 					//shaking: true ,
 					//waving: true ,
 					//accordion: true ,
-					jumpy: true ,
+					//jumpy: true ,
+					pulse: true ,
 				}
 			} ,
 			{ text: ", and more and more text for the test..." }
@@ -274,6 +275,6 @@ async function dynamicBookSourceTest() {
 
 
 
-//svgKit.domKit.ready( dynamicTest ) ;
-svgKit.domKit.ready( dynamicBookSourceTest ) ;
+svgKit.domKit.ready( dynamicTest ) ;
+//svgKit.domKit.ready( dynamicBookSourceTest ) ;
 
