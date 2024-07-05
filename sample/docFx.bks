@@ -1,6 +1,7 @@
 
-This is some Book Source text.
+This is some [Book Source]<cyan> text.
 
 This is [some text with fx]<fx:wave>! Great!
 
+And this is [an hyperlink](https://example.com/home)! Wonderful!
 

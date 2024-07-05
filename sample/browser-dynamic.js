@@ -266,17 +266,21 @@ async function dynamicBookSourceTest() {
 	console.warn( "==> vg:" , vg ) ;
 	console.warn( "==> pseudoEntity:" , vgFlowingText.pseudoEntities[ 2 ] ) ;
 
-	manager.on( "ok" , () => {
+	manager.on( 'ok' , () => {
 		console.log( "OK pressed" ) ;
 	} ) ;
 
-	manager.on( "tooltip" , data => {
+	manager.on( 'tooltip' , data => {
 		console.log( "Tooltip:" , data ) ;
+	} ) ;
+
+	manager.on( 'link' , data => {
+		console.log( "Link:" , data ) ;
 	} ) ;
 }
 
 
 
-svgKit.domKit.ready( dynamicTest ) ;
-//svgKit.domKit.ready( dynamicBookSourceTest ) ;
+//svgKit.domKit.ready( dynamicTest ) ;
+svgKit.domKit.ready( dynamicBookSourceTest ) ;
 

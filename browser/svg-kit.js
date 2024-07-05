@@ -2394,7 +2394,7 @@ function StructuredTextPart( params = {} , textOverride = null ) {
 	}
 	else {
 		// Maybe shorthand syntax
-		this.dynamic = StructuredTextPart.shorthandToDynamicDef( params ) ;
+		this.dynamic = StructuredTextPart.shorthandToDynamicDef( params , this ) ;
 		if ( this.dynamic ) { console.warn( "::: Dynamic Set:" , this.dynamic ) ; }
 	}
 }
@@ -2405,12 +2405,12 @@ module.exports = StructuredTextPart ;
 
 const DYNAMIC_SHORTHANDS = [ 'hover' , 'click' , 'press' , 'release' ] ;
 
-StructuredTextPart.shorthandToDynamicDef = function( params ) {
+StructuredTextPart.shorthandToDynamicDef = function( params , baseFallback = null ) {
 	var def = {} ;
 
 	if ( ! DYNAMIC_SHORTHANDS.some( k => Object.hasOwn( params , k ) ) ) { return null ; }
 
-	def.base = StructuredTextPart.shorthandToDynamicStatusDef( params ) ;
+	def.base = StructuredTextPart.shorthandToDynamicStatusDef( params.base ?? baseFallback ?? params ) ;
 
 	if ( params.hover ) {
 		def.hover = StructuredTextPart.shorthandToDynamicStatusDef( params.hover ) ;
@@ -2439,7 +2439,12 @@ StructuredTextPart.shorthandToDynamicDef = function( params ) {
 StructuredTextPart.shorthandToDynamicStatusDef = function( params ) {
 	var def = { morph: {} } ;
 
-	if ( params.attr ) { def.morph.attr = params.attr ; }
+	if ( params.attr ) {
+		def.morph.attr =
+			// If it's a TextAttribute, we export it, so we only get non-null propeties
+			params.attr instanceof TextAttribute ? params.attr.export() :
+			params.attr ;
+	}
 	//if ( params.metrics ) { def.morph.metrics = params.metrics ; }
 
 	if ( params.emit ) { def.emit = params.emit ; }
@@ -2732,7 +2737,22 @@ StructuredTextRenderer.prototype.decoratedText = function( data , renderedChildr
 StructuredTextRenderer.prototype.link = function( data , renderedChildren ) {
 	renderedChildren.forEach( child => {
 		if ( child.isCode ) { return ; }
-		this.populateStyle( child , data.style ) ;
+
+		// It should support themes
+
+		child.color = '#33c' ;
+		child.underline = true ;
+
+		child.hover = {
+			attr: { color: '#c33' , underline: true }
+		} ;
+
+		child.click = {
+			attr: { color: '#3c3' } ,
+			emit: { name: 'link' , data: { href: data.href } } ,
+		} ;
+
+		if ( data.style ) { this.populateStyle( child , data.style ) ; }
 	} ) ;
 
 	return renderedChildren ;
@@ -2743,7 +2763,7 @@ StructuredTextRenderer.prototype.link = function( data , renderedChildren ) {
 StructuredTextRenderer.prototype.styledText = function( data , renderedChildren ) {
 	renderedChildren.forEach( child => {
 		if ( child.isCode ) { return ; }
-		this.populateStyle( child , data.style ) ;
+		if ( data.style ) { this.populateStyle( child , data.style ) ; }
 	} ) ;
 
 	return renderedChildren ;
@@ -40783,7 +40803,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":92}],95:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
