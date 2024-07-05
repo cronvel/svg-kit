@@ -123,6 +123,21 @@ BoundingBox.prototype.isEqualTo = function( bbox ) {
 
 
 
+// Is equal to a foreign object, support both the xmin/xmax/ymin/ymax and the x/y/width/height format
+BoundingBox.prototype.isEqualToObject = function( object ) {
+	if ( object.width !== undefined ) {
+		return object.x === this.xmin && object.width === this.width && object.y === this.ymin && object.height === this.height ;
+	}
+
+	if ( object.xmin !== undefined ) {
+		return object.xmin === this.xmin && object.xmax === this.xmax && object.ymin === this.ymin && object.ymax === this.ymax ;
+	}
+
+	return false ;
+} ;
+
+
+
 BoundingBox.prototype.isInside = function( coords ) {
 	return coords.x >= this.xmin && coords.x <= this.xmax && coords.y >= this.ymin && coords.y <= this.ymax ;
 } ;
@@ -196,6 +211,11 @@ function DynamicArea( entity , params ) {
 
 	// Force outdated back to false after .set()
 	this.outdated = false ;
+
+	if ( this.useEntityBackgroundImageData && ! this.noRedraw ) {
+		this.entity.needFullDraw = true ;
+		if ( this.entity.root ) { this.entity.root.needFullDraw = true ; }
+	}
 }
 
 module.exports = DynamicArea ;
@@ -312,14 +332,15 @@ DynamicArea.prototype.save = function( canvasCtx ) {
 
 
 	if ( this.useEntityBackgroundImageData ) {
-		if ( this.entity.backgroundImageUpdate ) { return ; }
+		if ( this.entity.backgroundImageUsed ) { return ; }
+		//console.warn( "::: Saving backgroundImageData for:" , this.entity.__prototypeUID__.slice( 8 ) + ' ' + this.entity._id ) ;
 
 		this.entity.backgroundImageData = canvasCtx.getImageData(
 			this.boundingBox.x , this.boundingBox.y ,
 			this.boundingBox.width , this.boundingBox.height
 		) ;
 
-		this.entity.backgroundImageUpdate = true ;
+		this.entity.backgroundImageUsed = true ;
 	}
 	else {
 		this.backgroundImageData = canvasCtx.getImageData(
@@ -335,9 +356,12 @@ DynamicArea.prototype.restore = function( canvasCtx ) {
 	if ( this.noRedraw ) { return ; }
 
 	if ( this.useEntityBackgroundImageData ) {
-		if ( this.entity.backgroundImageUpdate ) { return ; }
+		if ( this.entity.backgroundImageUsed ) { return ; }
+		if ( ! this.entity.backgroundImageData ) {
+			//console.warn( "!!! Missing backgroundImageData:" , this.entity.__prototypeUID__.slice( 8 ) + ' ' + this.entity._id ) ;
+		}
 		canvasCtx.putImageData( this.entity.backgroundImageData , this.boundingBox.x , this.boundingBox.y ) ;
-		this.entity.backgroundImageUpdate = true ;
+		this.entity.backgroundImageUsed = true ;
 	}
 	else {
 		canvasCtx.putImageData( this.backgroundImageData , this.boundingBox.x , this.boundingBox.y ) ;
@@ -396,8 +420,20 @@ function DynamicManager( ctx , vg , tickTime ) {
 
 	// A debounced redraw
 	this.redraw = Promise.debounceUpdate( { delay: this.tickTime / 2 } , async () => {
+		//console.warn( "###! redraw()" ) ;
 		await this.vg.redrawCanvas( this.ctx ) ;
 		this.emit( 'redraw' ) ;
+		/*
+		try {
+			await this.vg.redrawCanvas( this.ctx ) ;
+			this.emit( 'redraw' ) ;
+		} catch ( error ) {
+			console.error( "Error:" , error ) ;
+			this.destroy() ;
+			return ;
+		}
+		//*/
+		//console.warn( "###! redrawn()" ) ;
 	} ) ;
 }
 
@@ -407,6 +443,17 @@ DynamicManager.prototype = Object.create( LeanEvents.prototype ) ;
 DynamicManager.prototype.constructor = DynamicManager ;
 DynamicManager.prototype.__prototypeUID__ = 'svg-kit/DynamicManager' ;
 DynamicManager.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+
+
+DynamicManager.prototype.destroy = function() {
+	if ( this.timer ) {
+		clearInterval( this.timer ) ;
+		this.timer = null ;
+	}
+
+	this.clearCanvasEventListener() ;
+} ;
 
 
 
@@ -421,6 +468,7 @@ DynamicManager.prototype.emitPendingEvents = function() {
 
 
 DynamicManager.prototype.onTick = function() {
+	//console.warn( "###! onTick()" ) ;
 	this.tick ++ ;
 
 	let outdated = false ;
@@ -1041,6 +1089,7 @@ VGContainer.prototype.addEntity = function( entity , clone = false ) {
 		if ( entity.parent ) { entity.parent.removeEntity( entity ) ; }
 		entity.parent = this ;
 		entity.root = this.root ;
+		if ( entity.needFullRedraw ) { this.root.needFullRedraw = true ; }
 		this.entities.push( entity ) ;
 	}
 } ;
@@ -1318,6 +1367,7 @@ const fx = require( './fx/fx.js' ) ;
 const dom = require( 'dom-kit' ) ;
 const camel = require( 'string-kit/lib/camel' ) ;
 const escape = require( 'string-kit/lib/escape' ) ;
+const Promise = require( 'seventh' ) ;
 
 
 
@@ -1345,7 +1395,9 @@ function VGEntity( params ) {
 	this.dynamicAreas = [] ;
 	this.childrenDynamic = null ;	// can be transmitted to some children (pseudoEntities)
 	this.backgroundImageData = null ;	// Image data stored for the redraw, only for dynamic areas having the same bounding box as the entity
-	this.backgroundImageUpdate = false ;	// used for draw/redraw only once
+	this.backgroundImageUsed = false ;	// multiple dynamic area may the the same entity.backgroundImageData, this is used for save/restore only once
+	this.renderCanvasPromise = null ;	// a promise to avoid race concurrencies
+	this.needFullDraw = true ;	// set to true if the canvas can't use redraw, and should perform a regular draw instead, only used for the root entity
 	this.fxData = {} ;	// Data used for FX (complex dynamic effects)
 
 	// Non-enumerable properties (better for displaying the data)
@@ -1923,11 +1975,24 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , master = this )
 
 // Render the Vector Graphic inside a browser's canvas
 VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , isRedraw = false , master = this ) {
+	if ( this.root === this ) {
+		if ( this.renderCanvasPromise ) {
+			//console.warn( "=== root renderCanvas() ALREADY RUNNING" , isRedraw ) ;
+			await this.renderCanvasPromise ;
+		}
+
+		//console.warn( ">>> root renderCanvas()" , isRedraw ? 'redraw' : 'draw' , this.getEntityTree() ) ;
+		if ( isRedraw && this.needFullDraw ) {
+			//console.warn( "+++ force a full draw" ) ;
+			isRedraw = false ;
+		}
+	}
+
+	var promise = this.renderCanvasPromise = new Promise() ,
+		shouldRender = true ;
+
 	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
-
-	var shouldRender = true ;
-
-	this.backgroundImageUpdate = false ;
+	this.backgroundImageUsed = false ;
 
 	if ( isRedraw ) {
 		shouldRender = false ;
@@ -2001,6 +2066,12 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , isR
 			}
 		}
 	}
+
+	//if ( this.root === this ) { console.warn( "<<< root renderCanvas()" , isRedraw ? 'redraw' : 'draw' ) ; }
+	this.needFullDraw = false ;
+
+	this.renderCanvasPromise = null ;
+	promise.resolve() ;
 } ;
 
 
@@ -2138,6 +2209,30 @@ VGEntity.prototype.preloadFonts = async function() {
 
 
 
+// For debug purposes
+VGEntity.prototype.getEntityTree = function( depth = 0 ) {
+	var str = '  '.repeat( depth ) ;
+	str += this.__prototypeUID__.slice( 8 ) + ' ' + this._id ;
+	//str +=
+	str += '\n' ;
+
+	if ( this.isPseudoContainer ) {
+		for ( let pseudoEntity of this.pseudoEntities ) {
+			str += pseudoEntity.getEntityTree( depth + 1 ) ;
+		}
+	}
+
+	if ( this.isContainer ) {
+		for ( let entity of this.entities ) {
+			str += entity.getEntityTree( depth + 1 ) ;
+		}
+	}
+
+	return str ;
+} ;
+
+
+
 // Should be derived
 // Return null or an array of font names used by this entity
 VGEntity.prototype.getUsedFontNames = function() { return null ; } ;
@@ -2146,7 +2241,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":95,"./BoundingBox.js":1,"./DynamicArea.js":2,"./fontLib.js":26,"./fx/fx.js":27,"./misc.js":30,"_process":102,"dom-kit":66,"string-kit/lib/camel":85,"string-kit/lib/escape":88}],10:[function(require,module,exports){
+},{"../package.json":95,"./BoundingBox.js":1,"./DynamicArea.js":2,"./fontLib.js":26,"./fx/fx.js":27,"./misc.js":30,"_process":102,"dom-kit":66,"seventh":83,"string-kit/lib/camel":85,"string-kit/lib/escape":88}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2510,7 +2605,7 @@ StructuredTextRenderer.prototype.type = 'flatStructure' ;
 
 // Render the full document, called last with all content rendered
 StructuredTextRenderer.prototype.document = function( meta , renderedChildren ) {
-	console.warn( "document:" , renderedChildren ) ;
+	//console.warn( "document:" , renderedChildren ) ;
 	return renderedChildren ;
 } ;
 
@@ -2521,7 +2616,7 @@ StructuredTextRenderer.prototype.document = function( meta , renderedChildren ) 
 
 
 StructuredTextRenderer.prototype.paragraph = function( data , renderedChildren ) {
-	console.warn( "paragraph:" , renderedChildren ) ;
+	//console.warn( "paragraph:" , renderedChildren ) ;
 	renderedChildren.push( { text: "\n\n" } ) ;
 	return renderedChildren ;
 } ;
@@ -3620,6 +3715,7 @@ VGFlowingText.prototype.export = function( data = {} ) {
 
 
 VGFlowingText.prototype.shouldComputeAgain = function() {
+	//console.error( "shouldComputeAgain" ) ;
 	this.areLinesComputed = false ;
 	this.arePseudoEntitiesReady = false ;
 } ;
@@ -3645,7 +3741,7 @@ VGFlowingText.prototype.setMarkupText = function( markupText ) {
 	var structuredTextRenderer = new StructuredTextRenderer() ;
 	var structuredDocument = bookSource.parse( markupText ) ;
 	var parsed = structuredDocument.render( structuredTextRenderer ) ;
-	console.warn( "PARSED:" , parsed ) ;
+	//console.warn( "PARSED:" , parsed ) ;
 
 	return this.setStructuredText( parsed ) ;
 } ;
@@ -3693,10 +3789,11 @@ VGFlowingText.prototype.getContentBoundingBox = async function() {
 
 
 VGFlowingText.prototype.computeLines = async function() {
+	if ( this.areLinesComputed ) { return ; }
 	this.structuredTextLines = await this.breakLines( this.width ) ;
 	this.structuredTextLines.forEach( line => line.fuseEqualAttr() ) ;
 	this.computePartsPosition() ;
-	console.warn( "Input -> Lines" , this.structuredText , this.structuredTextLines ) ;
+	//console.error( "Input -> Lines" , this.structuredText , this.structuredTextLines ) ;
 	this.areLinesComputed = true ;
 } ;
 
@@ -40686,7 +40783,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":92}],95:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
