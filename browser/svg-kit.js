@@ -2597,7 +2597,8 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 
 
 
-function StructuredTextRenderer() {
+function StructuredTextRenderer( dynamicStyles ) {
+	this.dynamicStyles = dynamicStyles ;
 }
 
 module.exports = StructuredTextRenderer ;
@@ -2740,15 +2741,24 @@ StructuredTextRenderer.prototype.link = function( data , renderedChildren ) {
 
 		// It should support themes
 
-		child.color = '#33c' ;
-		child.underline = true ;
+		child.underline = this.dynamicStyles.linkUnderline ;
+		child.color = this.dynamicStyles.linkColor ;
 
 		child.hover = {
-			attr: { color: '#c33' , underline: true }
+			attr: {
+				underline: this.dynamicStyles.linkUnderline ,
+				color: this.dynamicStyles.linkHoverColor
+			}
 		} ;
 
-		child.click = {
-			attr: { color: '#3c3' } ,
+		child.press = {
+			attr: {
+				underline: this.dynamicStyles.linkUnderline ,
+				color: this.dynamicStyles.linkPressColor
+			}
+		} ;
+
+		child.release = {
 			emit: { name: 'link' , data: { href: data.href } } ,
 		} ;
 
@@ -3632,6 +3642,12 @@ function VGFlowingText( params ) {
 	this.textWrapping = null ;	// null/ellipsis/wordWrap
 	this.textVerticalAlignment = null ;	// null/top/bottom/center
 	this.textHorizontalAlignment = null ;	// null/left/right/center
+	this.dynamicStyles = {
+		linkUnderline: true ,
+		linkColor: '#448' ,
+		linkHoverColor: '#488' ,
+		linkPressColor: '#6aa'
+	} ;
 
 	// Special FX properties
 	this.charLimit = Infinity ;	// Limit how many characters will be displayed, useful for slow-typing effects
@@ -3682,6 +3698,19 @@ VGFlowingText.prototype.set = function( params ) {
 	if ( params.height !== undefined ) { this.boundingBox.height = this.height = + params.height || 0 ; dirty = true ; }
 
 	if ( params.clip !== undefined ) { this.clip = !! params.clip ; }
+
+	// Should comes *BEFORE* .setMarkupText()
+	if ( params.dynamicStyles && typeof params.dynamicStyles === 'object' ) {
+		let p = params.dynamicStyles ;
+		let style = this.dynamicStyles ;
+
+		if ( p.linkUnderline !== undefined ) { style.linkUnderline = !! p.linkUnderline ; }
+		if ( p.linkColor ) { style.linkColor = p.linkColor ; }
+		if ( p.linkHoverColor ) { style.linkHoverColor = p.linkHoverColor ; }
+		if ( p.linkPressColor ) { style.linkPressColor = p.linkPressColor ; }
+
+		dirty = true ;
+	}
 
 	if ( params.structuredText ) { this.setStructuredText( params.structuredText ) ; }
 	else if ( params.markupText ) { this.setMarkupText( params.markupText ) ; }
@@ -3758,7 +3787,7 @@ VGFlowingText.prototype.setStructuredText = function( structuredText_ ) {
 
 
 VGFlowingText.prototype.setMarkupText = function( markupText ) {
-	var structuredTextRenderer = new StructuredTextRenderer() ;
+	var structuredTextRenderer = new StructuredTextRenderer( this.dynamicStyles ) ;
 	var structuredDocument = bookSource.parse( markupText ) ;
 	var parsed = structuredDocument.render( structuredTextRenderer ) ;
 	//console.warn( "PARSED:" , parsed ) ;

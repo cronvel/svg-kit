@@ -240,6 +240,14 @@ async function dynamicBookSourceTest() {
 			//lineOutline: true ,
 			//lineColor: '#559'
 		} ,
+		/*
+		dynamicStyles: {
+			linkColor: '#a44' ,
+			linkHoverColor: '#f44' ,
+			linkPressColor: '#ff4' ,
+			linkUnderline: true
+		} ,
+		*/
 		fx: {
 			//slowTyping: { speed: 2 }
 		} ,
