@@ -9,7 +9,7 @@
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "array-kit": "^0.2.6",
-    "book-source": "^0.3.8",
+    "book-source": "^0.3.9",
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "nextgen-events": "^1.5.3",

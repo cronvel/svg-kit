@@ -285,6 +285,14 @@ async function dynamicBookSourceTest() {
 	manager.on( 'link' , data => {
 		console.log( "Link:" , data ) ;
 	} ) ;
+
+	manager.on( 'infotip' , data => {
+		console.log( "Infotip:" , data ) ;
+	} ) ;
+
+	manager.on( 'closeInfotip' , data => {
+		console.log( "Close Infotip:" , data ) ;
+	} ) ;
 }
 
 

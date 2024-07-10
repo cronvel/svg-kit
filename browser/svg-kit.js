@@ -2735,11 +2735,20 @@ StructuredTextRenderer.prototype.decoratedText = function( data , renderedChildr
 
 
 
+StructuredTextRenderer.prototype.styledText = function( data , renderedChildren ) {
+	renderedChildren.forEach( child => {
+		if ( child.isCode ) { return ; }
+		if ( data.style ) { this.populateStyle( child , data.style ) ; }
+	} ) ;
+
+	return renderedChildren ;
+} ;
+
+
+
 StructuredTextRenderer.prototype.link = function( data , renderedChildren ) {
 	renderedChildren.forEach( child => {
 		if ( child.isCode ) { return ; }
-
-		// It should support themes
 
 		child.underline = this.dynamicStyles.linkUnderline ;
 		child.color = this.dynamicStyles.linkColor ;
@@ -2759,7 +2768,7 @@ StructuredTextRenderer.prototype.link = function( data , renderedChildren ) {
 		} ;
 
 		child.release = {
-			emit: { name: 'link' , data: { href: data.href } } ,
+			emit: { name: 'link' , data: { href: data.href } }
 		} ;
 
 		if ( data.style ) { this.populateStyle( child , data.style ) ; }
@@ -2770,9 +2779,26 @@ StructuredTextRenderer.prototype.link = function( data , renderedChildren ) {
 
 
 
-StructuredTextRenderer.prototype.styledText = function( data , renderedChildren ) {
+StructuredTextRenderer.prototype.infotipedText = function( data , renderedChildren ) {
 	renderedChildren.forEach( child => {
 		if ( child.isCode ) { return ; }
+
+		child.base = {
+			attr: {
+				underline: this.dynamicStyles.infotipUnderline ,
+				color: this.dynamicStyles.infotipColor
+			} ,
+			emit: { name: 'closeInfotip' , data: { href: data.href , hint: data.hint } }
+		} ;
+
+		child.hover = {
+			attr: {
+				underline: this.dynamicStyles.infotipUnderline ,
+				color: this.dynamicStyles.infotipHoverColor
+			} ,
+			emit: { name: 'infotip' , data: { href: data.href , hint: data.hint } }
+		} ;
+
 		if ( data.style ) { this.populateStyle( child , data.style ) ; }
 	} ) ;
 
@@ -3642,11 +3668,16 @@ function VGFlowingText( params ) {
 	this.textWrapping = null ;	// null/ellipsis/wordWrap
 	this.textVerticalAlignment = null ;	// null/top/bottom/center
 	this.textHorizontalAlignment = null ;	// null/left/right/center
+
 	this.dynamicStyles = {
 		linkUnderline: true ,
 		linkColor: '#448' ,
 		linkHoverColor: '#488' ,
-		linkPressColor: '#6aa'
+		linkPressColor: '#6aa' ,
+
+		infotipUnderline: true ,
+		infotipColor: '#448' ,
+		infotipHoverColor: '#488'
 	} ;
 
 	// Special FX properties
@@ -3708,6 +3739,10 @@ VGFlowingText.prototype.set = function( params ) {
 		if ( p.linkColor ) { style.linkColor = p.linkColor ; }
 		if ( p.linkHoverColor ) { style.linkHoverColor = p.linkHoverColor ; }
 		if ( p.linkPressColor ) { style.linkPressColor = p.linkPressColor ; }
+
+		if ( p.infotipUnderline !== undefined ) { style.infotipUnderline = !! p.infotipUnderline ; }
+		if ( p.infotipColor ) { style.infotipColor = p.infotipColor ; }
+		if ( p.infotipHoverColor ) { style.infotipHoverColor = p.infotipHoverColor ; }
 
 		dirty = true ;
 	}
@@ -15922,22 +15957,25 @@ StructuredDocument.prototype.autoTitle = function() {
 
 	if ( ! header ) { return ; }
 
-	str = this.getText( header.parts ) ;
+	str = StructuredDocument.getText( header.parts ) ;
 	if ( str ) { this.title = str ; }
 } ;
 
 
 
-StructuredDocument.prototype.getText = function( parts = this.parts ) {
+StructuredDocument.getText = function( parts ) {
 	var str = '' ;
 
 	for ( let part of parts ) {
 		if ( part.text ) { str += part.text ; }
-		else if ( part.parts?.length ) { str += this.getText( part.parts ) ; }
+		else if ( part.parts?.length ) { str += StructuredDocument.getText( part.parts ) ; }
 	}
 
 	return str ;
 } ;
+
+// Backqard compatibility/API
+StructuredDocument.prototype.getText = function( parts = this.parts ) { return StructuredDocument.getText( parts ) ; } ;
 
 
 
@@ -16470,41 +16508,26 @@ function parseMedia( str , ctx , float = null ) {
 
 	ctx.i = end ;
 	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+
 	var data = parseDataMark( str , ctx , MEDIA_DATA_MARK ) ;
 	if ( ! data ) { return ; }
 
 	if ( ! data.href?.[ 0 ] ) { return ; }
 
-	var type = 'imageBlock' ;
-
-	if ( data.href[ 1 ] ) {
-		switch ( data.href[ 1 ] ) {
-			case 'image' :
-				type = 'imageBlock' ;
-				break ;
-			case 'audio' :
-				type = 'audioBlock' ;
-				break ;
-			case 'video' :
-				type = 'videoBlock' ;
-				break ;
-			default :
-				return ;
-		}
+	switch ( data.href[ 1 ] || 'image' ) {
+		case 'image' :
+			ctx.parts.push( new documentParts.ImageBlock( data.href[ 0 ] , text , float , data.text?.[ 0 ] , data.text?.[ 1 ] ) ) ;
+			break ;
+		case 'audio' :
+			ctx.parts.push( new documentParts.AudioBlock( data.href[ 0 ] , text , float , data.text?.[ 0 ] , data.text?.[ 1 ] ) ) ;
+			break ;
+		case 'video' :
+			ctx.parts.push( new documentParts.VideoBlock( data.href[ 0 ] , text , float , data.text?.[ 0 ] , data.text?.[ 1 ] ) ) ;
+			break ;
+		default :
+			break ;
 	}
 
-	var params = { type , altText: text , href: data.href[ 0 ] } ;
-
-	if ( float ) { params.float = float ; }
-
-	if ( data.text?.length ) {
-		params.caption = data.text[ 0 ] ;
-		if ( data.text[ 1 ] ) { params.title = data.text[ 1 ] ; }
-	}
-
-	//if ( data.extra?.length ) { params.title = data.extra[ 0 ] ; }
-
-	ctx.parts.push( params ) ;
 	ctx.i ++ ;
 }
 
@@ -17160,6 +17183,10 @@ function parseNestedInline( str , ctx , scanEnd , topLevel = false ) {
 			addInlineTextChunk( str , ctx ) ;
 			parseStyledText( str , ctx , scanEnd ) ;
 		}
+		else if ( char === '?' && str[ ctx.i + 1 ] === '[' && lastWasSpace ) {
+			addInlineTextChunk( str , ctx ) ;
+			parseInfotipedText( str , ctx , scanEnd ) ;
+		}
 		else if ( char === '!' && str[ ctx.i + 1 ] === '[' && lastWasSpace ) {
 			addInlineTextChunk( str , ctx ) ;
 			parseImage( str , ctx , scanEnd ) ;
@@ -17319,8 +17346,6 @@ function parseStyledText( str , ctx , scanEnd ) {
 	var end = searchCloser( str , ctx.i + 1 , '[' , ']' , false , scanEnd ) ;
 	if ( end < 0 ) { return ; }
 
-	//var text = str.slice( ctx.i + 1 , end ) ;
-
 	var start = ctx.i + 1 ;
 	ctx.i = end ;
 	var data = parseDataMark( str , ctx , STYLE_DATA_MARK , scanEnd ) ;
@@ -17330,13 +17355,13 @@ function parseStyledText( str , ctx , scanEnd ) {
 
 	var href = data.href?.[ 0 ] ,
 		style = data.style?.[ 0 ] ,
-		title = data.text?.[ 0 ] ;
+		hint = data.text?.[ 0 ] ;
 
 	if ( href ) {
-		ctx.parts.push( new documentParts.Link( href , style , title ) ) ;
+		ctx.parts.push( new documentParts.Link( href , style , hint ) ) ;
 	}
-	else if ( style || title ) {
-		ctx.parts.push( new documentParts.StyledText( style , title ) ) ;
+	else if ( style || hint ) {
+		ctx.parts.push( new documentParts.StyledText( style , hint ) ) ;
 	}
 	else {
 		return ;
@@ -17347,6 +17372,41 @@ function parseStyledText( str , ctx , scanEnd ) {
 
 	ctx.i = fullMarkupEnd ;
 	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+}
+
+
+
+const INFOTIP_DATA_MARK = {
+	text: true , href: true , style: true , extra: false
+} ;
+
+function parseInfotipedText( str , ctx , scanEnd ) {
+	//console.error( "parseStyledText()" ) ;
+	var end = searchCloser( str , ctx.i + 2 , '[' , ']' , false , scanEnd ) ;
+	if ( end < 0 ) { return ; }
+
+	var start = ctx.i + 2 ;
+	ctx.i = end ;
+	var data = parseDataMark( str , ctx , INFOTIP_DATA_MARK , scanEnd ) ;
+
+	var fullMarkupEnd = ctx.i ;
+
+	var href = data?.href?.[ 0 ] ,
+		style = data?.style?.[ 0 ] ,
+		hint = data?.text?.[ 0 ] ;
+
+	var infotipedText = new documentParts.InfotipedText( hint , href , style ) ;
+	ctx.parts.push( infotipedText ) ;
+
+	ctx.i = start ;
+	parseNestedInline( str , ctx , end ) ;
+
+	ctx.i = fullMarkupEnd ;
+	ctx.iStartOfInlineChunk = ctx.i + 1 ;
+
+	if ( ! href && ! hint ) {
+		infotipedText.href = StructuredDocument.getText( infotipedText.parts ) ;
+	}
 }
 
 
@@ -18186,13 +18246,21 @@ documentParts.InlineTextPart = InlineTextPart ;
 
 
 
-function BlockPart() {
-	this.parts = [] ;
-}
+function BlockPart() {}
 
 BlockPart.prototype = Object.create( Part.prototype ) ;
 BlockPart.prototype.constructor = BlockPart ;
 documentParts.BlockPart = BlockPart ;
+
+
+
+function BlockContainerPart() {
+	this.parts = [] ;
+}
+
+BlockContainerPart.prototype = Object.create( Part.prototype ) ;
+BlockContainerPart.prototype.constructor = BlockContainerPart ;
+documentParts.BlockContainerPart = BlockContainerPart ;
 
 
 
@@ -18245,12 +18313,12 @@ documentParts.Code = Code ;
 
 
 
-function Link( href , style , title ) {
+function Link( href , style , hint ) {
 	this.type = 'link' ;
 	this.href = href ;
 	this.style = style || undefined ;
 	InlineContainerPart.call( this ) ;
-	this.title = title || undefined ;
+	this.hint = hint || undefined ;
 }
 
 Link.prototype = Object.create( InlineContainerPart.prototype ) ;
@@ -18259,11 +18327,26 @@ documentParts.Link = Link ;
 
 
 
-function StyledText( style , title ) {
+// Tooltip/Infotip/Hint displayed when hovering
+function InfotipedText( hint , href , style ) {
+	this.type = 'infotipedText' ;
+	this.hint = hint || undefined ;
+	this.href = href || undefined ;
+	this.style = style || undefined ;
+	InlineContainerPart.call( this ) ;
+}
+
+InfotipedText.prototype = Object.create( InlineContainerPart.prototype ) ;
+InfotipedText.prototype.constructor = InfotipedText ;
+documentParts.InfotipedText = InfotipedText ;
+
+
+
+function StyledText( style , hint ) {
 	this.type = 'styledText' ;
 	this.style = style || undefined ;
 	InlineContainerPart.call( this ) ;
-	this.title = title || undefined ;
+	this.hint = hint || undefined ;
 }
 
 StyledText.prototype = Object.create( InlineContainerPart.prototype ) ;
@@ -18272,11 +18355,11 @@ documentParts.StyledText = StyledText ;
 
 
 
-function Image( href , altText , title ) {
+function Image( href , altText , hint ) {
 	this.type = 'image' ;
 	this.href = href ;
 	this.altText = altText ;
-	this.title = title || undefined ;
+	this.hint = hint || undefined ;
 	InlinePart.call( this ) ;
 }
 
@@ -18288,7 +18371,7 @@ documentParts.Image = Image ;
 
 const emoji = require( 'string-kit/lib/emoji.js' ) ;
 
-function Pictogram( code , altText , title ) {
+function Pictogram( code , altText , hint ) {
 	this.type = 'pictogram' ;
 	this.code = code ;
 
@@ -18300,7 +18383,7 @@ function Pictogram( code , altText , title ) {
 		emojiChar ? emoji.getCanonicalName( emojiChar ) :
 		undefined ;
 
-	this.title = title || undefined ;
+	this.hint = hint || undefined ;
 
 	InlinePart.call( this ) ;
 }
@@ -18315,10 +18398,10 @@ documentParts.Pictogram = Pictogram ;
 
 function Paragraph() {
 	this.type = 'paragraph' ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-Paragraph.prototype = Object.create( BlockPart.prototype ) ;
+Paragraph.prototype = Object.create( BlockContainerPart.prototype ) ;
 Paragraph.prototype.constructor = Paragraph ;
 documentParts.Paragraph = Paragraph ;
 
@@ -18327,10 +18410,10 @@ documentParts.Paragraph = Paragraph ;
 function Header( level ) {
 	this.type = 'header' ;
 	this.level = level ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-Header.prototype = Object.create( BlockPart.prototype ) ;
+Header.prototype = Object.create( BlockContainerPart.prototype ) ;
 Header.prototype.constructor = Header ;
 documentParts.Header = Header ;
 
@@ -18338,10 +18421,10 @@ documentParts.Header = Header ;
 
 function Cite() {
 	this.type = 'cite' ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-Cite.prototype = Object.create( BlockPart.prototype ) ;
+Cite.prototype = Object.create( BlockContainerPart.prototype ) ;
 Cite.prototype.constructor = Cite ;
 documentParts.Cite = Cite ;
 
@@ -18350,10 +18433,10 @@ documentParts.Cite = Cite ;
 function List( indent ) {
 	this.type = 'list' ;
 	this.indent = indent ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-List.prototype = Object.create( BlockPart.prototype ) ;
+List.prototype = Object.create( BlockContainerPart.prototype ) ;
 List.prototype.constructor = List ;
 documentParts.List = List ;
 
@@ -18362,10 +18445,10 @@ documentParts.List = List ;
 function ListItem( indent ) {
 	this.type = 'listItem' ;
 	this.indent = indent ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-ListItem.prototype = Object.create( BlockPart.prototype ) ;
+ListItem.prototype = Object.create( BlockContainerPart.prototype ) ;
 ListItem.prototype.constructor = ListItem ;
 documentParts.ListItem = ListItem ;
 
@@ -18375,10 +18458,10 @@ function OrderedList( indent ) {
 	this.type = 'orderedList' ;
 	this.indent = indent ;
 	this.autoIndex = 1 ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-OrderedList.prototype = Object.create( BlockPart.prototype ) ;
+OrderedList.prototype = Object.create( BlockContainerPart.prototype ) ;
 OrderedList.prototype.constructor = OrderedList ;
 documentParts.OrderedList = OrderedList ;
 
@@ -18389,10 +18472,10 @@ function OrderedListItem( indent , order , index ) {
 	this.indent = indent ;
 	this.order = order ;	// User order value
 	this.index = index ;	// Real index, starting at 1, and auto-incrementing
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-OrderedListItem.prototype = Object.create( BlockPart.prototype ) ;
+OrderedListItem.prototype = Object.create( BlockContainerPart.prototype ) ;
 OrderedListItem.prototype.constructor = OrderedListItem ;
 documentParts.OrderedListItem = OrderedListItem ;
 
@@ -18401,10 +18484,10 @@ documentParts.OrderedListItem = OrderedListItem ;
 function Quote( indent ) {
 	this.type = 'quote' ;
 	this.indent = indent ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-Quote.prototype = Object.create( BlockPart.prototype ) ;
+Quote.prototype = Object.create( BlockContainerPart.prototype ) ;
 Quote.prototype.constructor = Quote ;
 documentParts.Quote = Quote ;
 
@@ -18413,10 +18496,10 @@ documentParts.Quote = Quote ;
 function HorizontalRule( clearFloat ) {
 	this.type = 'horizontalRule' ;
 	this.clearFloat = clearFloat ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-HorizontalRule.prototype = Object.create( BlockPart.prototype ) ;
+HorizontalRule.prototype = Object.create( BlockContainerPart.prototype ) ;
 HorizontalRule.prototype.constructor = HorizontalRule ;
 documentParts.HorizontalRule = HorizontalRule ;
 
@@ -18424,10 +18507,10 @@ documentParts.HorizontalRule = HorizontalRule ;
 
 function ClearFloat() {
 	this.type = 'clearFloat' ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-ClearFloat.prototype = Object.create( BlockPart.prototype ) ;
+ClearFloat.prototype = Object.create( BlockContainerPart.prototype ) ;
 ClearFloat.prototype.constructor = ClearFloat ;
 documentParts.ClearFloat = ClearFloat ;
 
@@ -18437,10 +18520,10 @@ function CodeBlock( text , lang ) {
 	this.type = 'codeBlock' ;
 	this.lang = lang || undefined ;
 	this.text = text ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-CodeBlock.prototype = Object.create( BlockPart.prototype ) ;
+CodeBlock.prototype = Object.create( BlockContainerPart.prototype ) ;
 CodeBlock.prototype.constructor = CodeBlock ;
 documentParts.CodeBlock = CodeBlock ;
 
@@ -18449,12 +18532,60 @@ documentParts.CodeBlock = CodeBlock ;
 function Anchor( href ) {
 	this.type = 'anchor' ;
 	this.href = href ;
+	BlockContainerPart.call( this ) ;
+}
+
+Anchor.prototype = Object.create( BlockContainerPart.prototype ) ;
+Anchor.prototype.constructor = Anchor ;
+documentParts.Anchor = Anchor ;
+
+
+
+function ImageBlock( href , altText , float , caption , hint ) {
+	this.type = 'imageBlock' ;
+	this.href = href ;
+	this.altText = altText ;
+	this.float = float || undefined ;
+	this.caption = caption || undefined ;
+	this.hint = hint || undefined ;
 	BlockPart.call( this ) ;
 }
 
-Anchor.prototype = Object.create( BlockPart.prototype ) ;
-Anchor.prototype.constructor = Anchor ;
-documentParts.Anchor = Anchor ;
+ImageBlock.prototype = Object.create( BlockPart.prototype ) ;
+ImageBlock.prototype.constructor = ImageBlock ;
+documentParts.ImageBlock = ImageBlock ;
+
+
+
+function AudioBlock( href , altText , float , caption , hint ) {
+	this.type = 'audioBlock' ;
+	this.href = href ;
+	this.altText = altText ;
+	this.float = float || undefined ;
+	this.caption = caption || undefined ;
+	this.hint = hint || undefined ;
+	BlockPart.call( this ) ;
+}
+
+AudioBlock.prototype = Object.create( BlockPart.prototype ) ;
+AudioBlock.prototype.constructor = AudioBlock ;
+documentParts.AudioBlock = AudioBlock ;
+
+
+
+function VideoBlock( href , altText , float , caption , hint ) {
+	this.type = 'videoBlock' ;
+	this.href = href ;
+	this.altText = altText ;
+	this.float = float || undefined ;
+	this.caption = caption || undefined ;
+	this.hint = hint || undefined ;
+	BlockPart.call( this ) ;
+}
+
+VideoBlock.prototype = Object.create( BlockPart.prototype ) ;
+VideoBlock.prototype.constructor = VideoBlock ;
+documentParts.VideoBlock = VideoBlock ;
 
 
 
@@ -18465,10 +18596,10 @@ function Table() {
 	this.hasHeadSeparator = false ;
 	this.hasRowSeparator = false ;
 	this.hasRowSpan = false ;	// Useful to disable background colors based on odd/even rows
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-Table.prototype = Object.create( BlockPart.prototype ) ;
+Table.prototype = Object.create( BlockContainerPart.prototype ) ;
 Table.prototype.constructor = Table ;
 documentParts.Table = Table ;
 
@@ -18477,10 +18608,10 @@ documentParts.Table = Table ;
 function TableCaption( style ) {
 	this.type = 'tableCaption' ;
 	this.style = style || undefined ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-TableCaption.prototype = Object.create( BlockPart.prototype ) ;
+TableCaption.prototype = Object.create( BlockContainerPart.prototype ) ;
 TableCaption.prototype.constructor = TableCaption ;
 documentParts.TableCaption = TableCaption ;
 
@@ -18491,10 +18622,10 @@ function TableRow( style ) {
 	this.style = style || undefined ;
 	this.rowSeparator = false ;
 	this.continueRowSpan = undefined ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-TableRow.prototype = Object.create( BlockPart.prototype ) ;
+TableRow.prototype = Object.create( BlockContainerPart.prototype ) ;
 TableRow.prototype.constructor = TableRow ;
 documentParts.TableRow = TableRow ;
 
@@ -18513,10 +18644,10 @@ function TableHeadRow( style ) {
 	this.style = style || undefined ;
 	this.rowSeparator = false ;
 	this.continueRowSpan = undefined ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-TableHeadRow.prototype = Object.create( BlockPart.prototype ) ;
+TableHeadRow.prototype = Object.create( BlockContainerPart.prototype ) ;
 TableHeadRow.prototype.constructor = TableHeadRow ;
 documentParts.TableHeadRow = TableHeadRow ;
 
@@ -18532,10 +18663,10 @@ function TableCell( style ) {
 	this.sx = - 1 ;
 	this.ex = - 1 ;
 	this.masterCell = undefined ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-TableCell.prototype = Object.create( BlockPart.prototype ) ;
+TableCell.prototype = Object.create( BlockContainerPart.prototype ) ;
 TableCell.prototype.constructor = TableCell ;
 documentParts.TableCell = TableCell ;
 
@@ -18566,10 +18697,10 @@ function TableHeadCell( style ) {
 	this.masterCell = undefined ;
 	this.isColumnHead = false ;
 	this.isRowHead = false ;
-	BlockPart.call( this ) ;
+	BlockContainerPart.call( this ) ;
 }
 
-TableHeadCell.prototype = Object.create( BlockPart.prototype ) ;
+TableHeadCell.prototype = Object.create( BlockContainerPart.prototype ) ;
 TableHeadCell.prototype.constructor = TableHeadCell ;
 documentParts.TableHeadCell = TableHeadCell ;
 
@@ -40841,7 +40972,7 @@ module.exports={
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "array-kit": "^0.2.6",
-    "book-source": "^0.3.7",
+    "book-source": "^0.3.9",
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "nextgen-events": "^1.5.3",
