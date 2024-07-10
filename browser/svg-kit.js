@@ -486,9 +486,8 @@ DynamicManager.prototype.onTick = function() {
 
 
 
-DynamicManager.prototype.onPointerMove = function( x , y ) {
+DynamicManager.prototype.onPointerMove = function( canvasCoords ) {
 	let outdated = false ;
-	let canvasCoords = canvas.screenToCanvasCoords( this.ctx.canvas , { x , y } ) ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
 	for ( let dynamic of this.vg.dynamicAreaIterator() ) {
@@ -517,9 +516,8 @@ DynamicManager.prototype.onPointerMove = function( x , y ) {
 
 
 
-DynamicManager.prototype.onPointerPress = function( x , y ) {
+DynamicManager.prototype.onPointerPress = function( canvasCoords ) {
 	let outdated = false ;
-	let canvasCoords = canvas.screenToCanvasCoords( this.ctx.canvas , { x , y } ) ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
 	for ( let dynamic of this.vg.dynamicAreaIterator() ) {
@@ -546,9 +544,8 @@ DynamicManager.prototype.onPointerPress = function( x , y ) {
 
 
 
-DynamicManager.prototype.onPointerRelease = function( x , y ) {
+DynamicManager.prototype.onPointerRelease = function( canvasCoords ) {
 	let outdated = false ;
-	let canvasCoords = canvas.screenToCanvasCoords( this.ctx.canvas , { x , y } ) ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
 	for ( let dynamic of this.vg.dynamicAreaIterator() ) {
@@ -583,9 +580,47 @@ DynamicManager.prototype.manageBrowserCanvas = function() {
 
 	this.timer = setInterval( () => this.onTick() , this.tickTime ) ;
 
-	this.addCanvasEventListener( 'mousemove' , event => this.onPointerMove( event.clientX , event.clientY ) ) ;
-	this.addCanvasEventListener( 'mousedown' , event => this.onPointerPress( event.clientX , event.clientY ) ) ;
-	this.addCanvasEventListener( 'mouseup' , event => this.onPointerRelease( event.clientX , event.clientY ) ) ;
+	const convertCoords = event => canvas.screenToCanvasCoords( this.ctx.canvas , { x: event.clientX , y: event.clientY } ) ;
+
+	this.addCanvasEventListener( 'mousemove' , event => this.onPointerMove( convertCoords( event ) ) ) ;
+	this.addCanvasEventListener( 'mousedown' , event => this.onPointerPress( convertCoords( event ) ) ) ;
+	this.addCanvasEventListener( 'mouseup' , event => this.onPointerRelease( convertCoords( event ) ) ) ;
+} ;
+
+
+
+DynamicManager.prototype.manageBabylonControl = function( control ) {
+	if ( this.timer ) {
+		clearInterval( this.timer ) ;
+		this.timer = null ;
+	}
+
+	this.timer = setInterval( () => this.onTick() , this.tickTime ) ;
+
+	// /!\ THIS DOESN'T WORK
+	const convertCoords_ = coords => {
+		return {
+			x: coords.x - control.leftInPixels ,
+			y: coords.y - control.topInPixels
+		} ;
+	} ;
+
+	// /!\ THIS WORKS, BUT IT COULD BE DIRTY
+	const convertCoords = coords => {
+		return {
+			x: coords.x - control._currentMeasure.left ,
+			y: coords.y - control._currentMeasure.top
+		} ;
+	} ;
+
+	control.onPointerMoveObservable.add( coords => {
+		/*
+		coords = convertCoords( coords ) ;
+		console.log( "control.onPointerMoveObservable:" , coords , control.leftInPixels , control.topInPixels , control ) ;
+		this.onPointerMove( coords ) ;
+		*/
+		this.onPointerMove( convertCoords( coords ) ) ;
+	} ) ;
 } ;
 
 
