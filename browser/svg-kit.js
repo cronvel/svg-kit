@@ -102,6 +102,17 @@ Object.defineProperties( BoundingBox.prototype , {
 
 
 
+BoundingBox.prototype.export = function() {
+	return {
+		xmin: this.xmin ,
+		ymin: this.ymin ,
+		xmax: this.xmax ,
+		ymax: this.ymax
+	} ;
+} ;
+
+
+
 BoundingBox.prototype.clone = function() {
 	return new BoundingBox( this.xmin , this.ymin , this.xmax , this.ymax ) ;
 } ;
@@ -209,7 +220,7 @@ function DynamicArea( entity , params ) {
 
 	this.set( params ) ;
 
-	// Force outdated back to false after .set()
+	// Force .outdated back to false after the initial call to .set()
 	this.outdated = false ;
 
 	if ( this.useEntityBackgroundImageData && ! this.noRedraw ) {
@@ -266,7 +277,14 @@ DynamicArea.prototype.setStatus = function( status ) {
 
 		let data = this.statusData[ this.status ] ;
 		if ( data.emit ) {
-			this.toEmit.push( data.emit ) ;
+			let event = {
+				name: data.emit.name ,
+				data: Object.assign( {} , data.emit.data )
+			} ;
+
+			event.data.boundingBox = this.boundingBox.export() ;
+
+			this.toEmit.push( event ) ;
 		}
 	}
 } ;
@@ -500,7 +518,7 @@ DynamicManager.prototype.onTick = function() {
 
 
 
-DynamicManager.prototype.onPointerMove = function( canvasCoords ) {
+DynamicManager.prototype.onPointerMove = function( canvasCoords , convertBackCoords ) {
 	let outdated = false ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
@@ -519,7 +537,11 @@ DynamicManager.prototype.onPointerMove = function( canvasCoords ) {
 		}
 
 		if ( dynamic.toEmit ) {
-			this.toEmit.push( ... dynamic.toEmit ) ;
+			for ( let event of dynamic.toEmit ) {
+				this.convertEventCoords( event , convertBackCoords ) ;
+				this.toEmit.push( event ) ;
+			}
+				
 			dynamic.toEmit.length = 0 ;
 		}
 	}
@@ -530,7 +552,7 @@ DynamicManager.prototype.onPointerMove = function( canvasCoords ) {
 
 
 
-DynamicManager.prototype.onPointerPress = function( canvasCoords ) {
+DynamicManager.prototype.onPointerPress = function( canvasCoords , convertBackCoords ) {
 	let outdated = false ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
@@ -547,7 +569,11 @@ DynamicManager.prototype.onPointerPress = function( canvasCoords ) {
 		}
 
 		if ( dynamic.toEmit ) {
-			this.toEmit.push( ... dynamic.toEmit ) ;
+			for ( let event of dynamic.toEmit ) {
+				this.convertEventCoords( event , convertBackCoords ) ;
+				this.toEmit.push( event ) ;
+			}
+
 			dynamic.toEmit.length = 0 ;
 		}
 	}
@@ -558,7 +584,7 @@ DynamicManager.prototype.onPointerPress = function( canvasCoords ) {
 
 
 
-DynamicManager.prototype.onPointerRelease = function( canvasCoords ) {
+DynamicManager.prototype.onPointerRelease = function( canvasCoords , convertBackCoords ) {
 	let outdated = false ;
 	let contextCoords = canvas.canvasToContextCoords( this.ctx , canvasCoords ) ;
 
@@ -575,13 +601,34 @@ DynamicManager.prototype.onPointerRelease = function( canvasCoords ) {
 		}
 
 		if ( dynamic.toEmit ) {
-			this.toEmit.push( ... dynamic.toEmit ) ;
+			for ( let event of dynamic.toEmit ) {
+				this.convertEventCoords( event , convertBackCoords ) ;
+				this.toEmit.push( event ) ;
+			}
+
 			dynamic.toEmit.length = 0 ;
 		}
 	}
 
 	if ( outdated ) { this.redraw() ; }
 	if ( this.toEmit.length ) { this.emitPendingEvents() ; }
+} ;
+
+
+
+DynamicManager.prototype.convertEventCoords = function( event , convertBackCoords ) {
+	let min = canvas.contextToCanvasCoords( this.ctx , { x: event.data.boundingBox.xmin , y: event.data.boundingBox.ymin } ) ,
+		max = canvas.contextToCanvasCoords( this.ctx , { x: event.data.boundingBox.xmax , y: event.data.boundingBox.ymax } ) ;
+
+	min = convertBackCoords( min ) ;
+	max = convertBackCoords( max ) ;
+
+	event.data.extBoundingBox = {
+		xmin: min.x ,
+		ymin: min.y ,
+		xmax: max.x ,
+		ymax: max.y
+	} ;
 } ;
 
 
@@ -598,10 +645,11 @@ DynamicManager.prototype.manageBrowserCanvas = function() {
 	this.timer = setInterval( () => this.onTick() , this.tickTime ) ;
 
 	const convertCoords = event => canvas.screenToCanvasCoords( this.ctx.canvas , { x: event.clientX , y: event.clientY } ) ;
+	const convertBackCoords = coords => canvas.canvasToScreenCoords( this.ctx.canvas , coords ) ;
 
-	this.addCanvasEventListener( 'mousemove' , event => this.onPointerMove( convertCoords( event ) ) ) ;
-	this.addCanvasEventListener( 'mousedown' , event => this.onPointerPress( convertCoords( event ) ) ) ;
-	this.addCanvasEventListener( 'mouseup' , event => this.onPointerRelease( convertCoords( event ) ) ) ;
+	this.addCanvasEventListener( 'mousemove' , event => this.onPointerMove( convertCoords( event ) , convertBackCoords ) ) ;
+	this.addCanvasEventListener( 'mousedown' , event => this.onPointerPress( convertCoords( event ) , convertBackCoords ) ) ;
+	this.addCanvasEventListener( 'mouseup' , event => this.onPointerRelease( convertCoords( event ) , convertBackCoords ) ) ;
 } ;
 
 
@@ -643,12 +691,23 @@ DynamicManager.prototype.manageBabylonControl = function( control ) {
 	this.timer = setInterval( () => this.onTick() , this.tickTime ) ;
 
 	const convertCoords = coords => {
-		return this.babylonControl.getLocalCoordinates( coords ) ;
+		// This is the same than: this.babylonControl.getLocalCoordinates( coords ), except we avoid instanciation
+		return {
+			x: coords.x - this.babylonControl._currentMeasure.left ,
+			y: coords.y - this.babylonControl._currentMeasure.top
+		} ;
 	} ;
 
-	this.addBabylonControlEventListener( 'onPointerMoveObservable' , coords => this.onPointerMove( convertCoords( coords ) ) ) ;
-	this.addBabylonControlEventListener( 'onPointerDownObservable' , event => this.onPointerPress( convertCoords( event ) ) ) ;
-	this.addBabylonControlEventListener( 'onPointerUpObservable' , event => this.onPointerRelease( convertCoords( event ) ) ) ;
+	const convertBackCoords = coords => {
+		return {
+			x: coords.x + this.babylonControl._currentMeasure.left ,
+			y: coords.y + this.babylonControl._currentMeasure.top
+		} ;
+	} ;
+
+	this.addBabylonControlEventListener( 'onPointerMoveObservable' , coords => this.onPointerMove( convertCoords( coords ) , convertBackCoords ) ) ;
+	this.addBabylonControlEventListener( 'onPointerDownObservable' , coords => this.onPointerPress( convertCoords( coords ) , convertBackCoords ) ) ;
+	this.addBabylonControlEventListener( 'onPointerUpObservable' , coords => this.onPointerRelease( convertCoords( coords ) , convertBackCoords ) ) ;
 
 	// Special case, acts as if the pointer was moved to the negative region
 	this.addBabylonControlEventListener( 'onPointerOutObservable' , coords => this.onPointerMove( { x: - 1 , y: - 1 } ) ) ;
@@ -7007,6 +7066,20 @@ canvas.screenToCanvasCoords = ( $canvas , screenCoords ) => {
 
 
 
+// The reverse
+canvas.canvasToScreenCoords = ( $canvas , canvasCoords ) => {
+	var rect = $canvas.getBoundingClientRect() ,
+		scaleX = $canvas.width / rect.width ,
+		scaleY = $canvas.height / rect.height ;
+
+	return {
+		x: rect.left + canvasCoords.x / scaleX ,
+		y: rect.top + canvasCoords.y / scaleY
+	} ;
+} ;
+
+
+
 // Get the context coordinates given the coordinates over a Canvas element, accounting for context matrix transformations.
 // E.g.: you have the coordinates of the mouse related to the Canvas element, you want the coordinates in the Canvas context
 // which may have transformations.
@@ -7017,6 +7090,19 @@ canvas.canvasToContextCoords = ( canvasCtx , canvasCoords ) => {
 	return {
 		x: canvasCoords.x * matrix.a + canvasCoords.y * matrix.c + matrix.e ,
 		y: canvasCoords.x * matrix.b + canvasCoords.y * matrix.d + matrix.f
+	} ;
+} ;
+
+
+
+// The reverse
+canvas.contextToCanvasCoords = ( canvasCtx , contextCoords ) => {
+	var matrix = canvasCtx.getTransform() ;
+	//matrix.invertSelf() ;
+
+	return {
+		x: contextCoords.x * matrix.a + contextCoords.y * matrix.c + matrix.e ,
+		y: contextCoords.x * matrix.b + contextCoords.y * matrix.d + matrix.f
 	} ;
 } ;
 
@@ -41029,7 +41115,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":92}],95:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
