@@ -414,8 +414,13 @@ function DynamicManager( ctx , vg , tickTime ) {
 
 	this.tick = 0 ;
 	this.timer = null ;
+	this.running = false ;
 
 	this.canvasListeners = [] ;
+
+	this.babylonControl = null ;
+	this.babylonControlListeners = [] ;
+
 	this.toEmit = [] ;	// Pending events to be emited
 
 	// A debounced redraw
@@ -447,12 +452,21 @@ DynamicManager.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 
 
 DynamicManager.prototype.destroy = function() {
+	this.reset() ;
+} ;
+
+
+
+DynamicManager.prototype.reset = function() {
 	if ( this.timer ) {
 		clearInterval( this.timer ) ;
 		this.timer = null ;
 	}
 
 	this.clearCanvasEventListener() ;
+	this.clearBabylonControlEventListener() ;
+	this.babylonControl = null ;
+	this.running = false ;
 } ;
 
 
@@ -573,6 +587,9 @@ DynamicManager.prototype.onPointerRelease = function( canvasCoords ) {
 
 
 DynamicManager.prototype.manageBrowserCanvas = function() {
+	if ( this.running ) { throw new Error( "Manager is already running!" ) ; }
+	this.running = true ;
+
 	if ( this.timer ) {
 		clearInterval( this.timer ) ;
 		this.timer = null ;
@@ -585,42 +602,6 @@ DynamicManager.prototype.manageBrowserCanvas = function() {
 	this.addCanvasEventListener( 'mousemove' , event => this.onPointerMove( convertCoords( event ) ) ) ;
 	this.addCanvasEventListener( 'mousedown' , event => this.onPointerPress( convertCoords( event ) ) ) ;
 	this.addCanvasEventListener( 'mouseup' , event => this.onPointerRelease( convertCoords( event ) ) ) ;
-} ;
-
-
-
-DynamicManager.prototype.manageBabylonControl = function( control ) {
-	if ( this.timer ) {
-		clearInterval( this.timer ) ;
-		this.timer = null ;
-	}
-
-	this.timer = setInterval( () => this.onTick() , this.tickTime ) ;
-
-	// /!\ THIS DOESN'T WORK
-	const convertCoords_ = coords => {
-		return {
-			x: coords.x - control.leftInPixels ,
-			y: coords.y - control.topInPixels
-		} ;
-	} ;
-
-	// /!\ THIS WORKS, BUT IT COULD BE DIRTY
-	const convertCoords = coords => {
-		return {
-			x: coords.x - control._currentMeasure.left ,
-			y: coords.y - control._currentMeasure.top
-		} ;
-	} ;
-
-	control.onPointerMoveObservable.add( coords => {
-		/*
-		coords = convertCoords( coords ) ;
-		console.log( "control.onPointerMoveObservable:" , coords , control.leftInPixels , control.topInPixels , control ) ;
-		this.onPointerMove( coords ) ;
-		*/
-		this.onPointerMove( convertCoords( coords ) ) ;
-	} ) ;
 } ;
 
 
@@ -638,6 +619,56 @@ DynamicManager.prototype.clearCanvasEventListener = function() {
 	}
 
 	this.canvasListeners.length = 0 ;
+} ;
+
+
+
+// BabylonJS specifics
+
+
+
+DynamicManager.prototype.manageBabylonControl = function( control ) {
+	if ( this.running ) { throw new Error( "Manager is already running!" ) ; }
+	this.running = true ;
+
+	if ( ! control ) { throw new Error( "No Babylon Control was provided" ) ; }
+
+	this.babylonControl = control ;
+
+	if ( this.timer ) {
+		clearInterval( this.timer ) ;
+		this.timer = null ;
+	}
+
+	this.timer = setInterval( () => this.onTick() , this.tickTime ) ;
+
+	const convertCoords = coords => {
+		return this.babylonControl.getLocalCoordinates( coords ) ;
+	} ;
+
+	this.addBabylonControlEventListener( 'onPointerMoveObservable' , coords => this.onPointerMove( convertCoords( coords ) ) ) ;
+	this.addBabylonControlEventListener( 'onPointerDownObservable' , event => this.onPointerPress( convertCoords( event ) ) ) ;
+	this.addBabylonControlEventListener( 'onPointerUpObservable' , event => this.onPointerRelease( convertCoords( event ) ) ) ;
+
+	// Special case, acts as if the pointer was moved to the negative region
+	this.addBabylonControlEventListener( 'onPointerOutObservable' , coords => this.onPointerMove( { x: - 1 , y: - 1 } ) ) ;
+} ;
+
+
+
+DynamicManager.prototype.addBabylonControlEventListener = function( observable , listener ) {
+	this.babylonControlListeners.push( [ observable , listener ] ) ;
+	this.babylonControl[ observable ].add( listener ) ;
+} ;
+
+
+
+DynamicManager.prototype.clearBabylonControlEventListener = function() {
+	for ( let [ observable , listener ] of this.babylonControlListeners ) {
+		this.babylonControl[ observable ].remove( listener ) ;
+	}
+
+	this.babylonControlListeners.length = 0 ;
 } ;
 
 
@@ -2823,7 +2854,7 @@ StructuredTextRenderer.prototype.infotipedText = function( data , renderedChildr
 				underline: this.dynamicStyles.infotipUnderline ,
 				color: this.dynamicStyles.infotipColor
 			} ,
-			emit: { name: 'closeInfotip' , data: { href: data.href , hint: data.hint } }
+			emit: { name: 'infotipClosed' , data: { href: data.href , hint: data.hint } }
 		} ;
 
 		child.hover = {

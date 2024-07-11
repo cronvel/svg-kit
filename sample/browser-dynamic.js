@@ -290,8 +290,8 @@ async function dynamicBookSourceTest() {
 		console.log( "Infotip:" , data ) ;
 	} ) ;
 
-	manager.on( 'closeInfotip' , data => {
-		console.log( "Close Infotip:" , data ) ;
+	manager.on( 'infotipClosed' , data => {
+		console.log( "Infotip closed:" , data ) ;
 	} ) ;
 }
 
