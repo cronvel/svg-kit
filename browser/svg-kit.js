@@ -283,6 +283,7 @@ DynamicArea.prototype.setStatus = function( status ) {
 			} ;
 
 			event.data.boundingBox = this.boundingBox.export() ;
+			event.data.entityUid = this.entity._id ;
 
 			this.toEmit.push( event ) ;
 		}
@@ -541,7 +542,7 @@ DynamicManager.prototype.onPointerMove = function( canvasCoords , convertBackCoo
 				this.convertEventCoords( event , convertBackCoords ) ;
 				this.toEmit.push( event ) ;
 			}
-				
+
 			dynamic.toEmit.length = 0 ;
 		}
 	}
@@ -623,7 +624,7 @@ DynamicManager.prototype.convertEventCoords = function( event , convertBackCoord
 	min = convertBackCoords( min ) ;
 	max = convertBackCoords( max ) ;
 
-	event.data.extBoundingBox = {
+	event.data.foreignBoundingBox = {
 		xmin: min.x ,
 		ymin: min.y ,
 		xmax: max.x ,
@@ -710,7 +711,7 @@ DynamicManager.prototype.manageBabylonControl = function( control ) {
 	this.addBabylonControlEventListener( 'onPointerUpObservable' , coords => this.onPointerRelease( convertCoords( coords ) , convertBackCoords ) ) ;
 
 	// Special case, acts as if the pointer was moved to the negative region
-	this.addBabylonControlEventListener( 'onPointerOutObservable' , coords => this.onPointerMove( { x: - 1 , y: - 1 } ) ) ;
+	this.addBabylonControlEventListener( 'onPointerOutObservable' , coords => this.onPointerMove( { x: - 1 , y: - 1 } , convertBackCoords ) ) ;
 } ;
 
 
@@ -724,7 +725,7 @@ DynamicManager.prototype.addBabylonControlEventListener = function( observable ,
 
 DynamicManager.prototype.clearBabylonControlEventListener = function() {
 	for ( let [ observable , listener ] of this.babylonControlListeners ) {
-		this.babylonControl[ observable ].remove( listener ) ;
+		this.babylonControl[ observable ].removeCallback( listener ) ;
 	}
 
 	this.babylonControlListeners.length = 0 ;
@@ -1501,8 +1502,12 @@ var autoId = 0 ;
 
 
 function VGEntity( params ) {
-	this._id = '_vgEntId_' + ( autoId ++ ) ;	// Used when a VG has to create unique ID automatically (e.g. creating a <clipPath>)
+	// ._id is used when a VG has to create unique ID automatically (e.g. creating a <clipPath>).
+	// It is the internal unique ID, while id is .id is the userland ID.
+	//this._id = '_vgEntId_' + ( autoId ++ ) ;
+	this._id = '_' + this.constructor.name + '_' + ( autoId ++ ) ;	// Used when a VG has to create unique ID automatically (e.g. creating a <clipPath>)
 	this.id = null ;
+
 	this.boundingBox = new BoundingBox() ;
 	this.class = new Set() ;
 	this.style = {} ;
@@ -17295,7 +17300,7 @@ function parseInline( str , ctx , blockEnd , trim = false ) {
 
 function parseNestedInline( str , ctx , scanEnd , topLevel = false ) {
 	var isSpace ,
-		lastWasSpace = WHITE_SPACES.has( str[ ctx.i - 1 ] ) ;
+		lastWasSpaceOrBegining = ! ctx.i || WHITE_SPACES.has( str[ ctx.i - 1 ] ) ;
 
 	//console.log( "parseInline() -- remaining:" , ctx.i , str.slice( ctx.i ) ) ;
 
@@ -17306,7 +17311,7 @@ function parseNestedInline( str , ctx , scanEnd , topLevel = false ) {
 	for ( ; ctx.i < scanEnd ; ctx.i ++ ) {
 		let char = str[ ctx.i ] ;
 
-		//if ( lastWasSpace ) {}
+		//if ( lastWasSpaceOrBegining ) {}
 		//console.error( "Checking: " , string.inspect( char ) ) ;
 
 		isSpace = WHITE_SPACES.has( char ) ;
@@ -17335,16 +17340,16 @@ function parseNestedInline( str , ctx , scanEnd , topLevel = false ) {
 			addInlineTextChunk( str , ctx ) ;
 			parseStyledText( str , ctx , scanEnd ) ;
 		}
-		else if ( char === '?' && str[ ctx.i + 1 ] === '[' && lastWasSpace ) {
+		else if ( char === '?' && str[ ctx.i + 1 ] === '[' && lastWasSpaceOrBegining ) {
 			addInlineTextChunk( str , ctx ) ;
 			parseInfotipedText( str , ctx , scanEnd ) ;
 		}
-		else if ( char === '!' && str[ ctx.i + 1 ] === '[' && lastWasSpace ) {
+		else if ( char === '!' && str[ ctx.i + 1 ] === '[' && lastWasSpaceOrBegining ) {
 			addInlineTextChunk( str , ctx ) ;
 			parseImage( str , ctx , scanEnd ) ;
 		}
 
-		lastWasSpace = isSpace ;
+		lastWasSpaceOrBegining = isSpace ;
 	}
 
 	addInlineTextChunk( str , ctx ) ;
@@ -41124,7 +41129,7 @@ module.exports={
   "dependencies": {
     "@cronvel/xmldom": "^0.1.32",
     "array-kit": "^0.2.6",
-    "book-source": "^0.3.9",
+    "book-source": "^0.3.10",
     "dom-kit": "^0.5.2",
     "image-size": "^1.0.2",
     "nextgen-events": "^1.5.3",
