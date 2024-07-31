@@ -293,6 +293,9 @@ async function dynamicBookSourceTest() {
 	manager.on( 'infotipClosed' , data => {
 		console.log( "Infotip closed:" , data ) ;
 	} ) ;
+
+	console.warn( "Emittable 'infotip' events:" , manager.getAllEmittableEvents( 'infotip' ) ) ;
+	console.warn( "Browser emittable 'infotip' events:" , manager.getAllBrowserEmittableEvents( 'infotip' ) ) ;
 }
 
 

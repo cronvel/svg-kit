@@ -346,6 +346,23 @@ DynamicArea.prototype.updateMorph = function() {
 
 
 
+// Get the data that can be emitted as event 
+DynamicArea.prototype.getEmittableEvent = function( eventName ) {
+	for ( let status in this.statusData ) {
+		let data = this.statusData[ status ] ;
+		if ( data.emit?.name === eventName ) {
+			let eventData = Object.assign( {} , data.emit.data ) ;
+			eventData.boundingBox = this.boundingBox.export() ;
+			eventData.entityUid = this.entity._id ;
+			return eventData ;
+		}
+	}
+
+	return null ;
+} ;
+
+
+
 DynamicArea.prototype.save = function( canvasCtx ) {
 	if ( this.noRedraw ) { return ; }
 
@@ -539,7 +556,7 @@ DynamicManager.prototype.onPointerMove = function( canvasCoords , convertBackCoo
 
 		if ( dynamic.toEmit ) {
 			for ( let event of dynamic.toEmit ) {
-				this.convertEventCoords( event , convertBackCoords ) ;
+				this.convertEventCoords( event.data , convertBackCoords ) ;
 				this.toEmit.push( event ) ;
 			}
 
@@ -571,7 +588,7 @@ DynamicManager.prototype.onPointerPress = function( canvasCoords , convertBackCo
 
 		if ( dynamic.toEmit ) {
 			for ( let event of dynamic.toEmit ) {
-				this.convertEventCoords( event , convertBackCoords ) ;
+				this.convertEventCoords( event.data , convertBackCoords ) ;
 				this.toEmit.push( event ) ;
 			}
 
@@ -603,7 +620,7 @@ DynamicManager.prototype.onPointerRelease = function( canvasCoords , convertBack
 
 		if ( dynamic.toEmit ) {
 			for ( let event of dynamic.toEmit ) {
-				this.convertEventCoords( event , convertBackCoords ) ;
+				this.convertEventCoords( event.data , convertBackCoords ) ;
 				this.toEmit.push( event ) ;
 			}
 
@@ -617,20 +634,44 @@ DynamicManager.prototype.onPointerRelease = function( canvasCoords , convertBack
 
 
 
-DynamicManager.prototype.convertEventCoords = function( event , convertBackCoords ) {
-	let min = canvas.contextToCanvasCoords( this.ctx , { x: event.data.boundingBox.xmin , y: event.data.boundingBox.ymin } ) ,
-		max = canvas.contextToCanvasCoords( this.ctx , { x: event.data.boundingBox.xmax , y: event.data.boundingBox.ymax } ) ;
+DynamicManager.prototype.convertEventCoords = function( eventData , convertBackCoords ) {
+	let min = canvas.contextToCanvasCoords( this.ctx , { x: eventData.boundingBox.xmin , y: eventData.boundingBox.ymin } ) ,
+		max = canvas.contextToCanvasCoords( this.ctx , { x: eventData.boundingBox.xmax , y: eventData.boundingBox.ymax } ) ;
 
 	min = convertBackCoords( min ) ;
 	max = convertBackCoords( max ) ;
 
-	event.data.foreignBoundingBox = {
+	eventData.foreignBoundingBox = {
 		xmin: min.x ,
 		ymin: min.y ,
 		xmax: max.x ,
 		ymax: max.y
 	} ;
 } ;
+
+
+
+// Misc
+
+
+
+DynamicManager.prototype.getAllEmittableEvents = function( eventName , convertBackCoords = null ) {
+	var list = [] ;
+
+	for ( let dynamic of this.vg.dynamicAreaIterator() ) {
+		let eventData = dynamic.getEmittableEvent( eventName ) ;
+		if ( eventData ) {
+			if ( convertBackCoords ) { this.convertEventCoords( eventData , convertBackCoords ) ; }
+			list.push( eventData ) ;
+		}
+	}
+
+	return list ;
+} ;
+
+
+
+// Browser specifics
 
 
 
@@ -668,6 +709,15 @@ DynamicManager.prototype.clearCanvasEventListener = function() {
 	}
 
 	this.canvasListeners.length = 0 ;
+} ;
+
+
+
+DynamicManager.prototype.getAllBrowserEmittableEvents = function( eventName ) {
+	return this.getAllEmittableEvents(
+		eventName ,
+		coords => canvas.canvasToScreenCoords( this.ctx.canvas , coords )
+	) ;
 } ;
 
 
@@ -729,6 +779,20 @@ DynamicManager.prototype.clearBabylonControlEventListener = function() {
 	}
 
 	this.babylonControlListeners.length = 0 ;
+} ;
+
+
+
+DynamicManager.prototype.getAllBabylonControlEmittableEvents = function( eventName ) {
+	return this.getAllEmittableEvents(
+		eventName ,
+		coords => {
+			return {
+				x: coords.x + this.babylonControl._currentMeasure.left ,
+				y: coords.y + this.babylonControl._currentMeasure.top
+			} ;
+		}
+	) ;
 } ;
 
 
@@ -41120,7 +41184,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":92}],95:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
