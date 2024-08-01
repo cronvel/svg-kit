@@ -346,7 +346,7 @@ DynamicArea.prototype.updateMorph = function() {
 
 
 
-// Get the data that can be emitted as event 
+// Get the data that can be emitted as event
 DynamicArea.prototype.getEmittableEvent = function( eventName ) {
 	for ( let status in this.statusData ) {
 		let data = this.statusData[ status ] ;
