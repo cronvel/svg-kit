@@ -6206,6 +6206,7 @@ builders.forwardTurn = ( command , build ) => {
 
 VGPath.prototype.close = function() {
 	this.commands.push( { type: 'close' } ) ;
+	return this ;
 } ;
 
 VGPath.prototype.move = function( data ) {
@@ -6215,6 +6216,7 @@ VGPath.prototype.move = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.moveTo = function( data ) {
@@ -6223,6 +6225,7 @@ VGPath.prototype.moveTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.line = function( data ) {
@@ -6232,6 +6235,7 @@ VGPath.prototype.line = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.lineTo = function( data ) {
@@ -6240,6 +6244,7 @@ VGPath.prototype.lineTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.curve = function( data ) {
@@ -6253,6 +6258,7 @@ VGPath.prototype.curve = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.curveTo = function( data ) {
@@ -6265,6 +6271,7 @@ VGPath.prototype.curveTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.smoothCurve = function( data ) {
@@ -6276,6 +6283,7 @@ VGPath.prototype.smoothCurve = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.smoothCurveTo = function( data ) {
@@ -6286,6 +6294,7 @@ VGPath.prototype.smoothCurveTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 // q-curve = Quadratic curve, it uses just one controle point instead of two
@@ -6298,6 +6307,7 @@ VGPath.prototype.qCurve = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.qCurveTo = function( data ) {
@@ -6308,6 +6318,7 @@ VGPath.prototype.qCurveTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.smoothQCurve = function( data ) {
@@ -6317,6 +6328,7 @@ VGPath.prototype.smoothQCurve = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.smoothQCurveTo = function( data ) {
@@ -6325,6 +6337,7 @@ VGPath.prototype.smoothQCurveTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.arc = function( data ) {
@@ -6347,6 +6360,7 @@ VGPath.prototype.arc = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.arcTo = function( data ) {
@@ -6368,6 +6382,7 @@ VGPath.prototype.arcTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 // All angles use positive as Y-axis to X-axis (Spellcast usage)
@@ -6392,6 +6407,7 @@ VGPath.prototype.negativeArc = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 // All angles use positive as Y-axis to X-axis (Spellcast usage)
@@ -6415,6 +6431,7 @@ VGPath.prototype.negativeArcTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 
@@ -6437,6 +6454,7 @@ VGPath.prototype.centerArc = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.centerArcTo = function( data ) {
@@ -6451,6 +6469,7 @@ VGPath.prototype.centerArcTo = function( data ) {
 		x: data.x || 0 ,
 		y: data.y || 0
 	} ) ;
+	return this ;
 } ;
 
 
@@ -6464,6 +6483,7 @@ VGPath.prototype.penUp = function( data ) {
 		type: 'pen' ,
 		u: true
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.penDown = function( data ) {
@@ -6471,6 +6491,7 @@ VGPath.prototype.penDown = function( data ) {
 		type: 'pen' ,
 		u: false
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.forward = function( data ) {
@@ -6478,6 +6499,7 @@ VGPath.prototype.forward = function( data ) {
 		type: 'forward' ,
 		l: typeof data === 'number' ? data : data.length || data.l || 0
 	} ) ;
+	return this ;
 } ;
 
 VGPath.prototype.backward = function( data ) {
@@ -6485,6 +6507,7 @@ VGPath.prototype.backward = function( data ) {
 		type: 'forward' ,
 		l: - ( typeof data === 'number' ? data : data.length || data.l || 0 )
 	} ) ;
+	return this ;
 } ;
 
 // Turn using positive as X-axis to Y-axis
@@ -6494,6 +6517,7 @@ VGPath.prototype.turn = function( data ) {
 		rel: true ,
 		a: typeof data === 'number' ? data : data.angle || data.a || 0
 	} ) ;
+	return this ;
 } ;
 
 // Turn from X-axis to Y-axis
@@ -6502,6 +6526,7 @@ VGPath.prototype.turnTo = function( data ) {
 		type: 'turn' ,
 		a: typeof data === 'number' ? data : data.angle || data.a || 0
 	} ) ;
+	return this ;
 } ;
 
 // Turn using positive as Y-axis to X-axis (Spellcast usage)
@@ -6511,6 +6536,7 @@ VGPath.prototype.negativeTurn = function( data ) {
 		rel: true ,
 		a: - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
 	} ) ;
+	return this ;
 } ;
 
 // Turn from Y-axis to X-axis (clockwise when Y point upward, the invert of the standard 2D computer graphics) (Spellcast usage)
@@ -6519,6 +6545,7 @@ VGPath.prototype.negativeTurnTo = function( data ) {
 		type: 'turn' ,
 		a: 90 - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
 	} ) ;
+	return this ;
 } ;
 
 // A turtle-like way of doing a curve: combine a forward and turn, moving along a circle
@@ -6528,6 +6555,7 @@ VGPath.prototype.forwardTurn = function( data ) {
 		l: data.length || data.l || 0 ,
 		a: data.angle || data.a || 0
 	} ) ;
+	return this ;
 } ;
 
 // Turn using positive as Y-axis to X-axis (clockwise when Y point upward, the invert of the standard 2D computer graphics) (Spellcast usage)
@@ -6537,6 +6565,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 		l: data.length || data.l || 0 ,
 		a: - ( data.angle || data.a || 0 )
 	} ) ;
+	return this ;
 } ;
 
 
@@ -41184,7 +41213,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":92}],95:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
