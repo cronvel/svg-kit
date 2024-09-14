@@ -32,8 +32,45 @@ const svgKit = require( '..' ) ;
 
 
 
-describe( "Find" , function() {
+describe( "Find" , () => {
 	
 	it( "a way to test svg (atom-shell?)" ) ;
+} ) ;
+
+
+
+describe( "Simple Convex Polygon test" , () => {
+	
+	it( "should check if a coordinate is inside the polygon" , () => {
+		var polygon = new svgKit.Polygon( { points: [
+			{ x: 0 , y: 2 } ,
+			{ x: 2 , y: 1 } ,
+			{ x: 2 , y: -1 } ,
+			{ x: -2 , y: -1 } ,
+			{ x: -2 , y: 1 } ,
+		] } ) ;
+		//log( polygon ) ;
+
+		expect( polygon.isInside( { x: 0 , y: 0 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: 0 , y: 1 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: 1 , y: 0 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: 1 , y: 1 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: 1 , y: 0 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: -1 , y: 0 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: -1 , y: 1 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: -1 , y: 0 } ) ).to.be( true ) ;
+
+		expect( polygon.isInside( { x: 0 , y: -0.5 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: 1 , y: -0.5 } ) ).to.be( true ) ;
+		expect( polygon.isInside( { x: -1 , y: -0.5 } ) ).to.be( true ) ;
+
+		expect( polygon.isInside( { x: 0, y: 3 } ) ).to.be( false ) ;
+		expect( polygon.isInside( { x: 3, y: 0 } ) ).to.be( false ) ;
+		expect( polygon.isInside( { x: 3, y: 3 } ) ).to.be( false ) ;
+		expect( polygon.isInside( { x: 0, y: 3 } ) ).to.be( false ) ;
+		expect( polygon.isInside( { x: -3, y: 0 } ) ).to.be( false ) ;
+		expect( polygon.isInside( { x: -3, y: 3 } ) ).to.be( false ) ;
+		expect( polygon.isInside( { x: -3, y: -3 } ) ).to.be( false ) ;
+	} ) ;
 } ) ;
 
