@@ -405,7 +405,7 @@ DynamicArea.prototype.restore = function( canvasCtx ) {
 } ;
 
 
-},{"../package.json":97,"./BoundingBox.js":1}],3:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1}],3:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -796,7 +796,7 @@ DynamicManager.prototype.getAllBabylonControlEmittableEvents = function( eventNa
 } ;
 
 
-},{"../package.json":97,"./canvas-utilities.js":26,"nextgen-events/lib/LeanEvents.js":69,"seventh":85}],4:[function(require,module,exports){
+},{"../package.json":98,"./canvas-utilities.js":27,"nextgen-events/lib/LeanEvents.js":70,"seventh":86}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -944,10 +944,16 @@ Metric.isEqual = function( a , b ) {
 
 
 
+const pathUtilities = require( './path-utilities.js' ) ;
+
+
+
 function Polygon( params ) {
+	// Note: all properties should be copied to VGPolygon as well
 	this.points = [] ;
 	this.sides = [] ;
 	this.clockwise = true ;
+	this.autofix = false ;
 
 	if ( params ) { this.set( params ) ; }
 }
@@ -968,12 +974,15 @@ Polygon.prototype.setPoints = function( points ) {
 	this.sides.length = 0 ;
 
 	if ( ! Array.isArray( points ) ) { return ; }
-	for ( let point of points ) { this.addPoint( point ) ; }
+	for ( let point of points ) { this.addPoint( point , true ) ; }
+	this.addClosingSide() ;
+
+	if ( this.autofix ) { this.fixPolygon() ; }
 } ;
 
 
 
-Polygon.prototype.addPoint = function( point ) {
+Polygon.prototype.addPoint = function( point , noClosingSide = false ) {
 	if ( ! point || typeof point !== 'object' ) { return ; }
 
 	this.points.push( {
@@ -981,20 +990,37 @@ Polygon.prototype.addPoint = function( point ) {
 		y: + point.y || 0
 	} ) ;
 
-	this.addSide() ;
+	this.addLastSide() ;
+	if ( ! noClosingSide ) { this.addClosingSide() ; }
 } ;
 
 
 
-Polygon.prototype.addSide = function() {
+Polygon.prototype.addLastSide = function() {
 	var count = this.points.length ;
 	if ( count <= 1 ) { return ; }
+	this.sides[ count - 2 ] = this.getParametricLineParameters( this.points[ count - 2 ] , this.points[ count - 1 ] ) ;
+} ;
 
-	// Remove the closing side
-	this.sides.length = count - 1 ;
 
-	this.sides.push( this.getParametricLineParameters( this.points[ count - 2 ] , this.points[ count - 1 ] ) ) ;
-	this.sides.push( this.getParametricLineParameters( this.points[ count - 1 ] , this.points[ 0 ] ) ) ;
+
+Polygon.prototype.addClosingSide = function() {
+	var count = this.points.length ;
+	if ( count < 3 ) { return ; }
+	this.sides[ count - 1 ] = this.getParametricLineParameters( this.points[ count - 1 ] , this.points[ 0 ] ) ;
+} ;
+
+
+
+Polygon.prototype.export = function( data = {} ) {
+	data.points = this.points.map( p => ( { x: p.x , y: p.y } ) ) ;
+	return data ;
+} ;
+
+
+
+Polygon.prototype.toD = function( invertY = false ) {
+	return pathUtilities.polygonPointsToD( this.points , invertY ) ;
 } ;
 
 
@@ -1027,12 +1053,55 @@ Polygon.prototype.isInside = function( coords ) {
 
 
 
+// Find out if the points are really clowkwise or anti-clockwise
+Polygon.prototype.fixPolygon = function( coords ) {
+	if ( ! this.sides.length ) { return ; }
+
+	var clockwiseOk = true ,
+		antiClockwiseOk = true ;
+
+	for ( let i = 0 ; i < this.sides.length ; i ++ ) {
+		let side = this.sides[ i ] ;
+
+		for ( let j = i + 2 ; j < this.points.length ; j ++ ) {
+			if ( j === i || j === ( i + 1 ) % this.sides.length ) {
+				// We don't check points of the current side
+				continue ;
+			}
+
+			let point = this.points[ j ] ;
+			
+			if ( clockwiseOk && Polygon.sideTest( side , point ) > 0 ) { clockwiseOk = false ; }
+			if ( antiClockwiseOk && Polygon.sideTest( side , point ) < 0 ) { antiClockwiseOk = false ; }
+
+			if ( ! clockwiseOk && ! antiClockwiseOk ) {
+				console.warn( "Bad polygon, probably not simple/convex" ) ;
+				return ;
+			}
+		}
+	}
+
+	if ( clockwiseOk && ! antiClockwiseOk ) {
+		console.warn( "Clockwise detected!" ) ;
+		this.clockwise = true ;
+	}
+	else if ( ! clockwiseOk && antiClockwiseOk ) {
+		console.warn( "Anti-clockwise detected!" ) ;
+		this.clockwise = false ;
+	}
+	else {
+		console.warn( "Bad polygon" ) ;
+	}
+} ;
+
+
+
 Polygon.sideTest = function( side , coords ) {
 	return side.a * coords.x + side.b * coords.y + side.c ;
 } ;
 
 
-},{}],6:[function(require,module,exports){
+},{"./path-utilities.js":34}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1190,7 +1259,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":97,"./VGContainer.js":8,"palette-shade":76}],7:[function(require,module,exports){
+},{"../package.json":98,"./VGContainer.js":8,"palette-shade":77}],7:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1299,7 +1368,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":97,"./VGContainer.js":8,"./VGEntity.js":10,"./svg-kit.js":34,"array-kit":56}],8:[function(require,module,exports){
+},{"../package.json":98,"./VGContainer.js":8,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],8:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1505,7 +1574,7 @@ VGContainer.prototype.morphSvgDom = function() {
 } ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./svg-kit.js":34,"array-kit":56}],9:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],9:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1634,7 +1703,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./canvas-utilities.js":26}],10:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./canvas-utilities.js":27}],10:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -1919,6 +1988,20 @@ VGEntity.prototype.dynamicAreaIterator = function* () {
 			yield * entity.dynamicAreaIterator() ;
 		}
 	}
+} ;
+
+
+
+VGEntity.prototype.isInside = function( coords ) {
+	if ( this.isContainer ) {
+		return this.entities.some( entity => entity.isInside( coords ) ) ;
+	}
+
+	if ( this.boundingBox ) {
+		return this.boundingBox.isInside( coords ) ;
+	}
+
+	return false ;
 } ;
 
 
@@ -2554,7 +2637,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":97,"./BoundingBox.js":1,"./DynamicArea.js":2,"./color-utilities.js":27,"./fontLib.js":29,"./fx/fx.js":30,"_process":104,"dom-kit":68,"seventh":85,"string-kit/lib/camel":87,"string-kit/lib/escape":90}],11:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./DynamicArea.js":2,"./color-utilities.js":28,"./fontLib.js":30,"./fx/fx.js":31,"_process":105,"dom-kit":69,"seventh":86,"string-kit/lib/camel":88,"string-kit/lib/escape":91}],11:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2879,7 +2962,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 } ;
 
 
-},{"./TextAttribute.js":14,"./TextMetrics.js":15,"string-kit/lib/escape.js":90}],13:[function(require,module,exports){
+},{"./TextAttribute.js":14,"./TextMetrics.js":15,"string-kit/lib/escape.js":91}],13:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3776,7 +3859,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 } ;
 
 
-},{"../Metric.js":4,"../color-utilities.js":27,"palette-shade":76}],15:[function(require,module,exports){
+},{"../Metric.js":4,"../color-utilities.js":28,"palette-shade":77}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3916,7 +3999,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 } ;
 
 
-},{"../fontLib.js":29,"../getImageSize.js":32}],16:[function(require,module,exports){
+},{"../fontLib.js":30,"../getImageSize.js":33}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4736,7 +4819,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":97,"../BoundingBox.js":1,"../VGPseudoContainer.js":22,"../canvas-utilities.js":26,"../fontLib.js":29,"./StructuredTextLine.js":11,"./StructuredTextPart.js":12,"./StructuredTextRenderer.js":13,"./TextAttribute.js":14,"./TextMetrics.js":15,"./VGFlowingTextImagePart.js":17,"./VGFlowingTextPart.js":18,"book-source":65,"dom-kit":68}],17:[function(require,module,exports){
+},{"../../package.json":98,"../BoundingBox.js":1,"../VGPseudoContainer.js":23,"../canvas-utilities.js":27,"../fontLib.js":30,"./StructuredTextLine.js":11,"./StructuredTextPart.js":12,"./StructuredTextRenderer.js":13,"./TextAttribute.js":14,"./TextMetrics.js":15,"./VGFlowingTextImagePart.js":17,"./VGFlowingTextPart.js":18,"book-source":66,"dom-kit":69}],17:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4886,7 +4969,7 @@ VGFlowingTextImagePart.prototype.renderHookForCanvas = async function( canvasCtx
 } ;
 
 
-},{"../../package.json":97,"../VGPseudoEntity.js":23,"dom-kit":68}],18:[function(require,module,exports){
+},{"../../package.json":98,"../VGPseudoEntity.js":24,"dom-kit":69}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5325,7 +5408,7 @@ VGFlowingTextPart.prototype.renderHookForPath2D = async function( path2D , canva
 } ;
 
 
-},{"../../package.json":97,"../VGPseudoEntity.js":23,"../canvas-utilities.js":26,"../fontLib.js":29,"./TextAttribute.js":14,"./TextMetrics.js":15,"string-kit/lib/unicode.js":96}],19:[function(require,module,exports){
+},{"../../package.json":98,"../VGPseudoEntity.js":24,"../canvas-utilities.js":27,"../fontLib.js":30,"./TextAttribute.js":14,"./TextMetrics.js":15,"string-kit/lib/unicode.js":97}],19:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5382,7 +5465,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":97,"./VGContainer.js":8,"./svg-kit.js":34}],20:[function(require,module,exports){
+},{"../package.json":98,"./VGContainer.js":8,"./svg-kit.js":35}],20:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5963,7 +6046,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./getImageSize.js":32,"dom-kit":68}],21:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./getImageSize.js":33,"dom-kit":69}],21:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6041,7 +6124,7 @@ VGPath.prototype.export = function( data = {} ) {
 
 VGPath.prototype.svgAttributes = function( master = this ) {
 	var attr = {
-		// That enigmatic SVG attribute 'd' probably means 'data' or 'draw'
+		// SVG attribute 'd' (data)
 		d: this.toD()
 	} ;
 
@@ -6073,7 +6156,8 @@ VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 
 
 /*
-	First, true SVG path commands
+	Now add path commands.
+	First, true SVG path commands.
 */
 
 VGPath.prototype.close = function() {
@@ -6309,7 +6393,7 @@ VGPath.prototype.negativeArcTo = function( data ) {
 
 
 /*
-	VG-specific commands
+	VG-specific commands.
 */
 
 // Better arc-like command, but use curve behind the scene
@@ -6347,7 +6431,7 @@ VGPath.prototype.centerArcTo = function( data ) {
 
 
 /*
-	Turtle-like commands
+	Turtle-like commands.
 */
 
 VGPath.prototype.penUp = function( data ) {
@@ -6441,7 +6525,123 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 } ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./canvas-utilities.js":26,"./path-utilities.js":33}],22:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./canvas-utilities.js":27,"./path-utilities.js":34}],22:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const VGEntity = require( './VGEntity.js' ) ;
+const Polygon = require( './Polygon.js' ) ;
+const canvasUtilities = require( './canvas-utilities.js' ) ;
+
+
+
+function VGPolygon( params ) {
+	VGEntity.call( this , params ) ;
+
+	// Note: All properties of Polygon should be copied here
+	this.points = [] ;
+	this.sides = [] ;
+	this.clockwise = true ;
+	this.autofix = true ;
+
+	if ( params ) { this.set( params ) ; }
+}
+
+module.exports = VGPolygon ;
+
+VGPolygon.prototype = Object.create( VGEntity.prototype ) ;
+VGPolygon.prototype.constructor = VGPolygon ;
+VGPolygon.prototype.__prototypeUID__ = 'svg-kit/VGPolygon' ;
+VGPolygon.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+// Pseudo inheritance from Polygon:
+Object.assign( VGPolygon.prototype , Polygon.prototype ) ;
+
+
+
+VGPolygon.prototype.svgTag = 'path' ;
+
+
+
+VGPolygon.prototype.set = function( params ) {
+	Polygon.prototype.set.call( this , params ) ;
+	VGEntity.prototype.set.call( this , params ) ;
+} ;
+
+
+
+VGPolygon.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+	Polygon.prototype.export.call( this , data ) ;
+	return data ;
+} ;
+
+
+
+//VGPolygon.prototype.isInside = function( coords ) { return Polygon.prototype.isInside.call( this , coords ) ; } ;
+
+
+
+VGPolygon.prototype.svgAttributes = function( master = this ) {
+	var attr = {
+		// SVG attribute 'd' (data)
+		d: this.toD()
+	} ;
+
+	return attr ;
+} ;
+
+
+
+// Build the SVG 'd' attribute
+VGPolygon.prototype.toD = function() {
+	return Polygon.prototype.toD.call( this , this.root.invertY ) ;
+} ;
+
+
+
+VGPolygon.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
+	canvasUtilities.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
+	canvasCtx.restore() ;
+} ;
+
+
+
+VGPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , master = this ) {
+	path2D.addPath( new Path2D( this.toD() ) ) ;
+} ;
+
+
+},{"../package.json":98,"./Polygon.js":5,"./VGEntity.js":10,"./canvas-utilities.js":27}],23:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6537,7 +6737,7 @@ VGPseudoContainer.prototype.clearPseudoEntities = function() {
 VGPseudoContainer.prototype.computePseudoEntities = async function() {} ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./svg-kit.js":34,"array-kit":56}],23:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],24:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6595,7 +6795,7 @@ VGPseudoEntity.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 //VGPseudoEntity.prototype.isPseudoEntity = true ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./svg-kit.js":34,"array-kit":56}],24:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],25:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6655,6 +6855,10 @@ VGRect.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
 
 
 
+VGRect.prototype.svgTag = 'rect' ;
+
+
+
 VGRect.prototype.set = function( params ) {
 	if ( params.x !== undefined ) { this.boundingBox.x = this.x = params.x ; }
 	if ( params.y !== undefined ) { this.boundingBox.y = this.y = params.y ; }
@@ -6684,10 +6888,6 @@ VGRect.prototype.export = function( data = {} ) {
 
 	return data ;
 } ;
-
-
-
-VGRect.prototype.svgTag = 'rect' ;
 
 
 
@@ -6737,7 +6937,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":97,"./VGEntity.js":10,"./canvas-utilities.js":26}],25:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10,"./canvas-utilities.js":27}],26:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6914,7 +7114,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRe
 } ;
 
 
-},{"../package.json":97,"./VGEntity.js":10}],26:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":10}],27:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7077,7 +7277,7 @@ canvas.contextToCanvasCoords = ( canvasCtx , contextCoords ) => {
 } ;
 
 
-},{"./color-utilities.js":27}],27:[function(require,module,exports){
+},{"./color-utilities.js":28}],28:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7219,7 +7419,7 @@ colorUtilities.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 } ;
 
 
-},{"palette-shade":76}],28:[function(require,module,exports){
+},{"palette-shade":77}],29:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -7671,7 +7871,7 @@ core.standalone = function( content , viewBox ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":104,"dom-kit":68,"fs":98,"string-kit/lib/escape.js":90}],29:[function(require,module,exports){
+},{"_process":105,"dom-kit":69,"fs":99,"string-kit/lib/escape.js":91}],30:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -8050,7 +8250,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":104,"fs":98,"opentype.js":72,"path":103}],30:[function(require,module,exports){
+},{"_process":105,"fs":99,"opentype.js":73,"path":104}],31:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8490,7 +8690,7 @@ exports.fade = ( params ) => {
 
 
 
-},{"../VGFlowingText/TextAttribute.js":14,"./mathFn.js":31}],31:[function(require,module,exports){
+},{"../VGFlowingText/TextAttribute.js":14,"./mathFn.js":32}],32:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8601,7 +8801,7 @@ easing.sine = t => 0.5 + Math.sin( - PI_OVER_2 + t * PI ) / 2 ;
 
 
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -8659,7 +8859,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":104,"image-size":98}],33:[function(require,module,exports){
+},{"_process":105,"image-size":99}],34:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8701,7 +8901,7 @@ module.exports = pathUtilities ;
 
 
 // Create lines from an array of points (object with .x and .y)
-pathUtilities.linePointsToD = ( points , invertY ) => {
+pathUtilities.linePointsToD = ( points , invertY = false ) => {
 	var yMul = invertY ? - 1 : 1 ,
 		str = 'M' ;
 
@@ -8712,7 +8912,7 @@ pathUtilities.linePointsToD = ( points , invertY ) => {
 	return str ;
 } ;
 
-pathUtilities.polygonPointsToD = ( points , invertY ) => pathUtilities.linePointsToD( points , invertY ) + ' z' ;
+pathUtilities.polygonPointsToD = ( points , invertY = false ) => pathUtilities.linePointsToD( points , invertY ) + ' z' ;
 
 
 
@@ -8968,7 +9168,7 @@ builders.forwardTurn = ( command , build ) => {
 } ;
 
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9016,6 +9216,7 @@ svgKit.VGContainer = require( './VGContainer.js' ) ;
 svgKit.VGGroup = require( './VGGroup.js' ) ;
 svgKit.VGClip = require( './VGClip.js' ) ;
 svgKit.VGRect = require( './VGRect.js' ) ;
+svgKit.VGPolygon = require( './VGPolygon.js' ) ;
 svgKit.VGEllipse = require( './VGEllipse.js' ) ;
 svgKit.VGPath = require( './VGPath.js' ) ;
 svgKit.VGText = require( './VGText.js' ) ;
@@ -9058,7 +9259,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 } ;
 
 
-},{"./BoundingBox.js":1,"./DynamicArea.js":2,"./DynamicManager.js":3,"./Polygon.js":5,"./VG.js":6,"./VGClip.js":7,"./VGContainer.js":8,"./VGEllipse.js":9,"./VGEntity.js":10,"./VGFlowingText/StructuredTextLine.js":11,"./VGFlowingText/StructuredTextPart.js":12,"./VGFlowingText/TextAttribute.js":14,"./VGFlowingText/TextMetrics.js":15,"./VGFlowingText/VGFlowingText.js":16,"./VGGroup.js":19,"./VGImage.js":20,"./VGPath.js":21,"./VGRect.js":24,"./VGText.js":25,"./canvas-utilities.js":26,"./color-utilities.js":27,"./core-utilities.js":28,"./fontLib.js":29,"./fx/fx.js":30,"./path-utilities.js":33,"dom-kit":68,"opentype.js":72}],35:[function(require,module,exports){
+},{"./BoundingBox.js":1,"./DynamicArea.js":2,"./DynamicManager.js":3,"./Polygon.js":5,"./VG.js":6,"./VGClip.js":7,"./VGContainer.js":8,"./VGEllipse.js":9,"./VGEntity.js":10,"./VGFlowingText/StructuredTextLine.js":11,"./VGFlowingText/StructuredTextPart.js":12,"./VGFlowingText/TextAttribute.js":14,"./VGFlowingText/TextMetrics.js":15,"./VGFlowingText/VGFlowingText.js":16,"./VGGroup.js":19,"./VGImage.js":20,"./VGPath.js":21,"./VGPolygon.js":22,"./VGRect.js":25,"./VGText.js":26,"./canvas-utilities.js":27,"./color-utilities.js":28,"./core-utilities.js":29,"./fontLib.js":30,"./fx/fx.js":31,"./path-utilities.js":34,"dom-kit":69,"opentype.js":73}],36:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -9312,7 +9513,7 @@ exports.XMLSerializer = require('./dom').XMLSerializer ;
 exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":36,"./entities":37,"./sax":55}],36:[function(require,module,exports){
+},{"./dom":37,"./entities":38,"./sax":56}],37:[function(require,module,exports){
 
 "use strict" ;
 
@@ -10720,7 +10921,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{"nwmatcher":71,"string-kit":50}],37:[function(require,module,exports){
+},{"nwmatcher":72,"string-kit":51}],38:[function(require,module,exports){
 exports.entityMap = {
        lt: '<',
        gt: '>',
@@ -10965,7 +11166,7 @@ exports.entityMap = {
        diams: "♦"
 };
 //for(var  n in exports.entityMap){console.log(exports.entityMap[n].charCodeAt())}
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11379,7 +11580,7 @@ function arrayConcatSlice( intoArray , sourceArray , start = 0 , end = sourceArr
 }
 
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11648,7 +11849,7 @@ ansi.parse = str => {
 } ;
 
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11737,7 +11938,7 @@ camel.camelCaseToDash =
 camel.camelCaseToDashed = ( str ) => camel.camelCaseToSeparated( str , '-' , false ) ;
 
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 /*
 	String Kit
 
@@ -11842,7 +12043,7 @@ exports.unicodePercentEncode = str => str.replace( /[\x00-\x1f\u0100-\uffff\x7f%
 exports.httpHeaderValue = str => exports.unicodePercentEncode( str ) ;
 
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 (function (Buffer){(function (){
 /*
 	String Kit
@@ -13083,7 +13284,7 @@ function round( v , step ) {
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"./StringNumber.js":38,"./ansi.js":39,"./escape.js":41,"./inspect.js":44,"./naturalSort.js":48,"./unicode.js":53,"buffer":100}],43:[function(require,module,exports){
+},{"./StringNumber.js":39,"./ansi.js":40,"./escape.js":42,"./inspect.js":45,"./naturalSort.js":49,"./unicode.js":54,"buffer":101}],44:[function(require,module,exports){
 /*
 	String Kit
 
@@ -13399,7 +13600,7 @@ fuzzy.levenshtein = ( left , right ) => {
 } ;
 
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 (function (Buffer,process){(function (){
 /*
 	String Kit
@@ -14163,9 +14364,9 @@ inspectStyle.html = Object.assign( {} , inspectStyle.none , {
 
 
 }).call(this)}).call(this,{"isBuffer":require("../../../../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":102,"./ansi.js":39,"./escape.js":41,"_process":104}],45:[function(require,module,exports){
+},{"../../../../../../../../../../../opt/node-v14.15.4/lib/node_modules/browserify/node_modules/is-buffer/index.js":103,"./ansi.js":40,"./escape.js":42,"_process":105}],46:[function(require,module,exports){
 module.exports={"߀":"0","́":""," ":" ","Ⓐ":"A","Ａ":"A","À":"A","Á":"A","Â":"A","Ầ":"A","Ấ":"A","Ẫ":"A","Ẩ":"A","Ã":"A","Ā":"A","Ă":"A","Ằ":"A","Ắ":"A","Ẵ":"A","Ẳ":"A","Ȧ":"A","Ǡ":"A","Ä":"A","Ǟ":"A","Ả":"A","Å":"A","Ǻ":"A","Ǎ":"A","Ȁ":"A","Ȃ":"A","Ạ":"A","Ậ":"A","Ặ":"A","Ḁ":"A","Ą":"A","Ⱥ":"A","Ɐ":"A","Ꜳ":"AA","Æ":"AE","Ǽ":"AE","Ǣ":"AE","Ꜵ":"AO","Ꜷ":"AU","Ꜹ":"AV","Ꜻ":"AV","Ꜽ":"AY","Ⓑ":"B","Ｂ":"B","Ḃ":"B","Ḅ":"B","Ḇ":"B","Ƀ":"B","Ɓ":"B","ｃ":"C","Ⓒ":"C","Ｃ":"C","Ꜿ":"C","Ḉ":"C","Ç":"C","Ⓓ":"D","Ｄ":"D","Ḋ":"D","Ď":"D","Ḍ":"D","Ḑ":"D","Ḓ":"D","Ḏ":"D","Đ":"D","Ɗ":"D","Ɖ":"D","ᴅ":"D","Ꝺ":"D","Ð":"Dh","Ǳ":"DZ","Ǆ":"DZ","ǲ":"Dz","ǅ":"Dz","ɛ":"E","Ⓔ":"E","Ｅ":"E","È":"E","É":"E","Ê":"E","Ề":"E","Ế":"E","Ễ":"E","Ể":"E","Ẽ":"E","Ē":"E","Ḕ":"E","Ḗ":"E","Ĕ":"E","Ė":"E","Ë":"E","Ẻ":"E","Ě":"E","Ȅ":"E","Ȇ":"E","Ẹ":"E","Ệ":"E","Ȩ":"E","Ḝ":"E","Ę":"E","Ḙ":"E","Ḛ":"E","Ɛ":"E","Ǝ":"E","ᴇ":"E","ꝼ":"F","Ⓕ":"F","Ｆ":"F","Ḟ":"F","Ƒ":"F","Ꝼ":"F","Ⓖ":"G","Ｇ":"G","Ǵ":"G","Ĝ":"G","Ḡ":"G","Ğ":"G","Ġ":"G","Ǧ":"G","Ģ":"G","Ǥ":"G","Ɠ":"G","Ꞡ":"G","Ᵹ":"G","Ꝿ":"G","ɢ":"G","Ⓗ":"H","Ｈ":"H","Ĥ":"H","Ḣ":"H","Ḧ":"H","Ȟ":"H","Ḥ":"H","Ḩ":"H","Ḫ":"H","Ħ":"H","Ⱨ":"H","Ⱶ":"H","Ɥ":"H","Ⓘ":"I","Ｉ":"I","Ì":"I","Í":"I","Î":"I","Ĩ":"I","Ī":"I","Ĭ":"I","İ":"I","Ï":"I","Ḯ":"I","Ỉ":"I","Ǐ":"I","Ȉ":"I","Ȋ":"I","Ị":"I","Į":"I","Ḭ":"I","Ɨ":"I","Ⓙ":"J","Ｊ":"J","Ĵ":"J","Ɉ":"J","ȷ":"J","Ⓚ":"K","Ｋ":"K","Ḱ":"K","Ǩ":"K","Ḳ":"K","Ķ":"K","Ḵ":"K","Ƙ":"K","Ⱪ":"K","Ꝁ":"K","Ꝃ":"K","Ꝅ":"K","Ꞣ":"K","Ⓛ":"L","Ｌ":"L","Ŀ":"L","Ĺ":"L","Ľ":"L","Ḷ":"L","Ḹ":"L","Ļ":"L","Ḽ":"L","Ḻ":"L","Ł":"L","Ƚ":"L","Ɫ":"L","Ⱡ":"L","Ꝉ":"L","Ꝇ":"L","Ꞁ":"L","Ǉ":"LJ","ǈ":"Lj","Ⓜ":"M","Ｍ":"M","Ḿ":"M","Ṁ":"M","Ṃ":"M","Ɱ":"M","Ɯ":"M","ϻ":"M","Ꞥ":"N","Ƞ":"N","Ⓝ":"N","Ｎ":"N","Ǹ":"N","Ń":"N","Ñ":"N","Ṅ":"N","Ň":"N","Ṇ":"N","Ņ":"N","Ṋ":"N","Ṉ":"N","Ɲ":"N","Ꞑ":"N","ᴎ":"N","Ǌ":"NJ","ǋ":"Nj","Ⓞ":"O","Ｏ":"O","Ò":"O","Ó":"O","Ô":"O","Ồ":"O","Ố":"O","Ỗ":"O","Ổ":"O","Õ":"O","Ṍ":"O","Ȭ":"O","Ṏ":"O","Ō":"O","Ṑ":"O","Ṓ":"O","Ŏ":"O","Ȯ":"O","Ȱ":"O","Ö":"O","Ȫ":"O","Ỏ":"O","Ő":"O","Ǒ":"O","Ȍ":"O","Ȏ":"O","Ơ":"O","Ờ":"O","Ớ":"O","Ỡ":"O","Ở":"O","Ợ":"O","Ọ":"O","Ộ":"O","Ǫ":"O","Ǭ":"O","Ø":"O","Ǿ":"O","Ɔ":"O","Ɵ":"O","Ꝋ":"O","Ꝍ":"O","Œ":"OE","Ƣ":"OI","Ꝏ":"OO","Ȣ":"OU","Ⓟ":"P","Ｐ":"P","Ṕ":"P","Ṗ":"P","Ƥ":"P","Ᵽ":"P","Ꝑ":"P","Ꝓ":"P","Ꝕ":"P","Ⓠ":"Q","Ｑ":"Q","Ꝗ":"Q","Ꝙ":"Q","Ɋ":"Q","Ⓡ":"R","Ｒ":"R","Ŕ":"R","Ṙ":"R","Ř":"R","Ȑ":"R","Ȓ":"R","Ṛ":"R","Ṝ":"R","Ŗ":"R","Ṟ":"R","Ɍ":"R","Ɽ":"R","Ꝛ":"R","Ꞧ":"R","Ꞃ":"R","Ⓢ":"S","Ｓ":"S","ẞ":"S","Ś":"S","Ṥ":"S","Ŝ":"S","Ṡ":"S","Š":"S","Ṧ":"S","Ṣ":"S","Ṩ":"S","Ș":"S","Ş":"S","Ȿ":"S","Ꞩ":"S","Ꞅ":"S","Ⓣ":"T","Ｔ":"T","Ṫ":"T","Ť":"T","Ṭ":"T","Ț":"T","Ţ":"T","Ṱ":"T","Ṯ":"T","Ŧ":"T","Ƭ":"T","Ʈ":"T","Ⱦ":"T","Ꞇ":"T","Þ":"Th","Ꜩ":"TZ","Ⓤ":"U","Ｕ":"U","Ù":"U","Ú":"U","Û":"U","Ũ":"U","Ṹ":"U","Ū":"U","Ṻ":"U","Ŭ":"U","Ü":"U","Ǜ":"U","Ǘ":"U","Ǖ":"U","Ǚ":"U","Ủ":"U","Ů":"U","Ű":"U","Ǔ":"U","Ȕ":"U","Ȗ":"U","Ư":"U","Ừ":"U","Ứ":"U","Ữ":"U","Ử":"U","Ự":"U","Ụ":"U","Ṳ":"U","Ų":"U","Ṷ":"U","Ṵ":"U","Ʉ":"U","Ⓥ":"V","Ｖ":"V","Ṽ":"V","Ṿ":"V","Ʋ":"V","Ꝟ":"V","Ʌ":"V","Ꝡ":"VY","Ⓦ":"W","Ｗ":"W","Ẁ":"W","Ẃ":"W","Ŵ":"W","Ẇ":"W","Ẅ":"W","Ẉ":"W","Ⱳ":"W","Ⓧ":"X","Ｘ":"X","Ẋ":"X","Ẍ":"X","Ⓨ":"Y","Ｙ":"Y","Ỳ":"Y","Ý":"Y","Ŷ":"Y","Ỹ":"Y","Ȳ":"Y","Ẏ":"Y","Ÿ":"Y","Ỷ":"Y","Ỵ":"Y","Ƴ":"Y","Ɏ":"Y","Ỿ":"Y","Ⓩ":"Z","Ｚ":"Z","Ź":"Z","Ẑ":"Z","Ż":"Z","Ž":"Z","Ẓ":"Z","Ẕ":"Z","Ƶ":"Z","Ȥ":"Z","Ɀ":"Z","Ⱬ":"Z","Ꝣ":"Z","ⓐ":"a","ａ":"a","ẚ":"a","à":"a","á":"a","â":"a","ầ":"a","ấ":"a","ẫ":"a","ẩ":"a","ã":"a","ā":"a","ă":"a","ằ":"a","ắ":"a","ẵ":"a","ẳ":"a","ȧ":"a","ǡ":"a","ä":"a","ǟ":"a","ả":"a","å":"a","ǻ":"a","ǎ":"a","ȁ":"a","ȃ":"a","ạ":"a","ậ":"a","ặ":"a","ḁ":"a","ą":"a","ⱥ":"a","ɐ":"a","ɑ":"a","ꜳ":"aa","æ":"ae","ǽ":"ae","ǣ":"ae","ꜵ":"ao","ꜷ":"au","ꜹ":"av","ꜻ":"av","ꜽ":"ay","ⓑ":"b","ｂ":"b","ḃ":"b","ḅ":"b","ḇ":"b","ƀ":"b","ƃ":"b","ɓ":"b","Ƃ":"b","ⓒ":"c","ć":"c","ĉ":"c","ċ":"c","č":"c","ç":"c","ḉ":"c","ƈ":"c","ȼ":"c","ꜿ":"c","ↄ":"c","C":"c","Ć":"c","Ĉ":"c","Ċ":"c","Č":"c","Ƈ":"c","Ȼ":"c","ⓓ":"d","ｄ":"d","ḋ":"d","ď":"d","ḍ":"d","ḑ":"d","ḓ":"d","ḏ":"d","đ":"d","ƌ":"d","ɖ":"d","ɗ":"d","Ƌ":"d","Ꮷ":"d","ԁ":"d","Ɦ":"d","ð":"dh","ǳ":"dz","ǆ":"dz","ⓔ":"e","ｅ":"e","è":"e","é":"e","ê":"e","ề":"e","ế":"e","ễ":"e","ể":"e","ẽ":"e","ē":"e","ḕ":"e","ḗ":"e","ĕ":"e","ė":"e","ë":"e","ẻ":"e","ě":"e","ȅ":"e","ȇ":"e","ẹ":"e","ệ":"e","ȩ":"e","ḝ":"e","ę":"e","ḙ":"e","ḛ":"e","ɇ":"e","ǝ":"e","ⓕ":"f","ｆ":"f","ḟ":"f","ƒ":"f","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ⓖ":"g","ｇ":"g","ǵ":"g","ĝ":"g","ḡ":"g","ğ":"g","ġ":"g","ǧ":"g","ģ":"g","ǥ":"g","ɠ":"g","ꞡ":"g","ꝿ":"g","ᵹ":"g","ⓗ":"h","ｈ":"h","ĥ":"h","ḣ":"h","ḧ":"h","ȟ":"h","ḥ":"h","ḩ":"h","ḫ":"h","ẖ":"h","ħ":"h","ⱨ":"h","ⱶ":"h","ɥ":"h","ƕ":"hv","ⓘ":"i","ｉ":"i","ì":"i","í":"i","î":"i","ĩ":"i","ī":"i","ĭ":"i","ï":"i","ḯ":"i","ỉ":"i","ǐ":"i","ȉ":"i","ȋ":"i","ị":"i","į":"i","ḭ":"i","ɨ":"i","ı":"i","ⓙ":"j","ｊ":"j","ĵ":"j","ǰ":"j","ɉ":"j","ⓚ":"k","ｋ":"k","ḱ":"k","ǩ":"k","ḳ":"k","ķ":"k","ḵ":"k","ƙ":"k","ⱪ":"k","ꝁ":"k","ꝃ":"k","ꝅ":"k","ꞣ":"k","ⓛ":"l","ｌ":"l","ŀ":"l","ĺ":"l","ľ":"l","ḷ":"l","ḹ":"l","ļ":"l","ḽ":"l","ḻ":"l","ſ":"l","ł":"l","ƚ":"l","ɫ":"l","ⱡ":"l","ꝉ":"l","ꞁ":"l","ꝇ":"l","ɭ":"l","ǉ":"lj","ⓜ":"m","ｍ":"m","ḿ":"m","ṁ":"m","ṃ":"m","ɱ":"m","ɯ":"m","ⓝ":"n","ｎ":"n","ǹ":"n","ń":"n","ñ":"n","ṅ":"n","ň":"n","ṇ":"n","ņ":"n","ṋ":"n","ṉ":"n","ƞ":"n","ɲ":"n","ŉ":"n","ꞑ":"n","ꞥ":"n","ԉ":"n","ǌ":"nj","ⓞ":"o","ｏ":"o","ò":"o","ó":"o","ô":"o","ồ":"o","ố":"o","ỗ":"o","ổ":"o","õ":"o","ṍ":"o","ȭ":"o","ṏ":"o","ō":"o","ṑ":"o","ṓ":"o","ŏ":"o","ȯ":"o","ȱ":"o","ö":"o","ȫ":"o","ỏ":"o","ő":"o","ǒ":"o","ȍ":"o","ȏ":"o","ơ":"o","ờ":"o","ớ":"o","ỡ":"o","ở":"o","ợ":"o","ọ":"o","ộ":"o","ǫ":"o","ǭ":"o","ø":"o","ǿ":"o","ꝋ":"o","ꝍ":"o","ɵ":"o","ɔ":"o","ᴑ":"o","œ":"oe","ƣ":"oi","ꝏ":"oo","ȣ":"ou","ⓟ":"p","ｐ":"p","ṕ":"p","ṗ":"p","ƥ":"p","ᵽ":"p","ꝑ":"p","ꝓ":"p","ꝕ":"p","ρ":"p","ⓠ":"q","ｑ":"q","ɋ":"q","ꝗ":"q","ꝙ":"q","ⓡ":"r","ｒ":"r","ŕ":"r","ṙ":"r","ř":"r","ȑ":"r","ȓ":"r","ṛ":"r","ṝ":"r","ŗ":"r","ṟ":"r","ɍ":"r","ɽ":"r","ꝛ":"r","ꞧ":"r","ꞃ":"r","ⓢ":"s","ｓ":"s","ś":"s","ṥ":"s","ŝ":"s","ṡ":"s","š":"s","ṧ":"s","ṣ":"s","ṩ":"s","ș":"s","ş":"s","ȿ":"s","ꞩ":"s","ꞅ":"s","ẛ":"s","ʂ":"s","ß":"ss","ⓣ":"t","ｔ":"t","ṫ":"t","ẗ":"t","ť":"t","ṭ":"t","ț":"t","ţ":"t","ṱ":"t","ṯ":"t","ŧ":"t","ƭ":"t","ʈ":"t","ⱦ":"t","ꞇ":"t","þ":"th","ꜩ":"tz","ⓤ":"u","ｕ":"u","ù":"u","ú":"u","û":"u","ũ":"u","ṹ":"u","ū":"u","ṻ":"u","ŭ":"u","ü":"u","ǜ":"u","ǘ":"u","ǖ":"u","ǚ":"u","ủ":"u","ů":"u","ű":"u","ǔ":"u","ȕ":"u","ȗ":"u","ư":"u","ừ":"u","ứ":"u","ữ":"u","ử":"u","ự":"u","ụ":"u","ṳ":"u","ų":"u","ṷ":"u","ṵ":"u","ʉ":"u","ⓥ":"v","ｖ":"v","ṽ":"v","ṿ":"v","ʋ":"v","ꝟ":"v","ʌ":"v","ꝡ":"vy","ⓦ":"w","ｗ":"w","ẁ":"w","ẃ":"w","ŵ":"w","ẇ":"w","ẅ":"w","ẘ":"w","ẉ":"w","ⱳ":"w","ⓧ":"x","ｘ":"x","ẋ":"x","ẍ":"x","ⓨ":"y","ｙ":"y","ỳ":"y","ý":"y","ŷ":"y","ỹ":"y","ȳ":"y","ẏ":"y","ÿ":"y","ỷ":"y","ẙ":"y","ỵ":"y","ƴ":"y","ɏ":"y","ỿ":"y","ⓩ":"z","ｚ":"z","ź":"z","ẑ":"z","ż":"z","ž":"z","ẓ":"z","ẕ":"z","ƶ":"z","ȥ":"z","ɀ":"z","ⱬ":"z","ꝣ":"z"}
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 /*
 	String Kit
 
@@ -14204,7 +14405,7 @@ module.exports = function( str ) {
 
 
 
-},{"./latinize-map.json":45}],47:[function(require,module,exports){
+},{"./latinize-map.json":46}],48:[function(require,module,exports){
 /*
 	String Kit
 
@@ -14264,7 +14465,7 @@ exports.occurrenceCount = function( str , subStr , overlap = false ) {
 } ;
 
 
-},{}],48:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 /*
 	String Kit
 
@@ -14411,7 +14612,7 @@ function naturalSort( a , b ) {
 module.exports = naturalSort ;
 
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 /*
 	String Kit
 
@@ -14468,7 +14669,7 @@ exports.regexp.array2alternatives = function array2alternatives( array ) {
 
 
 
-},{"./escape.js":41}],50:[function(require,module,exports){
+},{"./escape.js":42}],51:[function(require,module,exports){
 /*
 	String Kit
 
@@ -14561,7 +14762,7 @@ stringKit.installPolyfills = function installPolyfills() {
 //*/
 
 
-},{"./StringNumber.js":38,"./ansi.js":39,"./camel.js":40,"./escape.js":41,"./format.js":42,"./fuzzy.js":43,"./inspect.js":44,"./latinize.js":46,"./misc.js":47,"./naturalSort.js":48,"./regexp.js":49,"./toTitleCase.js":51,"./unicode.js":53,"./wordwrap.js":54}],51:[function(require,module,exports){
+},{"./StringNumber.js":39,"./ansi.js":40,"./camel.js":41,"./escape.js":42,"./format.js":43,"./fuzzy.js":44,"./inspect.js":45,"./latinize.js":47,"./misc.js":48,"./naturalSort.js":49,"./regexp.js":50,"./toTitleCase.js":52,"./unicode.js":54,"./wordwrap.js":55}],52:[function(require,module,exports){
 /*
 	String Kit
 
@@ -14650,10 +14851,10 @@ module.exports = ( str , options = DEFAULT_OPTIONS ) => {
 } ;
 
 
-},{}],52:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 module.exports=[{"s":9728,"e":9747,"w":1},{"s":9748,"e":9749,"w":2},{"s":9750,"e":9799,"w":1},{"s":9800,"e":9811,"w":2},{"s":9812,"e":9854,"w":1},{"s":9855,"e":9855,"w":2},{"s":9856,"e":9874,"w":1},{"s":9875,"e":9875,"w":2},{"s":9876,"e":9888,"w":1},{"s":9889,"e":9889,"w":2},{"s":9890,"e":9897,"w":1},{"s":9898,"e":9899,"w":2},{"s":9900,"e":9916,"w":1},{"s":9917,"e":9918,"w":2},{"s":9919,"e":9923,"w":1},{"s":9924,"e":9925,"w":2},{"s":9926,"e":9933,"w":1},{"s":9934,"e":9934,"w":2},{"s":9935,"e":9939,"w":1},{"s":9940,"e":9940,"w":2},{"s":9941,"e":9961,"w":1},{"s":9962,"e":9962,"w":2},{"s":9963,"e":9969,"w":1},{"s":9970,"e":9971,"w":2},{"s":9972,"e":9972,"w":1},{"s":9973,"e":9973,"w":2},{"s":9974,"e":9977,"w":1},{"s":9978,"e":9978,"w":2},{"s":9979,"e":9980,"w":1},{"s":9981,"e":9981,"w":2},{"s":9982,"e":9983,"w":1},{"s":9984,"e":9988,"w":1},{"s":9989,"e":9989,"w":2},{"s":9990,"e":9993,"w":1},{"s":9994,"e":9995,"w":2},{"s":9996,"e":10023,"w":1},{"s":10024,"e":10024,"w":2},{"s":10025,"e":10059,"w":1},{"s":10060,"e":10060,"w":2},{"s":10061,"e":10061,"w":1},{"s":10062,"e":10062,"w":2},{"s":10063,"e":10066,"w":1},{"s":10067,"e":10069,"w":2},{"s":10070,"e":10070,"w":1},{"s":10071,"e":10071,"w":2},{"s":10072,"e":10132,"w":1},{"s":10133,"e":10135,"w":2},{"s":10136,"e":10159,"w":1},{"s":10160,"e":10160,"w":2},{"s":10161,"e":10174,"w":1},{"s":10175,"e":10175,"w":2},{"s":126976,"e":126979,"w":1},{"s":126980,"e":126980,"w":2},{"s":126981,"e":127182,"w":1},{"s":127183,"e":127183,"w":2},{"s":127184,"e":127373,"w":1},{"s":127374,"e":127374,"w":2},{"s":127375,"e":127376,"w":1},{"s":127377,"e":127386,"w":2},{"s":127387,"e":127487,"w":1},{"s":127744,"e":127776,"w":2},{"s":127777,"e":127788,"w":1},{"s":127789,"e":127797,"w":2},{"s":127798,"e":127798,"w":1},{"s":127799,"e":127868,"w":2},{"s":127869,"e":127869,"w":1},{"s":127870,"e":127891,"w":2},{"s":127892,"e":127903,"w":1},{"s":127904,"e":127946,"w":2},{"s":127947,"e":127950,"w":1},{"s":127951,"e":127955,"w":2},{"s":127956,"e":127967,"w":1},{"s":127968,"e":127984,"w":2},{"s":127985,"e":127987,"w":1},{"s":127988,"e":127988,"w":2},{"s":127989,"e":127991,"w":1},{"s":127992,"e":127994,"w":2},{"s":128000,"e":128062,"w":2},{"s":128063,"e":128063,"w":1},{"s":128064,"e":128064,"w":2},{"s":128065,"e":128065,"w":1},{"s":128066,"e":128252,"w":2},{"s":128253,"e":128254,"w":1},{"s":128255,"e":128317,"w":2},{"s":128318,"e":128330,"w":1},{"s":128331,"e":128334,"w":2},{"s":128335,"e":128335,"w":1},{"s":128336,"e":128359,"w":2},{"s":128360,"e":128377,"w":1},{"s":128378,"e":128378,"w":2},{"s":128379,"e":128404,"w":1},{"s":128405,"e":128406,"w":2},{"s":128407,"e":128419,"w":1},{"s":128420,"e":128420,"w":2},{"s":128421,"e":128506,"w":1},{"s":128507,"e":128591,"w":2},{"s":128592,"e":128639,"w":1},{"s":128640,"e":128709,"w":2},{"s":128710,"e":128715,"w":1},{"s":128716,"e":128716,"w":2},{"s":128717,"e":128719,"w":1},{"s":128720,"e":128722,"w":2},{"s":128723,"e":128724,"w":1},{"s":128725,"e":128727,"w":2},{"s":128728,"e":128746,"w":1},{"s":128747,"e":128748,"w":2},{"s":128749,"e":128755,"w":1},{"s":128756,"e":128764,"w":2},{"s":128765,"e":128991,"w":1},{"s":128992,"e":129003,"w":2},{"s":129004,"e":129291,"w":1},{"s":129292,"e":129338,"w":2},{"s":129339,"e":129339,"w":1},{"s":129340,"e":129349,"w":2},{"s":129350,"e":129350,"w":1},{"s":129351,"e":129400,"w":2},{"s":129401,"e":129401,"w":1},{"s":129402,"e":129483,"w":2},{"s":129484,"e":129484,"w":1},{"s":129485,"e":129535,"w":2},{"s":129536,"e":129647,"w":1},{"s":129648,"e":129652,"w":2},{"s":129653,"e":129655,"w":1},{"s":129656,"e":129658,"w":2},{"s":129659,"e":129663,"w":1},{"s":129664,"e":129670,"w":2},{"s":129671,"e":129679,"w":1},{"s":129680,"e":129704,"w":2},{"s":129705,"e":129711,"w":1},{"s":129712,"e":129718,"w":2},{"s":129719,"e":129727,"w":1},{"s":129728,"e":129730,"w":2},{"s":129731,"e":129743,"w":1},{"s":129744,"e":129750,"w":2},{"s":129751,"e":129791,"w":1}]
 
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /*
 	String Kit
 
@@ -15001,7 +15202,7 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./unicode-emoji-width-ranges.json":52}],54:[function(require,module,exports){
+},{"./unicode-emoji-width-ranges.json":53}],55:[function(require,module,exports){
 /*
 	String Kit
 
@@ -15205,7 +15406,7 @@ module.exports = function wordwrap( str , options ) {
 } ;
 
 
-},{"./unicode.js":53}],55:[function(require,module,exports){
+},{"./unicode.js":54}],56:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -15823,7 +16024,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],56:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -15871,7 +16072,7 @@ arrayKit.shuffle = array => arrayKit.sample( array , array.length , true ) ;
 arrayKit.randomSampleSize = ( array , min , max , inPlace ) => arrayKit.sample( array , arrayKit.randomInteger( min , max ) , inPlace ) ;
 
 
-},{"./delete.js":57,"./deleteValue.js":58,"./inPlaceFilter.js":59,"./range.js":60,"./sample.js":61}],57:[function(require,module,exports){
+},{"./delete.js":58,"./deleteValue.js":59,"./inPlaceFilter.js":60,"./range.js":61,"./sample.js":62}],58:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -15923,7 +16124,7 @@ module.exports = ( src , index ) => {
 } ;
 
 
-},{}],58:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -15987,7 +16188,7 @@ module.exports = ( src , value ) => {
 } ;
 
 
-},{}],59:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -16052,7 +16253,7 @@ module.exports = ( src , fn , thisArg , forceKey ) => {
 } ;
 
 
-},{}],60:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -16119,7 +16320,7 @@ module.exports = function( start , end , step ) {
 } ;
 
 
-},{}],61:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 /*
 	Array Kit
 
@@ -16176,7 +16377,7 @@ module.exports = ( array , count = Infinity , inPlace = false ) => {
 } ;
 
 
-},{}],62:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 /*
 	Book Source
 
@@ -18300,7 +18501,7 @@ function unstackToIndent( ctx , toIndent = 0 ) {
 }
 
 
-},{"./Style.js":63,"./Theme.js":64,"./documentParts.js":66,"./textPostFilters.js":67,"array-kit/lib/inPlaceFilter.js":59}],63:[function(require,module,exports){
+},{"./Style.js":64,"./Theme.js":65,"./documentParts.js":67,"./textPostFilters.js":68,"array-kit/lib/inPlaceFilter.js":60}],64:[function(require,module,exports){
 /*
 	Book Source
 
@@ -18418,7 +18619,7 @@ Style.parse = function( str , forTextElement = true ) {
 } ;
 
 
-},{"palette-shade":76}],64:[function(require,module,exports){
+},{"palette-shade":77}],65:[function(require,module,exports){
 /*
 	Book Source
 
@@ -18548,7 +18749,7 @@ Theme.prototype.substituteWithPalette = function() {
 } ;
 
 
-},{"palette-shade":76}],65:[function(require,module,exports){
+},{"palette-shade":77}],66:[function(require,module,exports){
 /*
 	Book Source
 
@@ -18597,7 +18798,7 @@ bookSource.Palette = paletteShade.Palette ;
 bookSource.parse = bookSource.StructuredDocument.parse ;
 
 
-},{"./StructuredDocument.js":62,"./Style.js":63,"./Theme.js":64,"./documentParts.js":66,"./textPostFilters.js":67,"palette-shade":76}],66:[function(require,module,exports){
+},{"./StructuredDocument.js":63,"./Style.js":64,"./Theme.js":65,"./documentParts.js":67,"./textPostFilters.js":68,"palette-shade":77}],67:[function(require,module,exports){
 /*
 	Book Source
 
@@ -19126,7 +19327,7 @@ TableHeadCell.prototype.constructor = TableHeadCell ;
 documentParts.TableHeadCell = TableHeadCell ;
 
 
-},{"string-kit/lib/emoji.js":88}],67:[function(require,module,exports){
+},{"string-kit/lib/emoji.js":89}],68:[function(require,module,exports){
 /*
 	Book Source
 
@@ -19228,7 +19429,7 @@ exports.apostrophe = ( part ) => {
 } ;
 
 
-},{}],68:[function(require,module,exports){
+},{}],69:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Dom Kit
@@ -19803,7 +20004,7 @@ domKit.html = ( $element , html ) => $element.innerHTML = html ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@cronvel/xmldom":35,"_process":104}],69:[function(require,module,exports){
+},{"@cronvel/xmldom":36,"_process":105}],70:[function(require,module,exports){
 /*
 	Next-Gen Events
 
@@ -20029,7 +20230,7 @@ LeanEvents.prototype.getAllStates = function() {
 } ;
 
 
-},{"../package.json":70}],70:[function(require,module,exports){
+},{"../package.json":71}],71:[function(require,module,exports){
 module.exports={
   "name": "nextgen-events",
   "version": "1.5.3",
@@ -20089,7 +20290,7 @@ module.exports={
   }
 }
 
-},{}],71:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 /*
  * Copyright (C) 2007-2018 Diego Perini
  * All rights reserved.
@@ -21867,7 +22068,7 @@ module.exports={
   return Dom;
 });
 
-},{}],72:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 (function (Buffer){(function (){
 /**
  * https://opentype.js.org v1.3.4 | (c) Frederik De Bleser and other contributors | MIT License | Uses tiny-inflate by Devon Govett and string.prototype.codepointat polyfill by Mathias Bynens
@@ -36348,7 +36549,7 @@ module.exports={
 
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":100,"fs":98}],73:[function(require,module,exports){
+},{"buffer":101,"fs":99}],74:[function(require,module,exports){
 /**
  * chroma.js - JavaScript library for color conversions
  *
@@ -37215,7 +37416,7 @@ module.exports={
 
 }));
 
-},{}],74:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 /*
 	Palette Shade
 
@@ -37430,7 +37631,7 @@ Color.parse = function( str ) {
 } ;
 
 
-},{}],75:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 /*
 	Palette Shade
 
@@ -37745,7 +37946,7 @@ Palette.cleanClip = function( chromaColor , lch ) {
 } ;
 
 
-},{"../extlib/chromajs.custom.js":73}],76:[function(require,module,exports){
+},{"../extlib/chromajs.custom.js":74}],77:[function(require,module,exports){
 /*
 	Palette Shade
 
@@ -37778,7 +37979,7 @@ exports.Color = require( './Color.js' ) ;
 exports.Palette = require( './Palette.js' ) ;
 
 
-},{"./Color.js":74,"./Palette.js":75}],77:[function(require,module,exports){
+},{"./Color.js":75,"./Palette.js":76}],78:[function(require,module,exports){
 (function (process,global){(function (){
 (function (global, undefined) {
     "use strict";
@@ -37968,7 +38169,7 @@ exports.Palette = require( './Palette.js' ) ;
 }(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
 
 }).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":104}],78:[function(require,module,exports){
+},{"_process":105}],79:[function(require,module,exports){
 /*
 	Seventh
 
@@ -38197,7 +38398,7 @@ Queue.prototype.getStats = function() {
 } ;
 
 
-},{"./seventh.js":85}],79:[function(require,module,exports){
+},{"./seventh.js":86}],80:[function(require,module,exports){
 /*
 	Seventh
 
@@ -38281,7 +38482,7 @@ Promise.promisifyAnyNodeApi = ( api , suffix , multiSuffix , filter ) => {
 
 
 
-},{"./seventh.js":85}],80:[function(require,module,exports){
+},{"./seventh.js":86}],81:[function(require,module,exports){
 /*
 	Seventh
 
@@ -38904,7 +39105,7 @@ Promise.race = ( iterable ) => {
 } ;
 
 
-},{"./seventh.js":85}],81:[function(require,module,exports){
+},{"./seventh.js":86}],82:[function(require,module,exports){
 (function (process,global,setImmediate){(function (){
 /*
 	Seventh
@@ -39676,7 +39877,7 @@ if ( process.browser ) {
 
 
 }).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"_process":104,"setimmediate":77,"timers":105}],82:[function(require,module,exports){
+},{"_process":105,"setimmediate":78,"timers":106}],83:[function(require,module,exports){
 /*
 	Seventh
 
@@ -40378,7 +40579,7 @@ Promise.variableTimeout = ( asyncFn , thisBinding ) => {
 } ;
 
 
-},{"./seventh.js":85}],83:[function(require,module,exports){
+},{"./seventh.js":86}],84:[function(require,module,exports){
 (function (process){(function (){
 /*
 	Seventh
@@ -40478,7 +40679,7 @@ Promise.resolveSafeTimeout = function( timeout , value ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"./seventh.js":85,"_process":104}],84:[function(require,module,exports){
+},{"./seventh.js":86,"_process":105}],85:[function(require,module,exports){
 /*
 	Seventh
 
@@ -40530,7 +40731,7 @@ Promise.parasite = () => {
 } ;
 
 
-},{"./seventh.js":85}],85:[function(require,module,exports){
+},{"./seventh.js":86}],86:[function(require,module,exports){
 /*
 	Seventh
 
@@ -40574,7 +40775,7 @@ require( './parasite.js' ) ;
 require( './misc.js' ) ;
 
 
-},{"./Queue.js":78,"./api.js":79,"./batch.js":80,"./core.js":81,"./decorators.js":82,"./misc.js":83,"./parasite.js":84,"./wrapper.js":86}],86:[function(require,module,exports){
+},{"./Queue.js":79,"./api.js":80,"./batch.js":81,"./core.js":82,"./decorators.js":83,"./misc.js":84,"./parasite.js":85,"./wrapper.js":87}],87:[function(require,module,exports){
 /*
 	Seventh
 
@@ -40739,9 +40940,9 @@ Promise.onceEventAllOrError = ( emitter , eventName , excludeEvents ) => {
 } ;
 
 
-},{"./seventh.js":85}],87:[function(require,module,exports){
-arguments[4][40][0].apply(exports,arguments)
-},{"dup":40}],88:[function(require,module,exports){
+},{"./seventh.js":86}],88:[function(require,module,exports){
+arguments[4][41][0].apply(exports,arguments)
+},{"dup":41}],89:[function(require,module,exports){
 /*
 	Book Source
 
@@ -40879,7 +41080,7 @@ emoji.splitIntoKeywords = ( name , noSimplify = false ) => {
 } ;
 
 
-},{"./english.js":89,"./json-data/emoji-char-to-canonical-name.json":91,"./json-data/emoji-keyword-to-charlist.json":92,"./latinize.js":95}],89:[function(require,module,exports){
+},{"./english.js":90,"./json-data/emoji-char-to-canonical-name.json":92,"./json-data/emoji-keyword-to-charlist.json":93,"./latinize.js":96}],90:[function(require,module,exports){
 /*
 	Book Source
 
@@ -40970,17 +41171,17 @@ english.undoPresentParticiple = word => {
 } ;
 
 
-},{}],90:[function(require,module,exports){
-arguments[4][41][0].apply(exports,arguments)
-},{"dup":41}],91:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
+arguments[4][42][0].apply(exports,arguments)
+},{"dup":42}],92:[function(require,module,exports){
 module.exports={"😀":"grinning-face","😃":"grinning-face-with-big-eyes","😄":"grinning-face-with-smiling-eyes","😁":"beaming-face-with-smiling-eyes","😆":"grinning-squinting-face","😅":"grinning-face-with-sweat","🤣":"rolling-on-the-floor-laughing","😂":"face-with-tears-of-joy","🙂":"slightly-smiling-face","🙃":"upside-down-face","🫠":"melting-face","😉":"winking-face","😊":"smiling-face-with-smiling-eyes","😇":"smiling-face-with-halo","🥰":"smiling-face-with-hearts","😍":"smiling-face-with-heart-eyes","🤩":"star-struck","😘":"face-blowing-a-kiss","😗":"kissing-face","☺️":"smiling-face","😚":"kissing-face-with-closed-eyes","😙":"kissing-face-with-smiling-eyes","🥲":"smiling-face-with-tear","😋":"face-savoring-food","😛":"face-with-tongue","😜":"winking-face-with-tongue","🤪":"zany-face","😝":"squinting-face-with-tongue","🤑":"money-mouth-face","🤗":"smiling-face-with-open-hands","🤭":"face-with-hand-over-mouth","🫢":"face-with-open-eyes-and-hand-over-mouth","🫣":"face-with-peeking-eye","🤫":"shushing-face","🤔":"thinking-face","🫡":"saluting-face","🤐":"zipper-mouth-face","🤨":"face-with-raised-eyebrow","😐":"neutral-face","😑":"expressionless-face","😶":"face-without-mouth","🫥":"dotted-line-face","😶‍🌫️":"face-in-clouds","😏":"smirking-face","😒":"unamused-face","🙄":"face-with-rolling-eyes","😬":"grimacing-face","😮‍💨":"face-exhaling","🤥":"lying-face","🫨":"shaking-face","😌":"relieved-face","😔":"pensive-face","😪":"sleepy-face","🤤":"drooling-face","😴":"sleeping-face","😷":"face-with-medical-mask","🤒":"face-with-thermometer","🤕":"face-with-head-bandage","🤢":"nauseated-face","🤮":"face-vomiting","🤧":"sneezing-face","🥵":"hot-face","🥶":"cold-face","🥴":"woozy-face","😵":"face-with-crossed-out-eyes","😵‍💫":"face-with-spiral-eyes","🤯":"exploding-head","🤠":"cowboy-hat-face","🥳":"partying-face","🥸":"disguised-face","😎":"smiling-face-with-sunglasses","🤓":"nerd-face","🧐":"face-with-monocle","😕":"confused-face","🫤":"face-with-diagonal-mouth","😟":"worried-face","🙁":"slightly-frowning-face","☹️":"frowning-face","😮":"face-with-open-mouth","😯":"hushed-face","😲":"astonished-face","😳":"flushed-face","🥺":"pleading-face","🥹":"face-holding-back-tears","😦":"frowning-face-with-open-mouth","😧":"anguished-face","😨":"fearful-face","😰":"anxious-face-with-sweat","😥":"sad-but-relieved-face","😢":"crying-face","😭":"loudly-crying-face","😱":"face-screaming-in-fear","😖":"confounded-face","😣":"persevering-face","😞":"disappointed-face","😓":"downcast-face-with-sweat","😩":"weary-face","😫":"tired-face","🥱":"yawning-face","😤":"face-with-steam-from-nose","😡":"enraged-face","😠":"angry-face","🤬":"face-with-symbols-on-mouth","😈":"smiling-face-with-horns","👿":"angry-face-with-horns","💀":"skull","☠️":"skull-and-crossbones","💩":"pile-of-poo","🤡":"clown-face","👹":"ogre","👺":"goblin","👻":"ghost","👽":"alien","👾":"alien-monster","🤖":"robot","😺":"grinning-cat","😸":"grinning-cat-with-smiling-eyes","😹":"cat-with-tears-of-joy","😻":"smiling-cat-with-heart-eyes","😼":"cat-with-wry-smile","😽":"kissing-cat","🙀":"weary-cat","😿":"crying-cat","😾":"pouting-cat","🙈":"see-no-evil-monkey","🙉":"hear-no-evil-monkey","🙊":"speak-no-evil-monkey","💌":"love-letter","💘":"heart-with-arrow","💝":"heart-with-ribbon","💖":"sparkling-heart","💗":"growing-heart","💓":"beating-heart","💞":"revolving-hearts","💕":"two-hearts","💟":"heart-decoration","❣️":"heart-exclamation","💔":"broken-heart","❤️‍🔥":"heart-on-fire","❤️‍🩹":"mending-heart","❤️":"red-heart","🩷":"pink-heart","🧡":"orange-heart","💛":"yellow-heart","💚":"green-heart","💙":"blue-heart","🩵":"light-blue-heart","💜":"purple-heart","🤎":"brown-heart","🖤":"black-heart","🩶":"grey-heart","🤍":"white-heart","💋":"kiss-mark","💯":"hundred-points","💢":"anger-symbol","💥":"collision","💫":"dizzy","💦":"sweat-droplets","💨":"dashing-away","🕳️":"hole","💬":"speech-balloon","👁️‍🗨️":"eye-in-speech-bubble","🗨️":"left-speech-bubble","🗯️":"right-anger-bubble","💭":"thought-balloon","💤":"zzz","👋":"waving-hand","🤚":"raised-back-of-hand","🖐️":"hand-with-fingers-splayed","✋":"raised-hand","🖖":"vulcan-salute","🫱":"rightwards-hand","🫲":"leftwards-hand","🫳":"palm-down-hand","🫴":"palm-up-hand","🫷":"leftwards-pushing-hand","🫸":"rightwards-pushing-hand","👌":"ok-hand","🤌":"pinched-fingers","🤏":"pinching-hand","✌️":"victory-hand","🤞":"crossed-fingers","🫰":"hand-with-index-finger-and-thumb-crossed","🤟":"love-you-gesture","🤘":"sign-of-the-horns","🤙":"call-me-hand","👈":"backhand-index-pointing-left","👉":"backhand-index-pointing-right","👆":"backhand-index-pointing-up","🖕":"middle-finger","👇":"backhand-index-pointing-down","☝️":"index-pointing-up","🫵":"index-pointing-at-the-viewer","👍":"thumbs-up","👎":"thumbs-down","✊":"raised-fist","👊":"oncoming-fist","🤛":"left-facing-fist","🤜":"right-facing-fist","👏":"clapping-hands","🙌":"raising-hands","🫶":"heart-hands","👐":"open-hands","🤲":"palms-up-together","🤝":"handshake","🙏":"folded-hands","✍️":"writing-hand","💅":"nail-polish","🤳":"selfie","💪":"flexed-biceps","🦾":"mechanical-arm","🦿":"mechanical-leg","🦵":"leg","🦶":"foot","👂":"ear","🦻":"ear-with-hearing-aid","👃":"nose","🧠":"brain","🫀":"anatomical-heart","🫁":"lungs","🦷":"tooth","🦴":"bone","👀":"eyes","👁️":"eye","👅":"tongue","👄":"mouth","🫦":"biting-lip","👶":"baby","🧒":"child","👦":"boy","👧":"girl","🧑":"person","👱":"person-blond-hair","👨":"man","🧔":"person-beard","🧔‍♂️":"man-beard","🧔‍♀️":"woman-beard","👨‍🦰":"man-red-hair","👨‍🦱":"man-curly-hair","👨‍🦳":"man-white-hair","👨‍🦲":"man-bald","👩":"woman","👩‍🦰":"woman-red-hair","🧑‍🦰":"person-red-hair","👩‍🦱":"woman-curly-hair","🧑‍🦱":"person-curly-hair","👩‍🦳":"woman-white-hair","🧑‍🦳":"person-white-hair","👩‍🦲":"woman-bald","🧑‍🦲":"person-bald","👱‍♀️":"woman-blond-hair","👱‍♂️":"man-blond-hair","🧓":"older-person","👴":"old-man","👵":"old-woman","🙍":"person-frowning","🙍‍♂️":"man-frowning","🙍‍♀️":"woman-frowning","🙎":"person-pouting","🙎‍♂️":"man-pouting","🙎‍♀️":"woman-pouting","🙅":"person-gesturing-no","🙅‍♂️":"man-gesturing-no","🙅‍♀️":"woman-gesturing-no","🙆":"person-gesturing-ok","🙆‍♂️":"man-gesturing-ok","🙆‍♀️":"woman-gesturing-ok","💁":"person-tipping-hand","💁‍♂️":"man-tipping-hand","💁‍♀️":"woman-tipping-hand","🙋":"person-raising-hand","🙋‍♂️":"man-raising-hand","🙋‍♀️":"woman-raising-hand","🧏":"deaf-person","🧏‍♂️":"deaf-man","🧏‍♀️":"deaf-woman","🙇":"person-bowing","🙇‍♂️":"man-bowing","🙇‍♀️":"woman-bowing","🤦":"person-facepalming","🤦‍♂️":"man-facepalming","🤦‍♀️":"woman-facepalming","🤷":"person-shrugging","🤷‍♂️":"man-shrugging","🤷‍♀️":"woman-shrugging","🧑‍⚕️":"health-worker","👨‍⚕️":"man-health-worker","👩‍⚕️":"woman-health-worker","🧑‍🎓":"student","👨‍🎓":"man-student","👩‍🎓":"woman-student","🧑‍🏫":"teacher","👨‍🏫":"man-teacher","👩‍🏫":"woman-teacher","🧑‍⚖️":"judge","👨‍⚖️":"man-judge","👩‍⚖️":"woman-judge","🧑‍🌾":"farmer","👨‍🌾":"man-farmer","👩‍🌾":"woman-farmer","🧑‍🍳":"cook","👨‍🍳":"man-cook","👩‍🍳":"woman-cook","🧑‍🔧":"mechanic","👨‍🔧":"man-mechanic","👩‍🔧":"woman-mechanic","🧑‍🏭":"factory-worker","👨‍🏭":"man-factory-worker","👩‍🏭":"woman-factory-worker","🧑‍💼":"office-worker","👨‍💼":"man-office-worker","👩‍💼":"woman-office-worker","🧑‍🔬":"scientist","👨‍🔬":"man-scientist","👩‍🔬":"woman-scientist","🧑‍💻":"technologist","👨‍💻":"man-technologist","👩‍💻":"woman-technologist","🧑‍🎤":"singer","👨‍🎤":"man-singer","👩‍🎤":"woman-singer","🧑‍🎨":"artist","👨‍🎨":"man-artist","👩‍🎨":"woman-artist","🧑‍✈️":"pilot","👨‍✈️":"man-pilot","👩‍✈️":"woman-pilot","🧑‍🚀":"astronaut","👨‍🚀":"man-astronaut","👩‍🚀":"woman-astronaut","🧑‍🚒":"firefighter","👨‍🚒":"man-firefighter","👩‍🚒":"woman-firefighter","👮":"police-officer","👮‍♂️":"man-police-officer","👮‍♀️":"woman-police-officer","🕵️":"detective","🕵️‍♂️":"man-detective","🕵️‍♀️":"woman-detective","💂":"guard","💂‍♂️":"man-guard","💂‍♀️":"woman-guard","🥷":"ninja","👷":"construction-worker","👷‍♂️":"man-construction-worker","👷‍♀️":"woman-construction-worker","🫅":"person-with-crown","🤴":"prince","👸":"princess","👳":"person-wearing-turban","👳‍♂️":"man-wearing-turban","👳‍♀️":"woman-wearing-turban","👲":"person-with-skullcap","🧕":"woman-with-headscarf","🤵":"person-in-tuxedo","🤵‍♂️":"man-in-tuxedo","🤵‍♀️":"woman-in-tuxedo","👰":"person-with-veil","👰‍♂️":"man-with-veil","👰‍♀️":"woman-with-veil","🤰":"pregnant-woman","🫃":"pregnant-man","🫄":"pregnant-person","🤱":"breast-feeding","👩‍🍼":"woman-feeding-baby","👨‍🍼":"man-feeding-baby","🧑‍🍼":"person-feeding-baby","👼":"baby-angel","🎅":"santa-claus","🤶":"mrs-claus","🧑‍🎄":"mx-claus","🦸":"superhero","🦸‍♂️":"man-superhero","🦸‍♀️":"woman-superhero","🦹":"supervillain","🦹‍♂️":"man-supervillain","🦹‍♀️":"woman-supervillain","🧙":"mage","🧙‍♂️":"man-mage","🧙‍♀️":"woman-mage","🧚":"fairy","🧚‍♂️":"man-fairy","🧚‍♀️":"woman-fairy","🧛":"vampire","🧛‍♂️":"man-vampire","🧛‍♀️":"woman-vampire","🧜":"merperson","🧜‍♂️":"merman","🧜‍♀️":"mermaid","🧝":"elf","🧝‍♂️":"man-elf","🧝‍♀️":"woman-elf","🧞":"genie","🧞‍♂️":"man-genie","🧞‍♀️":"woman-genie","🧟":"zombie","🧟‍♂️":"man-zombie","🧟‍♀️":"woman-zombie","🧌":"troll","💆":"person-getting-massage","💆‍♂️":"man-getting-massage","💆‍♀️":"woman-getting-massage","💇":"person-getting-haircut","💇‍♂️":"man-getting-haircut","💇‍♀️":"woman-getting-haircut","🚶":"person-walking","🚶‍♂️":"man-walking","🚶‍♀️":"woman-walking","🧍":"person-standing","🧍‍♂️":"man-standing","🧍‍♀️":"woman-standing","🧎":"person-kneeling","🧎‍♂️":"man-kneeling","🧎‍♀️":"woman-kneeling","🧑‍🦯":"person-with-white-cane","👨‍🦯":"man-with-white-cane","👩‍🦯":"woman-with-white-cane","🧑‍🦼":"person-in-motorized-wheelchair","👨‍🦼":"man-in-motorized-wheelchair","👩‍🦼":"woman-in-motorized-wheelchair","🧑‍🦽":"person-in-manual-wheelchair","👨‍🦽":"man-in-manual-wheelchair","👩‍🦽":"woman-in-manual-wheelchair","🏃":"person-running","🏃‍♂️":"man-running","🏃‍♀️":"woman-running","💃":"woman-dancing","🕺":"man-dancing","🕴️":"person-in-suit-levitating","👯":"people-with-bunny-ears","👯‍♂️":"men-with-bunny-ears","👯‍♀️":"women-with-bunny-ears","🧖":"person-in-steamy-room","🧖‍♂️":"man-in-steamy-room","🧖‍♀️":"woman-in-steamy-room","🧗":"person-climbing","🧗‍♂️":"man-climbing","🧗‍♀️":"woman-climbing","🤺":"person-fencing","🏇":"horse-racing","⛷️":"skier","🏂":"snowboarder","🏌️":"person-golfing","🏌️‍♂️":"man-golfing","🏌️‍♀️":"woman-golfing","🏄":"person-surfing","🏄‍♂️":"man-surfing","🏄‍♀️":"woman-surfing","🚣":"person-rowing-boat","🚣‍♂️":"man-rowing-boat","🚣‍♀️":"woman-rowing-boat","🏊":"person-swimming","🏊‍♂️":"man-swimming","🏊‍♀️":"woman-swimming","⛹️":"person-bouncing-ball","⛹️‍♂️":"man-bouncing-ball","⛹️‍♀️":"woman-bouncing-ball","🏋️":"person-lifting-weights","🏋️‍♂️":"man-lifting-weights","🏋️‍♀️":"woman-lifting-weights","🚴":"person-biking","🚴‍♂️":"man-biking","🚴‍♀️":"woman-biking","🚵":"person-mountain-biking","🚵‍♂️":"man-mountain-biking","🚵‍♀️":"woman-mountain-biking","🤸":"person-cartwheeling","🤸‍♂️":"man-cartwheeling","🤸‍♀️":"woman-cartwheeling","🤼":"people-wrestling","🤼‍♂️":"men-wrestling","🤼‍♀️":"women-wrestling","🤽":"person-playing-water-polo","🤽‍♂️":"man-playing-water-polo","🤽‍♀️":"woman-playing-water-polo","🤾":"person-playing-handball","🤾‍♂️":"man-playing-handball","🤾‍♀️":"woman-playing-handball","🤹":"person-juggling","🤹‍♂️":"man-juggling","🤹‍♀️":"woman-juggling","🧘":"person-in-lotus-position","🧘‍♂️":"man-in-lotus-position","🧘‍♀️":"woman-in-lotus-position","🛀":"person-taking-bath","🛌":"person-in-bed","🧑‍🤝‍🧑":"people-holding-hands","👭":"women-holding-hands","👫":"woman-and-man-holding-hands","👬":"men-holding-hands","💏":"kiss","👩‍❤️‍💋‍👨":"kiss-woman-man","👨‍❤️‍💋‍👨":"kiss-man-man","👩‍❤️‍💋‍👩":"kiss-woman-woman","💑":"couple-with-heart","👩‍❤️‍👨":"couple-with-heart-woman-man","👨‍❤️‍👨":"couple-with-heart-man-man","👩‍❤️‍👩":"couple-with-heart-woman-woman","👪":"family","👨‍👩‍👦":"family-man-woman-boy","👨‍👩‍👧":"family-man-woman-girl","👨‍👩‍👧‍👦":"family-man-woman-girl-boy","👨‍👩‍👦‍👦":"family-man-woman-boy-boy","👨‍👩‍👧‍👧":"family-man-woman-girl-girl","👨‍👨‍👦":"family-man-man-boy","👨‍👨‍👧":"family-man-man-girl","👨‍👨‍👧‍👦":"family-man-man-girl-boy","👨‍👨‍👦‍👦":"family-man-man-boy-boy","👨‍👨‍👧‍👧":"family-man-man-girl-girl","👩‍👩‍👦":"family-woman-woman-boy","👩‍👩‍👧":"family-woman-woman-girl","👩‍👩‍👧‍👦":"family-woman-woman-girl-boy","👩‍👩‍👦‍👦":"family-woman-woman-boy-boy","👩‍👩‍👧‍👧":"family-woman-woman-girl-girl","👨‍👦":"family-man-boy","👨‍👦‍👦":"family-man-boy-boy","👨‍👧":"family-man-girl","👨‍👧‍👦":"family-man-girl-boy","👨‍👧‍👧":"family-man-girl-girl","👩‍👦":"family-woman-boy","👩‍👦‍👦":"family-woman-boy-boy","👩‍👧":"family-woman-girl","👩‍👧‍👦":"family-woman-girl-boy","👩‍👧‍👧":"family-woman-girl-girl","🗣️":"speaking-head","👤":"bust-in-silhouette","👥":"busts-in-silhouette","🫂":"people-hugging","👣":"footprints","🐵":"monkey-face","🐒":"monkey","🦍":"gorilla","🦧":"orangutan","🐶":"dog-face","🐕":"dog","🦮":"guide-dog","🐕‍🦺":"service-dog","🐩":"poodle","🐺":"wolf","🦊":"fox","🦝":"raccoon","🐱":"cat-face","🐈":"cat","🐈‍⬛":"black-cat","🦁":"lion","🐯":"tiger-face","🐅":"tiger","🐆":"leopard","🐴":"horse-face","🫎":"moose","🫏":"donkey","🐎":"horse","🦄":"unicorn","🦓":"zebra","🦌":"deer","🦬":"bison","🐮":"cow-face","🐂":"ox","🐃":"water-buffalo","🐄":"cow","🐷":"pig-face","🐖":"pig","🐗":"boar","🐽":"pig-nose","🐏":"ram","🐑":"ewe","🐐":"goat","🐪":"camel","🐫":"two-hump-camel","🦙":"llama","🦒":"giraffe","🐘":"elephant","🦣":"mammoth","🦏":"rhinoceros","🦛":"hippopotamus","🐭":"mouse-face","🐁":"mouse","🐀":"rat","🐹":"hamster","🐰":"rabbit-face","🐇":"rabbit","🐿️":"chipmunk","🦫":"beaver","🦔":"hedgehog","🦇":"bat","🐻":"bear","🐻‍❄️":"polar-bear","🐨":"koala","🐼":"panda","🦥":"sloth","🦦":"otter","🦨":"skunk","🦘":"kangaroo","🦡":"badger","🐾":"paw-prints","🦃":"turkey","🐔":"chicken","🐓":"rooster","🐣":"hatching-chick","🐤":"baby-chick","🐥":"front-facing-baby-chick","🐦":"bird","🐧":"penguin","🕊️":"dove","🦅":"eagle","🦆":"duck","🦢":"swan","🦉":"owl","🦤":"dodo","🪶":"feather","🦩":"flamingo","🦚":"peacock","🦜":"parrot","🪽":"wing","🐦‍⬛":"black-bird","🪿":"goose","🐸":"frog","🐊":"crocodile","🐢":"turtle","🦎":"lizard","🐍":"snake","🐲":"dragon-face","🐉":"dragon","🦕":"sauropod","🦖":"t-rex","🐳":"spouting-whale","🐋":"whale","🐬":"dolphin","🦭":"seal","🐟":"fish","🐠":"tropical-fish","🐡":"blowfish","🦈":"shark","🐙":"octopus","🐚":"spiral-shell","🪸":"coral","🪼":"jellyfish","🐌":"snail","🦋":"butterfly","🐛":"bug","🐜":"ant","🐝":"honeybee","🪲":"beetle","🐞":"lady-beetle","🦗":"cricket","🪳":"cockroach","🕷️":"spider","🕸️":"spider-web","🦂":"scorpion","🦟":"mosquito","🪰":"fly","🪱":"worm","🦠":"microbe","💐":"bouquet","🌸":"cherry-blossom","💮":"white-flower","🪷":"lotus","🏵️":"rosette","🌹":"rose","🥀":"wilted-flower","🌺":"hibiscus","🌻":"sunflower","🌼":"blossom","🌷":"tulip","🪻":"hyacinth","🌱":"seedling","🪴":"potted-plant","🌲":"evergreen-tree","🌳":"deciduous-tree","🌴":"palm-tree","🌵":"cactus","🌾":"sheaf-of-rice","🌿":"herb","☘️":"shamrock","🍀":"four-leaf-clover","🍁":"maple-leaf","🍂":"fallen-leaf","🍃":"leaf-fluttering-in-wind","🪹":"empty-nest","🪺":"nest-with-eggs","🍄":"mushroom","🍇":"grapes","🍈":"melon","🍉":"watermelon","🍊":"tangerine","🍋":"lemon","🍌":"banana","🍍":"pineapple","🥭":"mango","🍎":"red-apple","🍏":"green-apple","🍐":"pear","🍑":"peach","🍒":"cherries","🍓":"strawberry","🫐":"blueberries","🥝":"kiwi-fruit","🍅":"tomato","🫒":"olive","🥥":"coconut","🥑":"avocado","🍆":"eggplant","🥔":"potato","🥕":"carrot","🌽":"ear-of-corn","🌶️":"hot-pepper","🫑":"bell-pepper","🥒":"cucumber","🥬":"leafy-green","🥦":"broccoli","🧄":"garlic","🧅":"onion","🥜":"peanuts","🫘":"beans","🌰":"chestnut","🫚":"ginger-root","🫛":"pea-pod","🍞":"bread","🥐":"croissant","🥖":"baguette-bread","🫓":"flatbread","🥨":"pretzel","🥯":"bagel","🥞":"pancakes","🧇":"waffle","🧀":"cheese-wedge","🍖":"meat-on-bone","🍗":"poultry-leg","🥩":"cut-of-meat","🥓":"bacon","🍔":"hamburger","🍟":"french-fries","🍕":"pizza","🌭":"hot-dog","🥪":"sandwich","🌮":"taco","🌯":"burrito","🫔":"tamale","🥙":"stuffed-flatbread","🧆":"falafel","🥚":"egg","🍳":"cooking","🥘":"shallow-pan-of-food","🍲":"pot-of-food","🫕":"fondue","🥣":"bowl-with-spoon","🥗":"green-salad","🍿":"popcorn","🧈":"butter","🧂":"salt","🥫":"canned-food","🍱":"bento-box","🍘":"rice-cracker","🍙":"rice-ball","🍚":"cooked-rice","🍛":"curry-rice","🍜":"steaming-bowl","🍝":"spaghetti","🍠":"roasted-sweet-potato","🍢":"oden","🍣":"sushi","🍤":"fried-shrimp","🍥":"fish-cake-with-swirl","🥮":"moon-cake","🍡":"dango","🥟":"dumpling","🥠":"fortune-cookie","🥡":"takeout-box","🦀":"crab","🦞":"lobster","🦐":"shrimp","🦑":"squid","🦪":"oyster","🍦":"soft-ice-cream","🍧":"shaved-ice","🍨":"ice-cream","🍩":"doughnut","🍪":"cookie","🎂":"birthday-cake","🍰":"shortcake","🧁":"cupcake","🥧":"pie","🍫":"chocolate-bar","🍬":"candy","🍭":"lollipop","🍮":"custard","🍯":"honey-pot","🍼":"baby-bottle","🥛":"glass-of-milk","☕":"hot-beverage","🫖":"teapot","🍵":"teacup-without-handle","🍶":"sake","🍾":"bottle-with-popping-cork","🍷":"wine-glass","🍸":"cocktail-glass","🍹":"tropical-drink","🍺":"beer-mug","🍻":"clinking-beer-mugs","🥂":"clinking-glasses","🥃":"tumbler-glass","🫗":"pouring-liquid","🥤":"cup-with-straw","🧋":"bubble-tea","🧃":"beverage-box","🧉":"mate","🧊":"ice","🥢":"chopsticks","🍽️":"fork-and-knife-with-plate","🍴":"fork-and-knife","🥄":"spoon","🔪":"kitchen-knife","🫙":"jar","🏺":"amphora","🌍":"globe-showing-europe-africa","🌎":"globe-showing-americas","🌏":"globe-showing-asia-australia","🌐":"globe-with-meridians","🗺️":"world-map","🗾":"map-of-japan","🧭":"compass","🏔️":"snow-capped-mountain","⛰️":"mountain","🌋":"volcano","🗻":"mount-fuji","🏕️":"camping","🏖️":"beach-with-umbrella","🏜️":"desert","🏝️":"desert-island","🏞️":"national-park","🏟️":"stadium","🏛️":"classical-building","🏗️":"building-construction","🧱":"brick","🪨":"rock","🪵":"wood","🛖":"hut","🏘️":"houses","🏚️":"derelict-house","🏠":"house","🏡":"house-with-garden","🏢":"office-building","🏣":"japanese-post-office","🏤":"post-office","🏥":"hospital","🏦":"bank","🏨":"hotel","🏩":"love-hotel","🏪":"convenience-store","🏫":"school","🏬":"department-store","🏭":"factory","🏯":"japanese-castle","🏰":"castle","💒":"wedding","🗼":"tokyo-tower","🗽":"statue-of-liberty","⛪":"church","🕌":"mosque","🛕":"hindu-temple","🕍":"synagogue","⛩️":"shinto-shrine","🕋":"kaaba","⛲":"fountain","⛺":"tent","🌁":"foggy","🌃":"night-with-stars","🏙️":"cityscape","🌄":"sunrise-over-mountains","🌅":"sunrise","🌆":"cityscape-at-dusk","🌇":"sunset","🌉":"bridge-at-night","♨️":"hot-springs","🎠":"carousel-horse","🛝":"playground-slide","🎡":"ferris-wheel","🎢":"roller-coaster","💈":"barber-pole","🎪":"circus-tent","🚂":"locomotive","🚃":"railway-car","🚄":"high-speed-train","🚅":"bullet-train","🚆":"train","🚇":"metro","🚈":"light-rail","🚉":"station","🚊":"tram","🚝":"monorail","🚞":"mountain-railway","🚋":"tram-car","🚌":"bus","🚍":"oncoming-bus","🚎":"trolleybus","🚐":"minibus","🚑":"ambulance","🚒":"fire-engine","🚓":"police-car","🚔":"oncoming-police-car","🚕":"taxi","🚖":"oncoming-taxi","🚗":"automobile","🚘":"oncoming-automobile","🚙":"sport-utility-vehicle","🛻":"pickup-truck","🚚":"delivery-truck","🚛":"articulated-lorry","🚜":"tractor","🏎️":"racing-car","🏍️":"motorcycle","🛵":"motor-scooter","🦽":"manual-wheelchair","🦼":"motorized-wheelchair","🛺":"auto-rickshaw","🚲":"bicycle","🛴":"kick-scooter","🛹":"skateboard","🛼":"roller-skate","🚏":"bus-stop","🛣️":"motorway","🛤️":"railway-track","🛢️":"oil-drum","⛽":"fuel-pump","🛞":"wheel","🚨":"police-car-light","🚥":"horizontal-traffic-light","🚦":"vertical-traffic-light","🛑":"stop-sign","🚧":"construction","⚓":"anchor","🛟":"ring-buoy","⛵":"sailboat","🛶":"canoe","🚤":"speedboat","🛳️":"passenger-ship","⛴️":"ferry","🛥️":"motor-boat","🚢":"ship","✈️":"airplane","🛩️":"small-airplane","🛫":"airplane-departure","🛬":"airplane-arrival","🪂":"parachute","💺":"seat","🚁":"helicopter","🚟":"suspension-railway","🚠":"mountain-cableway","🚡":"aerial-tramway","🛰️":"satellite","🚀":"rocket","🛸":"flying-saucer","🛎️":"bellhop-bell","🧳":"luggage","⌛":"hourglass-done","⏳":"hourglass-not-done","⌚":"watch","⏰":"alarm-clock","⏱️":"stopwatch","⏲️":"timer-clock","🕰️":"mantelpiece-clock","🕛":"twelve-o-clock","🕧":"twelve-thirty","🕐":"one-o-clock","🕜":"one-thirty","🕑":"two-o-clock","🕝":"two-thirty","🕒":"three-o-clock","🕞":"three-thirty","🕓":"four-o-clock","🕟":"four-thirty","🕔":"five-o-clock","🕠":"five-thirty","🕕":"six-o-clock","🕡":"six-thirty","🕖":"seven-o-clock","🕢":"seven-thirty","🕗":"eight-o-clock","🕣":"eight-thirty","🕘":"nine-o-clock","🕤":"nine-thirty","🕙":"ten-o-clock","🕥":"ten-thirty","🕚":"eleven-o-clock","🕦":"eleven-thirty","🌑":"new-moon","🌒":"waxing-crescent-moon","🌓":"first-quarter-moon","🌔":"waxing-gibbous-moon","🌕":"full-moon","🌖":"waning-gibbous-moon","🌗":"last-quarter-moon","🌘":"waning-crescent-moon","🌙":"crescent-moon","🌚":"new-moon-face","🌛":"first-quarter-moon-face","🌜":"last-quarter-moon-face","🌡️":"thermometer","☀️":"sun","🌝":"full-moon-face","🌞":"sun-with-face","🪐":"ringed-planet","⭐":"star","🌟":"glowing-star","🌠":"shooting-star","🌌":"milky-way","☁️":"cloud","⛅":"sun-behind-cloud","⛈️":"cloud-with-lightning-and-rain","🌤️":"sun-behind-small-cloud","🌥️":"sun-behind-large-cloud","🌦️":"sun-behind-rain-cloud","🌧️":"cloud-with-rain","🌨️":"cloud-with-snow","🌩️":"cloud-with-lightning","🌪️":"tornado","🌫️":"fog","🌬️":"wind-face","🌀":"cyclone","🌈":"rainbow","🌂":"closed-umbrella","☂️":"umbrella","☔":"umbrella-with-rain-drops","⛱️":"umbrella-on-ground","⚡":"high-voltage","❄️":"snowflake","☃️":"snowman","⛄":"snowman-without-snow","☄️":"comet","🔥":"fire","💧":"droplet","🌊":"water-wave","🎃":"jack-o-lantern","🎄":"christmas-tree","🎆":"fireworks","🎇":"sparkler","🧨":"firecracker","✨":"sparkles","🎈":"balloon","🎉":"party-popper","🎊":"confetti-ball","🎋":"tanabata-tree","🎍":"pine-decoration","🎎":"japanese-dolls","🎏":"carp-streamer","🎐":"wind-chime","🎑":"moon-viewing-ceremony","🧧":"red-envelope","🎀":"ribbon","🎁":"wrapped-gift","🎗️":"reminder-ribbon","🎟️":"admission-tickets","🎫":"ticket","🎖️":"military-medal","🏆":"trophy","🏅":"sports-medal","🥇":"1st-place-medal","🥈":"2nd-place-medal","🥉":"3rd-place-medal","⚽":"soccer-ball","⚾":"baseball","🥎":"softball","🏀":"basketball","🏐":"volleyball","🏈":"american-football","🏉":"rugby-football","🎾":"tennis","🥏":"flying-disc","🎳":"bowling","🏏":"cricket-game","🏑":"field-hockey","🏒":"ice-hockey","🥍":"lacrosse","🏓":"ping-pong","🏸":"badminton","🥊":"boxing-glove","🥋":"martial-arts-uniform","🥅":"goal-net","⛳":"flag-in-hole","⛸️":"ice-skate","🎣":"fishing-pole","🤿":"diving-mask","🎽":"running-shirt","🎿":"skis","🛷":"sled","🥌":"curling-stone","🎯":"bullseye","🪀":"yo-yo","🪁":"kite","🔫":"water-pistol","🎱":"pool-8-ball","🔮":"crystal-ball","🪄":"magic-wand","🎮":"video-game","🕹️":"joystick","🎰":"slot-machine","🎲":"game-die","🧩":"puzzle-piece","🧸":"teddy-bear","🪅":"pinata","🪩":"mirror-ball","🪆":"nesting-dolls","♠️":"spade-suit","♥️":"heart-suit","♦️":"diamond-suit","♣️":"club-suit","♟️":"chess-pawn","🃏":"joker","🀄":"mahjong-red-dragon","🎴":"flower-playing-cards","🎭":"performing-arts","🖼️":"framed-picture","🎨":"artist-palette","🧵":"thread","🪡":"sewing-needle","🧶":"yarn","🪢":"knot","👓":"glasses","🕶️":"sunglasses","🥽":"goggles","🥼":"lab-coat","🦺":"safety-vest","👔":"necktie","👕":"t-shirt","👖":"jeans","🧣":"scarf","🧤":"gloves","🧥":"coat","🧦":"socks","👗":"dress","👘":"kimono","🥻":"sari","🩱":"one-piece-swimsuit","🩲":"briefs","🩳":"shorts","👙":"bikini","👚":"woman-s-clothes","🪭":"folding-hand-fan","👛":"purse","👜":"handbag","👝":"clutch-bag","🛍️":"shopping-bags","🎒":"backpack","🩴":"thong-sandal","👞":"man-s-shoe","👟":"running-shoe","🥾":"hiking-boot","🥿":"flat-shoe","👠":"high-heeled-shoe","👡":"woman-s-sandal","🩰":"ballet-shoes","👢":"woman-s-boot","🪮":"hair-pick","👑":"crown","👒":"woman-s-hat","🎩":"top-hat","🎓":"graduation-cap","🧢":"billed-cap","🪖":"military-helmet","⛑️":"rescue-worker-s-helmet","📿":"prayer-beads","💄":"lipstick","💍":"ring","💎":"gem-stone","🔇":"muted-speaker","🔈":"speaker-low-volume","🔉":"speaker-medium-volume","🔊":"speaker-high-volume","📢":"loudspeaker","📣":"megaphone","📯":"postal-horn","🔔":"bell","🔕":"bell-with-slash","🎼":"musical-score","🎵":"musical-note","🎶":"musical-notes","🎙️":"studio-microphone","🎚️":"level-slider","🎛️":"control-knobs","🎤":"microphone","🎧":"headphone","📻":"radio","🎷":"saxophone","🪗":"accordion","🎸":"guitar","🎹":"musical-keyboard","🎺":"trumpet","🎻":"violin","🪕":"banjo","🥁":"drum","🪘":"long-drum","🪇":"maracas","🪈":"flute","📱":"mobile-phone","📲":"mobile-phone-with-arrow","☎️":"telephone","📞":"telephone-receiver","📟":"pager","📠":"fax-machine","🔋":"battery","🪫":"low-battery","🔌":"electric-plug","💻":"laptop","🖥️":"desktop-computer","🖨️":"printer","⌨️":"keyboard","🖱️":"computer-mouse","🖲️":"trackball","💽":"computer-disk","💾":"floppy-disk","💿":"optical-disk","📀":"dvd","🧮":"abacus","🎥":"movie-camera","🎞️":"film-frames","📽️":"film-projector","🎬":"clapper-board","📺":"television","📷":"camera","📸":"camera-with-flash","📹":"video-camera","📼":"videocassette","🔍":"magnifying-glass-tilted-left","🔎":"magnifying-glass-tilted-right","🕯️":"candle","💡":"light-bulb","🔦":"flashlight","🏮":"red-paper-lantern","🪔":"diya-lamp","📔":"notebook-with-decorative-cover","📕":"closed-book","📖":"open-book","📗":"green-book","📘":"blue-book","📙":"orange-book","📚":"books","📓":"notebook","📒":"ledger","📃":"page-with-curl","📜":"scroll","📄":"page-facing-up","📰":"newspaper","🗞️":"rolled-up-newspaper","📑":"bookmark-tabs","🔖":"bookmark","🏷️":"label","💰":"money-bag","🪙":"coin","💴":"yen-banknote","💵":"dollar-banknote","💶":"euro-banknote","💷":"pound-banknote","💸":"money-with-wings","💳":"credit-card","🧾":"receipt","💹":"chart-increasing-with-yen","✉️":"envelope","📧":"e-mail","📨":"incoming-envelope","📩":"envelope-with-arrow","📤":"outbox-tray","📥":"inbox-tray","📦":"package","📫":"closed-mailbox-with-raised-flag","📪":"closed-mailbox-with-lowered-flag","📬":"open-mailbox-with-raised-flag","📭":"open-mailbox-with-lowered-flag","📮":"postbox","🗳️":"ballot-box-with-ballot","✏️":"pencil","✒️":"black-nib","🖋️":"fountain-pen","🖊️":"pen","🖌️":"paintbrush","🖍️":"crayon","📝":"memo","💼":"briefcase","📁":"file-folder","📂":"open-file-folder","🗂️":"card-index-dividers","📅":"calendar","📆":"tear-off-calendar","🗒️":"spiral-notepad","🗓️":"spiral-calendar","📇":"card-index","📈":"chart-increasing","📉":"chart-decreasing","📊":"bar-chart","📋":"clipboard","📌":"pushpin","📍":"round-pushpin","📎":"paperclip","🖇️":"linked-paperclips","📏":"straight-ruler","📐":"triangular-ruler","✂️":"scissors","🗃️":"card-file-box","🗄️":"file-cabinet","🗑️":"wastebasket","🔒":"locked","🔓":"unlocked","🔏":"locked-with-pen","🔐":"locked-with-key","🔑":"key","🗝️":"old-key","🔨":"hammer","🪓":"axe","⛏️":"pick","⚒️":"hammer-and-pick","🛠️":"hammer-and-wrench","🗡️":"dagger","⚔️":"crossed-swords","💣":"bomb","🪃":"boomerang","🏹":"bow-and-arrow","🛡️":"shield","🪚":"carpentry-saw","🔧":"wrench","🪛":"screwdriver","🔩":"nut-and-bolt","⚙️":"gear","🗜️":"clamp","⚖️":"balance-scale","🦯":"white-cane","🔗":"link","⛓️":"chains","🪝":"hook","🧰":"toolbox","🧲":"magnet","🪜":"ladder","⚗️":"alembic","🧪":"test-tube","🧫":"petri-dish","🧬":"dna","🔬":"microscope","🔭":"telescope","📡":"satellite-antenna","💉":"syringe","🩸":"drop-of-blood","💊":"pill","🩹":"adhesive-bandage","🩼":"crutch","🩺":"stethoscope","🩻":"x-ray","🚪":"door","🛗":"elevator","🪞":"mirror","🪟":"window","🛏️":"bed","🛋️":"couch-and-lamp","🪑":"chair","🚽":"toilet","🪠":"plunger","🚿":"shower","🛁":"bathtub","🪤":"mouse-trap","🪒":"razor","🧴":"lotion-bottle","🧷":"safety-pin","🧹":"broom","🧺":"basket","🧻":"roll-of-paper","🪣":"bucket","🧼":"soap","🫧":"bubbles","🪥":"toothbrush","🧽":"sponge","🧯":"fire-extinguisher","🛒":"shopping-cart","🚬":"cigarette","⚰️":"coffin","🪦":"headstone","⚱️":"funeral-urn","🧿":"nazar-amulet","🪬":"hamsa","🗿":"moai","🪧":"placard","🪪":"identification-card","🏧":"atm-sign","🚮":"litter-in-bin-sign","🚰":"potable-water","♿":"wheelchair-symbol","🚹":"men-s-room","🚺":"women-s-room","🚻":"restroom","🚼":"baby-symbol","🚾":"water-closet","🛂":"passport-control","🛃":"customs","🛄":"baggage-claim","🛅":"left-luggage","⚠️":"warning","🚸":"children-crossing","⛔":"no-entry","🚫":"prohibited","🚳":"no-bicycles","🚭":"no-smoking","🚯":"no-littering","🚱":"non-potable-water","🚷":"no-pedestrians","📵":"no-mobile-phones","🔞":"no-one-under-eighteen","☢️":"radioactive","☣️":"biohazard","⬆️":"up-arrow","↗️":"up-right-arrow","➡️":"right-arrow","↘️":"down-right-arrow","⬇️":"down-arrow","↙️":"down-left-arrow","⬅️":"left-arrow","↖️":"up-left-arrow","↕️":"up-down-arrow","↔️":"left-right-arrow","↩️":"right-arrow-curving-left","↪️":"left-arrow-curving-right","⤴️":"right-arrow-curving-up","⤵️":"right-arrow-curving-down","🔃":"clockwise-vertical-arrows","🔄":"counterclockwise-arrows-button","🔙":"back-arrow","🔚":"end-arrow","🔛":"on-arrow","🔜":"soon-arrow","🔝":"top-arrow","🛐":"place-of-worship","⚛️":"atom-symbol","🕉️":"om","✡️":"star-of-david","☸️":"wheel-of-dharma","☯️":"yin-yang","✝️":"latin-cross","☦️":"orthodox-cross","☪️":"star-and-crescent","☮️":"peace-symbol","🕎":"menorah","🔯":"dotted-six-pointed-star","🪯":"khanda","♈":"aries","♉":"taurus","♊":"gemini","♋":"cancer","♌":"leo","♍":"virgo","♎":"libra","♏":"scorpio","♐":"sagittarius","♑":"capricorn","♒":"aquarius","♓":"pisces","⛎":"ophiuchus","🔀":"shuffle-tracks-button","🔁":"repeat-button","🔂":"repeat-single-button","▶️":"play-button","⏩":"fast-forward-button","⏭️":"next-track-button","⏯️":"play-or-pause-button","◀️":"reverse-button","⏪":"fast-reverse-button","⏮️":"last-track-button","🔼":"upwards-button","⏫":"fast-up-button","🔽":"downwards-button","⏬":"fast-down-button","⏸️":"pause-button","⏹️":"stop-button","⏺️":"record-button","⏏️":"eject-button","🎦":"cinema","🔅":"dim-button","🔆":"bright-button","📶":"antenna-bars","🛜":"wireless","📳":"vibration-mode","📴":"mobile-phone-off","♀️":"female-sign","♂️":"male-sign","⚧️":"transgender-symbol","✖️":"multiply","➕":"plus","➖":"minus","➗":"divide","🟰":"heavy-equals-sign","♾️":"infinity","‼️":"double-exclamation-mark","⁉️":"exclamation-question-mark","❓":"red-question-mark","❔":"white-question-mark","❕":"white-exclamation-mark","❗":"red-exclamation-mark","〰️":"wavy-dash","💱":"currency-exchange","💲":"heavy-dollar-sign","⚕️":"medical-symbol","♻️":"recycling-symbol","⚜️":"fleur-de-lis","🔱":"trident-emblem","📛":"name-badge","🔰":"japanese-symbol-for-beginner","⭕":"hollow-red-circle","✅":"check-mark-button","☑️":"check-box-with-check","✔️":"check-mark","❌":"cross-mark","❎":"cross-mark-button","➰":"curly-loop","➿":"double-curly-loop","〽️":"part-alternation-mark","✳️":"eight-spoked-asterisk","✴️":"eight-pointed-star","❇️":"sparkle","©️":"copyright","®️":"registered","™️":"trade-mark","#️⃣":"keycap-#","*️⃣":"keycap-*","0️⃣":"keycap-0","1️⃣":"keycap-1","2️⃣":"keycap-2","3️⃣":"keycap-3","4️⃣":"keycap-4","5️⃣":"keycap-5","6️⃣":"keycap-6","7️⃣":"keycap-7","8️⃣":"keycap-8","9️⃣":"keycap-9","🔟":"keycap-10","🔠":"input-latin-uppercase","🔡":"input-latin-lowercase","🔢":"input-numbers","🔣":"input-symbols","🔤":"input-latin-letters","🅰️":"a-button-blood-type","🆎":"ab-button-blood-type","🅱️":"b-button-blood-type","🆑":"cl-button","🆒":"cool-button","🆓":"free-button","ℹ️":"information","🆔":"id-button","Ⓜ️":"circled-m","🆕":"new-button","🆖":"ng-button","🅾️":"o-button-blood-type","🆗":"ok-button","🅿️":"p-button","🆘":"sos-button","🆙":"up-button","🆚":"vs-button","🈁":"japanese-here-button","🈂️":"japanese-service-charge-button","🈷️":"japanese-monthly-amount-button","🈶":"japanese-not-free-of-charge-button","🈯":"japanese-reserved-button","🉐":"japanese-bargain-button","🈹":"japanese-discount-button","🈚":"japanese-free-of-charge-button","🈲":"japanese-prohibited-button","🉑":"japanese-acceptable-button","🈸":"japanese-application-button","🈴":"japanese-passing-grade-button","🈳":"japanese-vacancy-button","㊗️":"japanese-congratulations-button","㊙️":"japanese-secret-button","🈺":"japanese-open-for-business-button","🈵":"japanese-no-vacancy-button","🔴":"red-circle","🟠":"orange-circle","🟡":"yellow-circle","🟢":"green-circle","🔵":"blue-circle","🟣":"purple-circle","🟤":"brown-circle","⚫":"black-circle","⚪":"white-circle","🟥":"red-square","🟧":"orange-square","🟨":"yellow-square","🟩":"green-square","🟦":"blue-square","🟪":"purple-square","🟫":"brown-square","⬛":"black-large-square","⬜":"white-large-square","◼️":"black-medium-square","◻️":"white-medium-square","◾":"black-medium-small-square","◽":"white-medium-small-square","▪️":"black-small-square","▫️":"white-small-square","🔶":"large-orange-diamond","🔷":"large-blue-diamond","🔸":"small-orange-diamond","🔹":"small-blue-diamond","🔺":"red-triangle-pointed-up","🔻":"red-triangle-pointed-down","💠":"diamond-with-a-dot","🔘":"radio-button","🔳":"white-square-button","🔲":"black-square-button","🏁":"chequered-flag","🚩":"triangular-flag","🎌":"crossed-flags","🏴":"black-flag","🏳️":"white-flag","🏳️‍🌈":"rainbow-flag","🏳️‍⚧️":"transgender-flag","🏴‍☠️":"pirate-flag","🇦🇨":"flag-ascension-island","🇦🇩":"flag-andorra","🇦🇪":"flag-united-arab-emirates","🇦🇫":"flag-afghanistan","🇦🇬":"flag-antigua-&-barbuda","🇦🇮":"flag-anguilla","🇦🇱":"flag-albania","🇦🇲":"flag-armenia","🇦🇴":"flag-angola","🇦🇶":"flag-antarctica","🇦🇷":"flag-argentina","🇦🇸":"flag-american-samoa","🇦🇹":"flag-austria","🇦🇺":"flag-australia","🇦🇼":"flag-aruba","🇦🇽":"flag-aland-islands","🇦🇿":"flag-azerbaijan","🇧🇦":"flag-bosnia-&-herzegovina","🇧🇧":"flag-barbados","🇧🇩":"flag-bangladesh","🇧🇪":"flag-belgium","🇧🇫":"flag-burkina-faso","🇧🇬":"flag-bulgaria","🇧🇭":"flag-bahrain","🇧🇮":"flag-burundi","🇧🇯":"flag-benin","🇧🇱":"flag-st-barthelemy","🇧🇲":"flag-bermuda","🇧🇳":"flag-brunei","🇧🇴":"flag-bolivia","🇧🇶":"flag-caribbean-netherlands","🇧🇷":"flag-brazil","🇧🇸":"flag-bahamas","🇧🇹":"flag-bhutan","🇧🇻":"flag-bouvet-island","🇧🇼":"flag-botswana","🇧🇾":"flag-belarus","🇧🇿":"flag-belize","🇨🇦":"flag-canada","🇨🇨":"flag-cocos-keeling-islands","🇨🇩":"flag-congo-kinshasa","🇨🇫":"flag-central-african-republic","🇨🇬":"flag-congo-brazzaville","🇨🇭":"flag-switzerland","🇨🇮":"flag-cote-d-ivoire","🇨🇰":"flag-cook-islands","🇨🇱":"flag-chile","🇨🇲":"flag-cameroon","🇨🇳":"flag-china","🇨🇴":"flag-colombia","🇨🇵":"flag-clipperton-island","🇨🇷":"flag-costa-rica","🇨🇺":"flag-cuba","🇨🇻":"flag-cape-verde","🇨🇼":"flag-curacao","🇨🇽":"flag-christmas-island","🇨🇾":"flag-cyprus","🇨🇿":"flag-czechia","🇩🇪":"flag-germany","🇩🇬":"flag-diego-garcia","🇩🇯":"flag-djibouti","🇩🇰":"flag-denmark","🇩🇲":"flag-dominica","🇩🇴":"flag-dominican-republic","🇩🇿":"flag-algeria","🇪🇦":"flag-ceuta-&-melilla","🇪🇨":"flag-ecuador","🇪🇪":"flag-estonia","🇪🇬":"flag-egypt","🇪🇭":"flag-western-sahara","🇪🇷":"flag-eritrea","🇪🇸":"flag-spain","🇪🇹":"flag-ethiopia","🇪🇺":"flag-european-union","🇫🇮":"flag-finland","🇫🇯":"flag-fiji","🇫🇰":"flag-falkland-islands","🇫🇲":"flag-micronesia","🇫🇴":"flag-faroe-islands","🇫🇷":"flag-france","🇬🇦":"flag-gabon","🇬🇧":"flag-united-kingdom","🇬🇩":"flag-grenada","🇬🇪":"flag-georgia","🇬🇫":"flag-french-guiana","🇬🇬":"flag-guernsey","🇬🇭":"flag-ghana","🇬🇮":"flag-gibraltar","🇬🇱":"flag-greenland","🇬🇲":"flag-gambia","🇬🇳":"flag-guinea","🇬🇵":"flag-guadeloupe","🇬🇶":"flag-equatorial-guinea","🇬🇷":"flag-greece","🇬🇸":"flag-south-georgia-&-south-sandwich-islands","🇬🇹":"flag-guatemala","🇬🇺":"flag-guam","🇬🇼":"flag-guinea-bissau","🇬🇾":"flag-guyana","🇭🇰":"flag-hong-kong-sar-china","🇭🇲":"flag-heard-&-mcdonald-islands","🇭🇳":"flag-honduras","🇭🇷":"flag-croatia","🇭🇹":"flag-haiti","🇭🇺":"flag-hungary","🇮🇨":"flag-canary-islands","🇮🇩":"flag-indonesia","🇮🇪":"flag-ireland","🇮🇱":"flag-israel","🇮🇲":"flag-isle-of-man","🇮🇳":"flag-india","🇮🇴":"flag-british-indian-ocean-territory","🇮🇶":"flag-iraq","🇮🇷":"flag-iran","🇮🇸":"flag-iceland","🇮🇹":"flag-italy","🇯🇪":"flag-jersey","🇯🇲":"flag-jamaica","🇯🇴":"flag-jordan","🇯🇵":"flag-japan","🇰🇪":"flag-kenya","🇰🇬":"flag-kyrgyzstan","🇰🇭":"flag-cambodia","🇰🇮":"flag-kiribati","🇰🇲":"flag-comoros","🇰🇳":"flag-st-kitts-&-nevis","🇰🇵":"flag-north-korea","🇰🇷":"flag-south-korea","🇰🇼":"flag-kuwait","🇰🇾":"flag-cayman-islands","🇰🇿":"flag-kazakhstan","🇱🇦":"flag-laos","🇱🇧":"flag-lebanon","🇱🇨":"flag-st-lucia","🇱🇮":"flag-liechtenstein","🇱🇰":"flag-sri-lanka","🇱🇷":"flag-liberia","🇱🇸":"flag-lesotho","🇱🇹":"flag-lithuania","🇱🇺":"flag-luxembourg","🇱🇻":"flag-latvia","🇱🇾":"flag-libya","🇲🇦":"flag-morocco","🇲🇨":"flag-monaco","🇲🇩":"flag-moldova","🇲🇪":"flag-montenegro","🇲🇫":"flag-st-martin","🇲🇬":"flag-madagascar","🇲🇭":"flag-marshall-islands","🇲🇰":"flag-north-macedonia","🇲🇱":"flag-mali","🇲🇲":"flag-myanmar-burma","🇲🇳":"flag-mongolia","🇲🇴":"flag-macao-sar-china","🇲🇵":"flag-northern-mariana-islands","🇲🇶":"flag-martinique","🇲🇷":"flag-mauritania","🇲🇸":"flag-montserrat","🇲🇹":"flag-malta","🇲🇺":"flag-mauritius","🇲🇻":"flag-maldives","🇲🇼":"flag-malawi","🇲🇽":"flag-mexico","🇲🇾":"flag-malaysia","🇲🇿":"flag-mozambique","🇳🇦":"flag-namibia","🇳🇨":"flag-new-caledonia","🇳🇪":"flag-niger","🇳🇫":"flag-norfolk-island","🇳🇬":"flag-nigeria","🇳🇮":"flag-nicaragua","🇳🇱":"flag-netherlands","🇳🇴":"flag-norway","🇳🇵":"flag-nepal","🇳🇷":"flag-nauru","🇳🇺":"flag-niue","🇳🇿":"flag-new-zealand","🇴🇲":"flag-oman","🇵🇦":"flag-panama","🇵🇪":"flag-peru","🇵🇫":"flag-french-polynesia","🇵🇬":"flag-papua-new-guinea","🇵🇭":"flag-philippines","🇵🇰":"flag-pakistan","🇵🇱":"flag-poland","🇵🇲":"flag-st-pierre-&-miquelon","🇵🇳":"flag-pitcairn-islands","🇵🇷":"flag-puerto-rico","🇵🇸":"flag-palestinian-territories","🇵🇹":"flag-portugal","🇵🇼":"flag-palau","🇵🇾":"flag-paraguay","🇶🇦":"flag-qatar","🇷🇪":"flag-reunion","🇷🇴":"flag-romania","🇷🇸":"flag-serbia","🇷🇺":"flag-russia","🇷🇼":"flag-rwanda","🇸🇦":"flag-saudi-arabia","🇸🇧":"flag-solomon-islands","🇸🇨":"flag-seychelles","🇸🇩":"flag-sudan","🇸🇪":"flag-sweden","🇸🇬":"flag-singapore","🇸🇭":"flag-st-helena","🇸🇮":"flag-slovenia","🇸🇯":"flag-svalbard-&-jan-mayen","🇸🇰":"flag-slovakia","🇸🇱":"flag-sierra-leone","🇸🇲":"flag-san-marino","🇸🇳":"flag-senegal","🇸🇴":"flag-somalia","🇸🇷":"flag-suriname","🇸🇸":"flag-south-sudan","🇸🇹":"flag-sao-tome-&-principe","🇸🇻":"flag-el-salvador","🇸🇽":"flag-sint-maarten","🇸🇾":"flag-syria","🇸🇿":"flag-eswatini","🇹🇦":"flag-tristan-da-cunha","🇹🇨":"flag-turks-&-caicos-islands","🇹🇩":"flag-chad","🇹🇫":"flag-french-southern-territories","🇹🇬":"flag-togo","🇹🇭":"flag-thailand","🇹🇯":"flag-tajikistan","🇹🇰":"flag-tokelau","🇹🇱":"flag-timor-leste","🇹🇲":"flag-turkmenistan","🇹🇳":"flag-tunisia","🇹🇴":"flag-tonga","🇹🇷":"flag-turkey","🇹🇹":"flag-trinidad-&-tobago","🇹🇻":"flag-tuvalu","🇹🇼":"flag-taiwan","🇹🇿":"flag-tanzania","🇺🇦":"flag-ukraine","🇺🇬":"flag-uganda","🇺🇲":"flag-us-outlying-islands","🇺🇳":"flag-united-nations","🇺🇸":"flag-united-states","🇺🇾":"flag-uruguay","🇺🇿":"flag-uzbekistan","🇻🇦":"flag-vatican-city","🇻🇨":"flag-st-vincent-&-grenadines","🇻🇪":"flag-venezuela","🇻🇬":"flag-british-virgin-islands","🇻🇮":"flag-us-virgin-islands","🇻🇳":"flag-vietnam","🇻🇺":"flag-vanuatu","🇼🇫":"flag-wallis-&-futuna","🇼🇸":"flag-samoa","🇽🇰":"flag-kosovo","🇾🇪":"flag-yemen","🇾🇹":"flag-mayotte","🇿🇦":"flag-south-africa","🇿🇲":"flag-zambia","🇿🇼":"flag-zimbabwe","🏴󠁧󠁢󠁥󠁮󠁧󠁿":"flag-england","🏴󠁧󠁢󠁳󠁣󠁴󠁿":"flag-scotland","🏴󠁧󠁢󠁷󠁬󠁳󠁿":"flag-wales"}
-},{}],92:[function(require,module,exports){
-module.exports={"10":["🔟"],"grin":["😀","😃","😄","😆","😅","😺","😸"],"face":["😀","😃","😄","😁","😆","😅","😂","🙂","🙃","🫠","😉","😊","😇","🥰","😍","😘","😗","☺️","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🫢","🫣","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😶‍🌫️","😏","😒","🙄","😬","😮‍💨","🤥","🫨","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","😵‍💫","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹️","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","🤡","🤛","🤜","🐵","🐶","🐱","🐯","🐴","🐮","🐷","🐭","🐰","🐥","🐲","🌚","🌛","🌜","🌝","🌞","🌬️","📄"],"big":["😃"],"eyes":["😃","😄","😁","😊","😍","😚","😙","🫢","🙄","😵","😵‍💫","😸","😻","👀"],"smile":["😄","😁","🙂","😊","😇","🥰","😍","☺️","😙","🥲","🤗","😎","😈","😸","😻","😼"],"beam":["😁"],"squint":["😆","😝"],"sweat":["😅","😰","😓","💦"],"roll":["🤣","🙄","🧻"],"on":["🤣","🤬","❤️‍🔥","🍖","⛱️","🔛"],"the":["🤣","🤘","🫵"],"floor":["🤣"],"laugh":["🤣"],"tears":["😂","🥹","😹"],"joy":["😂","😹"],"slightly":["🙂","🙁"],"upside":["🙃"],"down":["🙃","🫳","👇","👎","↘️","⬇️","↙️","↕️","⤵️","⏬","🔻"],"melt":["🫠"],"wink":["😉","😜"],"halo":["😇"],"hearts":["🥰","💞","💕"],"heart":["😍","😻","💘","💝","💖","💗","💓","💟","❣️","💔","❤️‍🔥","❤️‍🩹","❤️","🩷","🧡","💛","💚","💙","🩵","💜","🤎","🖤","🩶","🤍","🫶","🫀","💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩","♥️"],"star":["🤩","⭐","🌟","🌠","✡️","☪️","🔯","✴️"],"struck":["🤩"],"blow":["😘"],"kiss":["😘","😗","😚","😙","😽","💋","💏","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍💋‍👩"],"closed":["😚","🌂","📕","📫","📪"],"tear":["🥲","📆"],"savore":["😋"],"food":["😋","🥘","🍲","🥫"],"tongue":["😛","😜","😝","👅"],"zany":["🤪"],"money":["🤑","💰","💸"],"mouth":["🤑","🤭","🫢","🤐","😶","🫤","😮","😦","🤬","👄"],"open":["🤗","🫢","😮","😦","👐","📖","📬","📭","📂","🈺"],"hands":["🤗","👏","🙌","🫶","👐","🙏","🧑‍🤝‍🧑","👭","👫","👬"],"hand":["🤭","🫢","👋","🤚","🖐️","✋","🫱","🫲","🫳","🫴","🫷","🫸","👌","🤏","✌️","🫰","🤙","✍️","💁","💁‍♂️","💁‍♀️","🙋","🙋‍♂️","🙋‍♀️","🪭"],"over":["🤭","🫢","🌄"],"and":["🫢","☠️","🫰","👫","🍽️","🍴","⛈️","⚒️","🛠️","🏹","🔩","🛋️","☪️"],"peek":["🫣"],"eye":["🫣","👁️‍🗨️","👁️"],"shush":["🤫"],"think":["🤔"],"salute":["🫡","🖖"],"zipper":["🤐"],"raised":["🤨","🤚","✋","✊","📫","📬"],"eyebrow":["🤨"],"neutral":["😐"],"expressionless":["😑"],"without":["😶","🍵","⛄"],"dotted":["🫥","🔯"],"line":["🫥"],"in":["😶‍🌫️","😱","👁️‍🗨️","🤵","🤵‍♂️","🤵‍♀️","🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🕴️","🧖","🧖‍♂️","🧖‍♀️","🧘","🧘‍♂️","🧘‍♀️","🛌","👤","👥","🍃","⛳","🚮"],"clouds":["😶‍🌫️"],"smirk":["😏"],"unamused":["😒"],"grimace":["😬"],"exhale":["😮‍💨"],"lying":["🤥"],"shake":["🫨"],"relieved":["😌","😥"],"pensive":["😔"],"sleepy":["😪"],"drool":["🤤"],"sleep":["😴"],"medical":["😷","⚕️"],"mask":["😷","🤿"],"thermometer":["🤒","🌡️"],"head":["🤕","🤯","🗣️"],"bandage":["🤕","🩹"],"nauseated":["🤢"],"vomite":["🤮"],"sneez":["🤧"],"hot":["🥵","🌶️","🌭","☕","♨️"],"cold":["🥶"],"woozy":["🥴"],"crossed":["😵","🤞","🫰","⚔️","🎌"],"out":["😵"],"spiral":["😵‍💫","🐚","🗒️","🗓️"],"explode":["🤯"],"cowboy":["🤠"],"hat":["🤠","👒","🎩"],"party":["🥳","🎉"],"disguised":["🥸"],"sunglasses":["😎","🕶️"],"nerd":["🤓"],"monocle":["🧐"],"confused":["😕"],"diagonal":["🫤"],"worried":["😟"],"frown":["🙁","☹️","😦","🙍","🙍‍♂️","🙍‍♀️"],"hushed":["😯"],"astonished":["😲"],"flushed":["😳"],"plead":["🥺"],"hold":["🥹","🧑‍🤝‍🧑","👭","👫","👬"],"back":["🥹","🤚","🔙"],"anguished":["😧"],"fearful":["😨"],"anxious":["😰"],"sad":["😥"],"but":["😥"],"cry":["😢","😭","😿"],"loudly":["😭"],"scream":["😱"],"fear":["😱"],"confounded":["😖"],"persever":["😣"],"disappointed":["😞"],"downcast":["😓"],"weary":["😩","🙀"],"tired":["😫"],"yawn":["🥱"],"steam":["😤","🍜"],"from":["😤"],"nose":["😤","👃","🐽"],"enraged":["😡"],"angry":["😠","👿"],"symbols":["🤬","🔣"],"horns":["😈","👿","🤘"],"skull":["💀","☠️"],"crossbones":["☠️"],"pile":["💩"],"poo":["💩"],"clown":["🤡"],"ogre":["👹"],"goblin":["👺"],"ghost":["👻"],"alien":["👽","👾"],"monster":["👾"],"robot":["🤖"],"cat":["😺","😸","😹","😻","😼","😽","🙀","😿","😾","🐱","🐈","🐈‍⬛"],"wry":["😼"],"pout":["😾","🙎","🙎‍♂️","🙎‍♀️"],"see":["🙈"],"no":["🙈","🙉","🙊","🙅","🙅‍♂️","🙅‍♀️","⛔","🚳","🚭","🚯","🚷","📵","🔞","🈵"],"evil":["🙈","🙉","🙊"],"monkey":["🙈","🙉","🙊","🐵","🐒"],"hear":["🙉","🦻"],"speak":["🙊","🗣️"],"love":["💌","🤟","🏩"],"letter":["💌"],"arrow":["💘","📲","📩","🏹","⬆️","↗️","➡️","↘️","⬇️","↙️","⬅️","↖️","↕️","↔️","↩️","↪️","⤴️","⤵️","🔙","🔚","🔛","🔜","🔝"],"ribbon":["💝","🎀","🎗️"],"sparkle":["💖","❇️"],"grow":["💗"],"beat":["💓"],"revolve":["💞"],"two":["💕","🐫","🕑","🕝"],"decoration":["💟","🎍"],"exclamation":["❣️","‼️","⁉️","❕","❗"],"broken":["💔"],"fire":["❤️‍🔥","🚒","🔥","🧯"],"mend":["❤️‍🩹"],"red":["❤️","👨‍🦰","👩‍🦰","🧑‍🦰","🍎","🧧","🀄","🏮","❓","❗","⭕","🔴","🟥","🔺","🔻"],"pink":["🩷"],"orange":["🧡","📙","🟠","🟧","🔶","🔸"],"yellow":["💛","🟡","🟨"],"green":["💚","🍏","🥬","🥗","📗","🟢","🟩"],"blue":["💙","🩵","📘","🔵","🟦","🔷","🔹"],"light":["🩵","🚈","🚨","🚥","🚦","💡"],"purple":["💜","🟣","🟪"],"brown":["🤎","🟤","🟫"],"black":["🖤","🐈‍⬛","🐦‍⬛","✒️","⚫","⬛","◼️","◾","▪️","🔲","🏴"],"grey":["🩶"],"white":["🤍","👨‍🦳","👩‍🦳","🧑‍🦳","🧑‍🦯","👨‍🦯","👩‍🦯","💮","🦯","❔","❕","⚪","⬜","◻️","◽","▫️","🔳","🏳️"],"mark":["💋","‼️","⁉️","❓","❔","❕","❗","✅","✔️","❌","❎","〽️","™️"],"hundred":["💯"],"points":["💯"],"anger":["💢","🗯️"],"symbol":["💢","♿","🚼","⚛️","☮️","⚧️","⚕️","♻️","🔰"],"collision":["💥"],"dizzy":["💫"],"droplets":["💦"],"dash":["💨","〰️"],"away":["💨"],"hole":["🕳️","⛳"],"speech":["💬","👁️‍🗨️","🗨️"],"balloon":["💬","💭","🎈"],"bubble":["👁️‍🗨️","🗨️","🗯️","🧋"],"left":["🗨️","👈","🤛","🔍","🛅","↙️","⬅️","↖️","↔️","↩️","↪️"],"right":["🗯️","👉","🤜","🔎","↗️","➡️","↘️","↔️","↩️","↪️","⤴️","⤵️"],"thought":["💭"],"zzz":["💤"],"wave":["👋","🌊"],"fingers":["🖐️","🤌","🤞"],"splayed":["🖐️"],"vulcan":["🖖"],"rightwards":["🫱","🫸"],"leftwards":["🫲","🫷"],"palm":["🫳","🫴","🌴"],"up":["🫴","👆","☝️","👍","🤲","📄","🗞️","⬆️","↗️","↖️","↕️","⤴️","⏫","🆙","🔺"],"push":["🫷","🫸"],"ok":["👌","🙆","🙆‍♂️","🙆‍♀️","🆗"],"pinched":["🤌"],"pinch":["🤏"],"victory":["✌️"],"index":["🫰","👈","👉","👆","👇","☝️","🫵","🗂️","📇"],"finger":["🫰","🖕"],"thumb":["🫰"],"you":["🤟"],"gesture":["🤟","🙅","🙅‍♂️","🙅‍♀️","🙆","🙆‍♂️","🙆‍♀️"],"sign":["🤘","🛑","🏧","🚮","♀️","♂️","🟰","💲"],"call":["🤙"],"me":["🤙"],"backhand":["👈","👉","👆","👇"],"point":["👈","👉","👆","👇","☝️","🫵"],"middle":["🖕"],"at":["🫵","🌆","🌉"],"viewer":["🫵"],"thumbs":["👍","👎"],"fist":["✊","👊","🤛","🤜"],"oncome":["👊","🚍","🚔","🚖","🚘"],"clap":["👏"],"raise":["🙌","🙋","🙋‍♂️","🙋‍♀️"],"palms":["🤲"],"together":["🤲"],"handshake":["🤝"],"folded":["🙏"],"write":["✍️"],"nail":["💅"],"polish":["💅"],"selfie":["🤳"],"flexed":["💪"],"biceps":["💪"],"mechanical":["🦾","🦿"],"arm":["🦾"],"leg":["🦿","🦵","🍗"],"foot":["🦶"],"ear":["👂","🦻","🌽"],"aid":["🦻"],"brain":["🧠"],"anatomical":["🫀"],"lungs":["🫁"],"tooth":["🦷"],"bone":["🦴","🍖"],"bite":["🫦"],"lip":["🫦"],"baby":["👶","👩‍🍼","👨‍🍼","🧑‍🍼","👼","🐤","🐥","🍼","🚼"],"child":["🧒"],"boy":["👦","👨‍👩‍👦","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👨‍👦","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👩‍👩‍👦","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👨‍👦","👨‍👦‍👦","👨‍👧‍👦","👩‍👦","👩‍👦‍👦","👩‍👧‍👦"],"girl":["👧","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👧‍👧","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👧‍👧","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👧‍👧","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"person":["🧑","👱","🧔","🧑‍🦰","🧑‍🦱","🧑‍🦳","🧑‍🦲","🧓","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","🫅","👳","👲","🤵","👰","🫄","🧑‍🍼","💆","💇","🚶","🧍","🧎","🧑‍🦯","🧑‍🦼","🧑‍🦽","🏃","🕴️","🧖","🧗","🤺","🏌️","🏄","🚣","🏊","⛹️","🏋️","🚴","🚵","🤸","🤽","🤾","🤹","🧘","🛀","🛌"],"blond":["👱","👱‍♀️","👱‍♂️"],"hair":["👱","👨‍🦰","👨‍🦱","👨‍🦳","👩‍🦰","🧑‍🦰","👩‍🦱","🧑‍🦱","👩‍🦳","🧑‍🦳","👱‍♀️","👱‍♂️","🪮"],"man":["👨","🧔‍♂️","👨‍🦰","👨‍🦱","👨‍🦳","👨‍🦲","👱‍♂️","👴","🙍‍♂️","🙎‍♂️","🙅‍♂️","🙆‍♂️","💁‍♂️","🙋‍♂️","🧏‍♂️","🙇‍♂️","🤦‍♂️","🤷‍♂️","👨‍⚕️","👨‍🎓","👨‍🏫","👨‍⚖️","👨‍🌾","👨‍🍳","👨‍🔧","👨‍🏭","👨‍💼","👨‍🔬","👨‍💻","👨‍🎤","👨‍🎨","👨‍✈️","👨‍🚀","👨‍🚒","👮‍♂️","🕵️‍♂️","💂‍♂️","👷‍♂️","👳‍♂️","🤵‍♂️","👰‍♂️","🫃","👨‍🍼","🦸‍♂️","🦹‍♂️","🧙‍♂️","🧚‍♂️","🧛‍♂️","🧝‍♂️","🧞‍♂️","🧟‍♂️","💆‍♂️","💇‍♂️","🚶‍♂️","🧍‍♂️","🧎‍♂️","👨‍🦯","👨‍🦼","👨‍🦽","🏃‍♂️","🕺","🧖‍♂️","🧗‍♂️","🏌️‍♂️","🏄‍♂️","🚣‍♂️","🏊‍♂️","⛹️‍♂️","🏋️‍♂️","🚴‍♂️","🚵‍♂️","🤸‍♂️","🤽‍♂️","🤾‍♂️","🤹‍♂️","🧘‍♂️","👫","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍👨","👨‍❤️‍👨","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👞","🇮🇲"],"beard":["🧔","🧔‍♂️","🧔‍♀️"],"woman":["🧔‍♀️","👩","👩‍🦰","👩‍🦱","👩‍🦳","👩‍🦲","👱‍♀️","👵","🙍‍♀️","🙎‍♀️","🙅‍♀️","🙆‍♀️","💁‍♀️","🙋‍♀️","🧏‍♀️","🙇‍♀️","🤦‍♀️","🤷‍♀️","👩‍⚕️","👩‍🎓","👩‍🏫","👩‍⚖️","👩‍🌾","👩‍🍳","👩‍🔧","👩‍🏭","👩‍💼","👩‍🔬","👩‍💻","👩‍🎤","👩‍🎨","👩‍✈️","👩‍🚀","👩‍🚒","👮‍♀️","🕵️‍♀️","💂‍♀️","👷‍♀️","👳‍♀️","🧕","🤵‍♀️","👰‍♀️","🤰","👩‍🍼","🦸‍♀️","🦹‍♀️","🧙‍♀️","🧚‍♀️","🧛‍♀️","🧝‍♀️","🧞‍♀️","🧟‍♀️","💆‍♀️","💇‍♀️","🚶‍♀️","🧍‍♀️","🧎‍♀️","👩‍🦯","👩‍🦼","👩‍🦽","🏃‍♀️","💃","🧖‍♀️","🧗‍♀️","🏌️‍♀️","🏄‍♀️","🚣‍♀️","🏊‍♀️","⛹️‍♀️","🏋️‍♀️","🚴‍♀️","🚵‍♀️","🤸‍♀️","🤽‍♀️","🤾‍♀️","🤹‍♀️","🧘‍♀️","👫","👩‍❤️‍💋‍👨","👩‍❤️‍💋‍👩","👩‍❤️‍👨","👩‍❤️‍👩","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧","👚","👡","👢","👒"],"curly":["👨‍🦱","👩‍🦱","🧑‍🦱","➰","➿"],"bald":["👨‍🦲","👩‍🦲","🧑‍🦲"],"older":["🧓"],"old":["👴","👵","🗝️"],"tip":["💁","💁‍♂️","💁‍♀️"],"deaf":["🧏","🧏‍♂️","🧏‍♀️"],"bow":["🙇","🙇‍♂️","🙇‍♀️","🏹"],"facepalm":["🤦","🤦‍♂️","🤦‍♀️"],"shrug":["🤷","🤷‍♂️","🤷‍♀️"],"health":["🧑‍⚕️","👨‍⚕️","👩‍⚕️"],"worker":["🧑‍⚕️","👨‍⚕️","👩‍⚕️","🧑‍🏭","👨‍🏭","👩‍🏭","🧑‍💼","👨‍💼","👩‍💼","👷","👷‍♂️","👷‍♀️","⛑️"],"student":["🧑‍🎓","👨‍🎓","👩‍🎓"],"teacher":["🧑‍🏫","👨‍🏫","👩‍🏫"],"judge":["🧑‍⚖️","👨‍⚖️","👩‍⚖️"],"farmer":["🧑‍🌾","👨‍🌾","👩‍🌾"],"cook":["🧑‍🍳","👨‍🍳","👩‍🍳","🍳","🇨🇰"],"mechanic":["🧑‍🔧","👨‍🔧","👩‍🔧"],"factory":["🧑‍🏭","👨‍🏭","👩‍🏭","🏭"],"office":["🧑‍💼","👨‍💼","👩‍💼","🏢","🏣","🏤"],"scientist":["🧑‍🔬","👨‍🔬","👩‍🔬"],"technologist":["🧑‍💻","👨‍💻","👩‍💻"],"singer":["🧑‍🎤","👨‍🎤","👩‍🎤"],"artist":["🧑‍🎨","👨‍🎨","👩‍🎨","🎨"],"pilot":["🧑‍✈️","👨‍✈️","👩‍✈️"],"astronaut":["🧑‍🚀","👨‍🚀","👩‍🚀"],"firefighter":["🧑‍🚒","👨‍🚒","👩‍🚒"],"police":["👮","👮‍♂️","👮‍♀️","🚓","🚔","🚨"],"officer":["👮","👮‍♂️","👮‍♀️"],"detective":["🕵️","🕵️‍♂️","🕵️‍♀️"],"guard":["💂","💂‍♂️","💂‍♀️"],"ninja":["🥷"],"construction":["👷","👷‍♂️","👷‍♀️","🏗️","🚧"],"crown":["🫅","👑"],"prince":["🤴"],"princess":["👸"],"wear":["👳","👳‍♂️","👳‍♀️"],"turban":["👳","👳‍♂️","👳‍♀️"],"skullcap":["👲"],"headscarf":["🧕"],"tuxedo":["🤵","🤵‍♂️","🤵‍♀️"],"veil":["👰","👰‍♂️","👰‍♀️"],"pregnant":["🤰","🫃","🫄"],"breast":["🤱"],"feed":["🤱","👩‍🍼","👨‍🍼","🧑‍🍼"],"angel":["👼"],"santa":["🎅"],"claus":["🎅","🤶","🧑‍🎄"],"mrs":["🤶"],"mx":["🧑‍🎄"],"superhero":["🦸","🦸‍♂️","🦸‍♀️"],"supervillain":["🦹","🦹‍♂️","🦹‍♀️"],"mage":["🧙","🧙‍♂️","🧙‍♀️"],"fairy":["🧚","🧚‍♂️","🧚‍♀️"],"vampire":["🧛","🧛‍♂️","🧛‍♀️"],"merperson":["🧜"],"merman":["🧜‍♂️"],"mermaid":["🧜‍♀️"],"elf":["🧝","🧝‍♂️","🧝‍♀️"],"genie":["🧞","🧞‍♂️","🧞‍♀️"],"zombie":["🧟","🧟‍♂️","🧟‍♀️"],"troll":["🧌"],"gett":["💆","💆‍♂️","💆‍♀️","💇","💇‍♂️","💇‍♀️"],"massage":["💆","💆‍♂️","💆‍♀️"],"haircut":["💇","💇‍♂️","💇‍♀️"],"walk":["🚶","🚶‍♂️","🚶‍♀️"],"stand":["🧍","🧍‍♂️","🧍‍♀️"],"kneel":["🧎","🧎‍♂️","🧎‍♀️"],"cane":["🧑‍🦯","👨‍🦯","👩‍🦯","🦯"],"motorized":["🧑‍🦼","👨‍🦼","👩‍🦼","🦼"],"wheelchair":["🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🦽","🦼","♿"],"manual":["🧑‍🦽","👨‍🦽","👩‍🦽","🦽"],"run":["🏃","🏃‍♂️","🏃‍♀️","🎽","👟"],"dance":["💃","🕺"],"suit":["🕴️","♠️","♥️","♦️","♣️"],"levitate":["🕴️"],"people":["👯","🤼","🧑‍🤝‍🧑","🫂"],"bunny":["👯","👯‍♂️","👯‍♀️"],"ears":["👯","👯‍♂️","👯‍♀️"],"men":["👯‍♂️","🤼‍♂️","👬","🚹"],"women":["👯‍♀️","🤼‍♀️","👭","🚺"],"steamy":["🧖","🧖‍♂️","🧖‍♀️"],"room":["🧖","🧖‍♂️","🧖‍♀️","🚹","🚺"],"climb":["🧗","🧗‍♂️","🧗‍♀️"],"fence":["🤺"],"horse":["🏇","🐴","🐎","🎠"],"race":["🏇","🏎️"],"skier":["⛷️"],"snowboarder":["🏂"],"golf":["🏌️","🏌️‍♂️","🏌️‍♀️"],"surf":["🏄","🏄‍♂️","🏄‍♀️"],"row":["🚣","🚣‍♂️","🚣‍♀️"],"boat":["🚣","🚣‍♂️","🚣‍♀️","🛥️"],"swim":["🏊","🏊‍♂️","🏊‍♀️"],"bounce":["⛹️","⛹️‍♂️","⛹️‍♀️"],"ball":["⛹️","⛹️‍♂️","⛹️‍♀️","🍙","🎊","⚽","🎱","🔮","🪩"],"lift":["🏋️","🏋️‍♂️","🏋️‍♀️"],"weights":["🏋️","🏋️‍♂️","🏋️‍♀️"],"bike":["🚴","🚴‍♂️","🚴‍♀️","🚵","🚵‍♂️","🚵‍♀️"],"mountain":["🚵","🚵‍♂️","🚵‍♀️","🏔️","⛰️","🚞","🚠"],"cartwheel":["🤸","🤸‍♂️","🤸‍♀️"],"wrestle":["🤼","🤼‍♂️","🤼‍♀️"],"play":["🤽","🤽‍♂️","🤽‍♀️","🤾","🤾‍♂️","🤾‍♀️","🎴","▶️","⏯️"],"water":["🤽","🤽‍♂️","🤽‍♀️","🐃","🌊","🔫","🚰","🚾","🚱"],"polo":["🤽","🤽‍♂️","🤽‍♀️"],"handball":["🤾","🤾‍♂️","🤾‍♀️"],"juggle":["🤹","🤹‍♂️","🤹‍♀️"],"lotus":["🧘","🧘‍♂️","🧘‍♀️","🪷"],"position":["🧘","🧘‍♂️","🧘‍♀️"],"take":["🛀"],"bath":["🛀"],"bed":["🛌","🛏️"],"couple":["💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩"],"family":["👪","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"bust":["👤"],"silhouette":["👤","👥"],"busts":["👥"],"hug":["🫂"],"footprints":["👣"],"gorilla":["🦍"],"orangutan":["🦧"],"dog":["🐶","🐕","🦮","🐕‍🦺","🌭"],"guide":["🦮"],"service":["🐕‍🦺","🈂️"],"poodle":["🐩"],"wolf":["🐺"],"fox":["🦊"],"raccoon":["🦝"],"lion":["🦁"],"tiger":["🐯","🐅"],"leopard":["🐆"],"moose":["🫎"],"donkey":["🫏"],"unicorn":["🦄"],"zebra":["🦓"],"deer":["🦌"],"bison":["🦬"],"cow":["🐮","🐄"],"ox":["🐂"],"buffalo":["🐃"],"pig":["🐷","🐖","🐽"],"boar":["🐗"],"ram":["🐏"],"ewe":["🐑"],"goat":["🐐"],"camel":["🐪","🐫"],"hump":["🐫"],"llama":["🦙"],"giraffe":["🦒"],"elephant":["🐘"],"mammoth":["🦣"],"rhinoceros":["🦏"],"hippopotamus":["🦛"],"mouse":["🐭","🐁","🖱️","🪤"],"rat":["🐀"],"hamster":["🐹"],"rabbit":["🐰","🐇"],"chipmunk":["🐿️"],"beaver":["🦫"],"hedgehog":["🦔"],"bat":["🦇"],"bear":["🐻","🐻‍❄️","🧸"],"polar":["🐻‍❄️"],"koala":["🐨"],"panda":["🐼"],"sloth":["🦥"],"otter":["🦦"],"skunk":["🦨"],"kangaroo":["🦘"],"badger":["🦡"],"paw":["🐾"],"prints":["🐾"],"turkey":["🦃","🇹🇷"],"chicken":["🐔"],"rooster":["🐓"],"hatch":["🐣"],"chick":["🐣","🐤","🐥"],"front":["🐥"],"bird":["🐦","🐦‍⬛"],"penguin":["🐧"],"dove":["🕊️"],"eagle":["🦅"],"duck":["🦆"],"swan":["🦢"],"owl":["🦉"],"dodo":["🦤"],"feather":["🪶"],"flamingo":["🦩"],"peacock":["🦚"],"parrot":["🦜"],"wing":["🪽"],"goose":["🪿"],"frog":["🐸"],"crocodile":["🐊"],"turtle":["🐢"],"lizard":["🦎"],"snake":["🐍"],"dragon":["🐲","🐉","🀄"],"sauropod":["🦕"],"rex":["🦖"],"spout":["🐳"],"whale":["🐳","🐋"],"dolphin":["🐬"],"seal":["🦭"],"fish":["🐟","🐠","🍥","🎣"],"tropical":["🐠","🍹"],"blowfish":["🐡"],"shark":["🦈"],"octopus":["🐙"],"shell":["🐚"],"coral":["🪸"],"jellyfish":["🪼"],"snail":["🐌"],"butterfly":["🦋"],"bug":["🐛"],"ant":["🐜"],"honeybee":["🐝"],"beetle":["🪲","🐞"],"lady":["🐞"],"cricket":["🦗","🏏"],"cockroach":["🪳"],"spider":["🕷️","🕸️"],"web":["🕸️"],"scorpion":["🦂"],"mosquito":["🦟"],"fly":["🪰","🛸","🥏"],"worm":["🪱"],"microbe":["🦠"],"bouquet":["💐"],"cherry":["🌸"],"blossom":["🌸","🌼"],"flower":["💮","🥀","🎴"],"rosette":["🏵️"],"rose":["🌹"],"wilted":["🥀"],"hibiscus":["🌺"],"sunflower":["🌻"],"tulip":["🌷"],"hyacinth":["🪻"],"seedle":["🌱"],"potted":["🪴"],"plant":["🪴"],"evergreen":["🌲"],"tree":["🌲","🌳","🌴","🎄","🎋"],"deciduous":["🌳"],"cactus":["🌵"],"sheaf":["🌾"],"rice":["🌾","🍘","🍙","🍚","🍛"],"herb":["🌿"],"shamrock":["☘️"],"four":["🍀","🕓","🕟"],"leaf":["🍀","🍁","🍂","🍃"],"clover":["🍀"],"maple":["🍁"],"fallen":["🍂"],"flutter":["🍃"],"wind":["🍃","🌬️","🎐"],"empty":["🪹"],"nest":["🪹","🪺","🪆"],"eggs":["🪺"],"mushroom":["🍄"],"grapes":["🍇"],"melon":["🍈"],"watermelon":["🍉"],"tangerine":["🍊"],"lemon":["🍋"],"banana":["🍌"],"pineapple":["🍍"],"mango":["🥭"],"apple":["🍎","🍏"],"pear":["🍐"],"peach":["🍑"],"cherries":["🍒"],"strawberry":["🍓"],"blueberries":["🫐"],"kiwi":["🥝"],"fruit":["🥝"],"tomato":["🍅"],"olive":["🫒"],"coconut":["🥥"],"avocado":["🥑"],"eggplant":["🍆"],"potato":["🥔","🍠"],"carrot":["🥕"],"corn":["🌽"],"pepper":["🌶️","🫑"],"bell":["🫑","🛎️","🔔","🔕"],"cucumber":["🥒"],"leafy":["🥬"],"broccoli":["🥦"],"garlic":["🧄"],"onion":["🧅"],"peanuts":["🥜"],"beans":["🫘"],"chestnut":["🌰"],"ginger":["🫚"],"root":["🫚"],"pea":["🫛"],"pod":["🫛"],"bread":["🍞","🥖"],"croissant":["🥐"],"baguette":["🥖"],"flatbread":["🫓","🥙"],"pretzel":["🥨"],"bagel":["🥯"],"pancakes":["🥞"],"waffle":["🧇"],"cheese":["🧀"],"wedge":["🧀"],"meat":["🍖","🥩"],"poultry":["🍗"],"cut":["🥩"],"bacon":["🥓"],"hamburger":["🍔"],"french":["🍟","🇬🇫","🇵🇫","🇹🇫"],"fries":["🍟"],"pizza":["🍕"],"sandwich":["🥪","🇬🇸"],"taco":["🌮"],"burrito":["🌯"],"tamale":["🫔"],"stuffed":["🥙"],"falafel":["🧆"],"egg":["🥚"],"shallow":["🥘"],"pan":["🥘"],"pot":["🍲","🍯"],"fondue":["🫕"],"bowl":["🥣","🍜","🎳"],"spoon":["🥣","🥄"],"salad":["🥗"],"popcorn":["🍿"],"butter":["🧈"],"salt":["🧂"],"canned":["🥫"],"bento":["🍱"],"box":["🍱","🥡","🧃","🥊","🗳️","🗃️","☑️"],"cracker":["🍘"],"cooked":["🍚"],"curry":["🍛"],"spaghetti":["🍝"],"roasted":["🍠"],"sweet":["🍠"],"oden":["🍢"],"sushi":["🍣"],"fried":["🍤"],"shrimp":["🍤","🦐"],"cake":["🍥","🥮","🎂"],"swirl":["🍥"],"moon":["🥮","🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘","🌙","🌚","🌛","🌜","🌝","🎑"],"dango":["🍡"],"dumple":["🥟"],"fortune":["🥠"],"cookie":["🥠","🍪"],"takeout":["🥡"],"crab":["🦀"],"lobster":["🦞"],"squid":["🦑"],"oyster":["🦪"],"soft":["🍦"],"ice":["🍦","🍧","🍨","🧊","🏒","⛸️"],"cream":["🍦","🍨"],"shaved":["🍧"],"doughnut":["🍩"],"birthday":["🎂"],"shortcake":["🍰"],"cupcake":["🧁"],"pie":["🥧"],"chocolate":["🍫"],"bar":["🍫","📊"],"candy":["🍬"],"lollipop":["🍭"],"custard":["🍮"],"honey":["🍯"],"bottle":["🍼","🍾","🧴"],"glass":["🥛","🍷","🍸","🥃","🔍","🔎"],"milk":["🥛"],"beverage":["☕","🧃"],"teapot":["🫖"],"teacup":["🍵"],"handle":["🍵"],"sake":["🍶"],"pop":["🍾"],"cork":["🍾"],"wine":["🍷"],"cocktail":["🍸"],"drink":["🍹"],"beer":["🍺","🍻"],"mug":["🍺"],"clink":["🍻","🥂"],"mugs":["🍻"],"glasses":["🥂","👓"],"tumbler":["🥃"],"pour":["🫗"],"liquid":["🫗"],"cup":["🥤"],"straw":["🥤"],"tea":["🧋"],"mate":["🧉"],"chopsticks":["🥢"],"fork":["🍽️","🍴"],"knife":["🍽️","🍴","🔪"],"plate":["🍽️"],"kitchen":["🔪"],"jar":["🫙"],"amphora":["🏺"],"globe":["🌍","🌎","🌏","🌐"],"show":["🌍","🌎","🌏"],"europe":["🌍"],"africa":["🌍","🇿🇦"],"americas":["🌎"],"asia":["🌏"],"australia":["🌏","🇦🇺"],"meridians":["🌐"],"world":["🗺️"],"map":["🗺️","🗾"],"japan":["🗾","🇯🇵"],"compass":["🧭"],"snow":["🏔️","🌨️","⛄"],"capped":["🏔️"],"volcano":["🌋"],"mount":["🗻"],"fuji":["🗻"],"camp":["🏕️"],"beach":["🏖️"],"umbrella":["🏖️","🌂","☂️","☔","⛱️"],"desert":["🏜️","🏝️"],"island":["🏝️","🇦🇨","🇧🇻","🇨🇵","🇨🇽","🇳🇫"],"national":["🏞️"],"park":["🏞️"],"stadium":["🏟️"],"classical":["🏛️"],"build":["🏛️","🏗️","🏢"],"brick":["🧱"],"rock":["🪨"],"wood":["🪵"],"hut":["🛖"],"houses":["🏘️"],"derelict":["🏚️"],"house":["🏚️","🏠","🏡"],"garden":["🏡"],"japanese":["🏣","🏯","🎎","🔰","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵"],"post":["🏣","🏤"],"hospital":["🏥"],"bank":["🏦"],"hotel":["🏨","🏩"],"convenience":["🏪"],"store":["🏪","🏬"],"school":["🏫"],"department":["🏬"],"castle":["🏯","🏰"],"wed":["💒"],"tokyo":["🗼"],"tower":["🗼"],"statue":["🗽"],"liberty":["🗽"],"church":["⛪"],"mosque":["🕌"],"hindu":["🛕"],"temple":["🛕"],"synagogue":["🕍"],"shinto":["⛩️"],"shrine":["⛩️"],"kaaba":["🕋"],"fountain":["⛲","🖋️"],"tent":["⛺","🎪"],"foggy":["🌁"],"night":["🌃","🌉"],"stars":["🌃"],"cityscape":["🏙️","🌆"],"sunrise":["🌄","🌅"],"mountains":["🌄"],"dusk":["🌆"],"sunset":["🌇"],"bridge":["🌉"],"springs":["♨️"],"carousel":["🎠"],"playground":["🛝"],"slide":["🛝"],"ferris":["🎡"],"wheel":["🎡","🛞","☸️"],"roller":["🎢","🛼"],"coaster":["🎢"],"barber":["💈"],"pole":["💈","🎣"],"circus":["🎪"],"locomotive":["🚂"],"railway":["🚃","🚞","🛤️","🚟"],"car":["🚃","🚋","🚓","🚔","🏎️","🚨"],"high":["🚄","⚡","👠","🔊"],"speed":["🚄"],"train":["🚄","🚅","🚆"],"bullet":["🚅"],"metro":["🚇"],"rail":["🚈"],"station":["🚉"],"tram":["🚊","🚋"],"monorail":["🚝"],"bus":["🚌","🚍","🚏"],"trolleybus":["🚎"],"minibus":["🚐"],"ambulance":["🚑"],"engine":["🚒"],"taxi":["🚕","🚖"],"automobile":["🚗","🚘"],"sport":["🚙"],"utility":["🚙"],"vehicle":["🚙"],"pickup":["🛻"],"truck":["🛻","🚚"],"delivery":["🚚"],"articulated":["🚛"],"lorry":["🚛"],"tractor":["🚜"],"motorcycle":["🏍️"],"motor":["🛵","🛥️"],"scooter":["🛵","🛴"],"auto":["🛺"],"rickshaw":["🛺"],"bicycle":["🚲"],"kick":["🛴"],"skateboard":["🛹"],"skate":["🛼","⛸️"],"stop":["🚏","🛑","⏹️"],"motorway":["🛣️"],"track":["🛤️","⏭️","⏮️"],"oil":["🛢️"],"drum":["🛢️","🥁","🪘"],"fuel":["⛽"],"pump":["⛽"],"horizontal":["🚥"],"traffic":["🚥","🚦"],"vertical":["🚦","🔃"],"anchor":["⚓"],"ring":["🛟","💍"],"buoy":["🛟"],"sailboat":["⛵"],"canoe":["🛶"],"speedboat":["🚤"],"passenger":["🛳️"],"ship":["🛳️","🚢"],"ferry":["⛴️"],"airplane":["✈️","🛩️","🛫","🛬"],"small":["🛩️","🌤️","◾","◽","▪️","▫️","🔸","🔹"],"departure":["🛫"],"arrival":["🛬"],"parachute":["🪂"],"seat":["💺"],"helicopter":["🚁"],"suspension":["🚟"],"cableway":["🚠"],"aerial":["🚡"],"tramway":["🚡"],"satellite":["🛰️","📡"],"rocket":["🚀"],"saucer":["🛸"],"bellhop":["🛎️"],"luggage":["🧳","🛅"],"hourglass":["⌛","⏳"],"done":["⌛","⏳"],"not":["⏳","🈶"],"watch":["⌚"],"alarm":["⏰"],"clock":["⏰","⏲️","🕰️","🕛","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚"],"stopwatch":["⏱️"],"timer":["⏲️"],"mantelpiece":["🕰️"],"twelve":["🕛","🕧"],"thirty":["🕧","🕜","🕝","🕞","🕟","🕠","🕡","🕢","🕣","🕤","🕥","🕦"],"one":["🕐","🕜","🩱","🔞"],"three":["🕒","🕞"],"five":["🕔","🕠"],"six":["🕕","🕡","🔯"],"seven":["🕖","🕢"],"eight":["🕗","🕣","✳️","✴️"],"nine":["🕘","🕤"],"ten":["🕙","🕥"],"eleven":["🕚","🕦"],"new":["🌑","🌚","🆕","🇳🇨","🇳🇿","🇵🇬"],"wax":["🌒","🌔"],"crescent":["🌒","🌘","🌙","☪️"],"first":["🌓","🌛"],"quarter":["🌓","🌗","🌛","🌜"],"gibbous":["🌔","🌖"],"full":["🌕","🌝"],"wane":["🌖","🌘"],"last":["🌗","🌜","⏮️"],"sun":["☀️","🌞","⛅","🌤️","🌥️","🌦️"],"ringed":["🪐"],"planet":["🪐"],"glow":["🌟"],"shoot":["🌠"],"milky":["🌌"],"way":["🌌"],"cloud":["☁️","⛅","⛈️","🌤️","🌥️","🌦️","🌧️","🌨️","🌩️"],"behind":["⛅","🌤️","🌥️","🌦️"],"lightning":["⛈️","🌩️"],"rain":["⛈️","🌦️","🌧️","☔"],"large":["🌥️","⬛","⬜","🔶","🔷"],"tornado":["🌪️"],"fog":["🌫️"],"cyclone":["🌀"],"rainbow":["🌈","🏳️‍🌈"],"drops":["☔"],"ground":["⛱️"],"voltage":["⚡"],"snowflake":["❄️"],"snowman":["☃️","⛄"],"comet":["☄️"],"droplet":["💧"],"jack":["🎃"],"lantern":["🎃","🏮"],"christmas":["🎄","🇨🇽"],"fireworks":["🎆"],"sparkler":["🎇"],"firecracker":["🧨"],"sparkles":["✨"],"popper":["🎉"],"confetti":["🎊"],"tanabata":["🎋"],"pine":["🎍"],"dolls":["🎎","🪆"],"carp":["🎏"],"streamer":["🎏"],"chime":["🎐"],"view":["🎑"],"ceremony":["🎑"],"envelope":["🧧","✉️","📨","📩"],"wrapped":["🎁"],"gift":["🎁"],"reminder":["🎗️"],"admission":["🎟️"],"tickets":["🎟️"],"ticket":["🎫"],"military":["🎖️","🪖"],"medal":["🎖️","🏅","🥇","🥈","🥉"],"trophy":["🏆"],"sports":["🏅"],"1st":["🥇"],"place":["🥇","🥈","🥉","🛐"],"2nd":["🥈"],"3rd":["🥉"],"soccer":["⚽"],"baseball":["⚾"],"softball":["🥎"],"basketball":["🏀"],"volleyball":["🏐"],"american":["🏈","🇦🇸"],"football":["🏈","🏉"],"rugby":["🏉"],"tennis":["🎾"],"disc":["🥏"],"game":["🏏","🎮","🎲"],"field":["🏑"],"hockey":["🏑","🏒"],"lacrosse":["🥍"],"ping":["🏓"],"pong":["🏓"],"badminton":["🏸"],"glove":["🥊"],"martial":["🥋"],"arts":["🥋","🎭"],"uniform":["🥋"],"goal":["🥅"],"net":["🥅"],"flag":["⛳","📫","📪","📬","📭","🏁","🚩","🏴","🏳️","🏳️‍🌈","🏳️‍⚧️","🏴‍☠️","🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺","🇦🇼","🇦🇽","🇦🇿","🇧🇦","🇧🇧","🇧🇩","🇧🇪","🇧🇫","🇧🇬","🇧🇭","🇧🇮","🇧🇯","🇧🇱","🇧🇲","🇧🇳","🇧🇴","🇧🇶","🇧🇷","🇧🇸","🇧🇹","🇧🇻","🇧🇼","🇧🇾","🇧🇿","🇨🇦","🇨🇨","🇨🇩","🇨🇫","🇨🇬","🇨🇭","🇨🇮","🇨🇰","🇨🇱","🇨🇲","🇨🇳","🇨🇴","🇨🇵","🇨🇷","🇨🇺","🇨🇻","🇨🇼","🇨🇽","🇨🇾","🇨🇿","🇩🇪","🇩🇬","🇩🇯","🇩🇰","🇩🇲","🇩🇴","🇩🇿","🇪🇦","🇪🇨","🇪🇪","🇪🇬","🇪🇭","🇪🇷","🇪🇸","🇪🇹","🇪🇺","🇫🇮","🇫🇯","🇫🇰","🇫🇲","🇫🇴","🇫🇷","🇬🇦","🇬🇧","🇬🇩","🇬🇪","🇬🇫","🇬🇬","🇬🇭","🇬🇮","🇬🇱","🇬🇲","🇬🇳","🇬🇵","🇬🇶","🇬🇷","🇬🇸","🇬🇹","🇬🇺","🇬🇼","🇬🇾","🇭🇰","🇭🇲","🇭🇳","🇭🇷","🇭🇹","🇭🇺","🇮🇨","🇮🇩","🇮🇪","🇮🇱","🇮🇲","🇮🇳","🇮🇴","🇮🇶","🇮🇷","🇮🇸","🇮🇹","🇯🇪","🇯🇲","🇯🇴","🇯🇵","🇰🇪","🇰🇬","🇰🇭","🇰🇮","🇰🇲","🇰🇳","🇰🇵","🇰🇷","🇰🇼","🇰🇾","🇰🇿","🇱🇦","🇱🇧","🇱🇨","🇱🇮","🇱🇰","🇱🇷","🇱🇸","🇱🇹","🇱🇺","🇱🇻","🇱🇾","🇲🇦","🇲🇨","🇲🇩","🇲🇪","🇲🇫","🇲🇬","🇲🇭","🇲🇰","🇲🇱","🇲🇲","🇲🇳","🇲🇴","🇲🇵","🇲🇶","🇲🇷","🇲🇸","🇲🇹","🇲🇺","🇲🇻","🇲🇼","🇲🇽","🇲🇾","🇲🇿","🇳🇦","🇳🇨","🇳🇪","🇳🇫","🇳🇬","🇳🇮","🇳🇱","🇳🇴","🇳🇵","🇳🇷","🇳🇺","🇳🇿","🇴🇲","🇵🇦","🇵🇪","🇵🇫","🇵🇬","🇵🇭","🇵🇰","🇵🇱","🇵🇲","🇵🇳","🇵🇷","🇵🇸","🇵🇹","🇵🇼","🇵🇾","🇶🇦","🇷🇪","🇷🇴","🇷🇸","🇷🇺","🇷🇼","🇸🇦","🇸🇧","🇸🇨","🇸🇩","🇸🇪","🇸🇬","🇸🇭","🇸🇮","🇸🇯","🇸🇰","🇸🇱","🇸🇲","🇸🇳","🇸🇴","🇸🇷","🇸🇸","🇸🇹","🇸🇻","🇸🇽","🇸🇾","🇸🇿","🇹🇦","🇹🇨","🇹🇩","🇹🇫","🇹🇬","🇹🇭","🇹🇯","🇹🇰","🇹🇱","🇹🇲","🇹🇳","🇹🇴","🇹🇷","🇹🇹","🇹🇻","🇹🇼","🇹🇿","🇺🇦","🇺🇬","🇺🇲","🇺🇳","🇺🇸","🇺🇾","🇺🇿","🇻🇦","🇻🇨","🇻🇪","🇻🇬","🇻🇮","🇻🇳","🇻🇺","🇼🇫","🇼🇸","🇽🇰","🇾🇪","🇾🇹","🇿🇦","🇿🇲","🇿🇼","🏴󠁧󠁢󠁥󠁮󠁧󠁿","🏴󠁧󠁢󠁳󠁣󠁴󠁿","🏴󠁧󠁢󠁷󠁬󠁳󠁿"],"dive":["🤿"],"shirt":["🎽","👕"],"skis":["🎿"],"sled":["🛷"],"curl":["🥌","📃"],"stone":["🥌","💎"],"bullseye":["🎯"],"yo":["🪀"],"kite":["🪁"],"pistol":["🔫"],"pool":["🎱"],"crystal":["🔮"],"magic":["🪄"],"wand":["🪄"],"video":["🎮","📹"],"joystick":["🕹️"],"slot":["🎰"],"machine":["🎰","📠"],"die":["🎲"],"puzzle":["🧩"],"piece":["🧩","🩱"],"teddy":["🧸"],"pinata":["🪅"],"mirror":["🪩","🪞"],"spade":["♠️"],"diamond":["♦️","🔶","🔷","🔸","🔹","💠"],"club":["♣️"],"chess":["♟️"],"pawn":["♟️"],"joker":["🃏"],"mahjong":["🀄"],"cards":["🎴"],"perform":["🎭"],"framed":["🖼️"],"picture":["🖼️"],"palette":["🎨"],"thread":["🧵"],"sew":["🪡"],"needle":["🪡"],"yarn":["🧶"],"knot":["🪢"],"goggles":["🥽"],"lab":["🥼"],"coat":["🥼","🧥"],"safety":["🦺","🧷"],"vest":["🦺"],"necktie":["👔"],"jeans":["👖"],"scarf":["🧣"],"gloves":["🧤"],"socks":["🧦"],"dress":["👗"],"kimono":["👘"],"sari":["🥻"],"swimsuit":["🩱"],"briefs":["🩲"],"shorts":["🩳"],"bikini":["👙"],"clothes":["👚"],"fold":["🪭"],"fan":["🪭"],"purse":["👛"],"handbag":["👜"],"clutch":["👝"],"bag":["👝","💰"],"shop":["🛍️","🛒"],"bags":["🛍️"],"backpack":["🎒"],"thong":["🩴"],"sandal":["🩴","👡"],"shoe":["👞","👟","🥿","👠"],"hike":["🥾"],"boot":["🥾","👢"],"flat":["🥿"],"heeled":["👠"],"ballet":["🩰"],"shoes":["🩰"],"pick":["🪮","⛏️","⚒️"],"top":["🎩","🔝"],"graduation":["🎓"],"cap":["🎓","🧢"],"billed":["🧢"],"helmet":["🪖","⛑️"],"rescue":["⛑️"],"prayer":["📿"],"beads":["📿"],"lipstick":["💄"],"gem":["💎"],"muted":["🔇"],"speaker":["🔇","🔈","🔉","🔊"],"low":["🔈","🪫"],"volume":["🔈","🔉","🔊"],"medium":["🔉","◼️","◻️","◾","◽"],"loudspeaker":["📢"],"megaphone":["📣"],"postal":["📯"],"horn":["📯"],"slash":["🔕"],"musical":["🎼","🎵","🎶","🎹"],"score":["🎼"],"note":["🎵"],"notes":["🎶"],"studio":["🎙️"],"microphone":["🎙️","🎤"],"level":["🎚️"],"slider":["🎚️"],"control":["🎛️","🛂"],"knobs":["🎛️"],"headphone":["🎧"],"radio":["📻","🔘"],"saxophone":["🎷"],"accordion":["🪗"],"guitar":["🎸"],"keyboard":["🎹","⌨️"],"trumpet":["🎺"],"violin":["🎻"],"banjo":["🪕"],"long":["🪘"],"maracas":["🪇"],"flute":["🪈"],"mobile":["📱","📲","📵","📴"],"phone":["📱","📲","📴"],"telephone":["☎️","📞"],"receiver":["📞"],"pager":["📟"],"fax":["📠"],"battery":["🔋","🪫"],"electric":["🔌"],"plug":["🔌"],"laptop":["💻"],"desktop":["🖥️"],"computer":["🖥️","🖱️","💽"],"printer":["🖨️"],"trackball":["🖲️"],"disk":["💽","💾","💿"],"floppy":["💾"],"optical":["💿"],"dvd":["📀"],"abacus":["🧮"],"movie":["🎥"],"camera":["🎥","📷","📸","📹"],"film":["🎞️","📽️"],"frames":["🎞️"],"projector":["📽️"],"clapper":["🎬"],"board":["🎬"],"television":["📺"],"flash":["📸"],"videocassette":["📼"],"magnify":["🔍","🔎"],"tilted":["🔍","🔎"],"candle":["🕯️"],"bulb":["💡"],"flashlight":["🔦"],"paper":["🏮","🧻"],"diya":["🪔"],"lamp":["🪔","🛋️"],"notebook":["📔","📓"],"decorative":["📔"],"cover":["📔"],"book":["📕","📖","📗","📘","📙"],"books":["📚"],"ledger":["📒"],"page":["📃","📄"],"scroll":["📜"],"newspaper":["📰","🗞️"],"rolled":["🗞️"],"bookmark":["📑","🔖"],"tabs":["📑"],"label":["🏷️"],"coin":["🪙"],"yen":["💴","💹"],"banknote":["💴","💵","💶","💷"],"dollar":["💵","💲"],"euro":["💶"],"pound":["💷"],"wings":["💸"],"credit":["💳"],"card":["💳","🗂️","📇","🗃️","🪪"],"receipt":["🧾"],"chart":["💹","📈","📉","📊"],"increase":["💹","📈"],"mail":["📧"],"income":["📨"],"outbox":["📤"],"tray":["📤","📥"],"inbox":["📥"],"package":["📦"],"mailbox":["📫","📪","📬","📭"],"lowered":["📪","📭"],"postbox":["📮"],"ballot":["🗳️"],"pencil":["✏️"],"nib":["✒️"],"pen":["🖋️","🖊️","🔏"],"paintbrush":["🖌️"],"crayon":["🖍️"],"memo":["📝"],"briefcase":["💼"],"file":["📁","📂","🗃️","🗄️"],"folder":["📁","📂"],"dividers":["🗂️"],"calendar":["📅","📆","🗓️"],"off":["📆","📴"],"notepad":["🗒️"],"decrease":["📉"],"clipboard":["📋"],"pushpin":["📌","📍"],"round":["📍"],"paperclip":["📎"],"linked":["🖇️"],"paperclips":["🖇️"],"straight":["📏"],"ruler":["📏","📐"],"triangular":["📐","🚩"],"scissors":["✂️"],"cabinet":["🗄️"],"wastebasket":["🗑️"],"locked":["🔒","🔏","🔐"],"unlocked":["🔓"],"key":["🔐","🔑","🗝️"],"hammer":["🔨","⚒️","🛠️"],"axe":["🪓"],"wrench":["🛠️","🔧"],"dagger":["🗡️"],"swords":["⚔️"],"bomb":["💣"],"boomerang":["🪃"],"shield":["🛡️"],"carpentry":["🪚"],"saw":["🪚"],"screwdriver":["🪛"],"nut":["🔩"],"bolt":["🔩"],"gear":["⚙️"],"clamp":["🗜️"],"balance":["⚖️"],"scale":["⚖️"],"link":["🔗"],"chains":["⛓️"],"hook":["🪝"],"toolbox":["🧰"],"magnet":["🧲"],"ladder":["🪜"],"alembic":["⚗️"],"test":["🧪"],"tube":["🧪"],"petri":["🧫"],"dish":["🧫"],"dna":["🧬"],"microscope":["🔬"],"telescope":["🔭"],"antenna":["📡","📶"],"syringe":["💉"],"drop":["🩸"],"blood":["🩸","🅰️","🆎","🅱️","🅾️"],"pill":["💊"],"adhesive":["🩹"],"crutch":["🩼"],"stethoscope":["🩺"],"ray":["🩻"],"door":["🚪"],"elevator":["🛗"],"window":["🪟"],"couch":["🛋️"],"chair":["🪑"],"toilet":["🚽"],"plunger":["🪠"],"shower":["🚿"],"bathtub":["🛁"],"trap":["🪤"],"razor":["🪒"],"lotion":["🧴"],"pin":["🧷"],"broom":["🧹"],"basket":["🧺"],"bucket":["🪣"],"soap":["🧼"],"bubbles":["🫧"],"toothbrush":["🪥"],"sponge":["🧽"],"extinguisher":["🧯"],"cart":["🛒"],"cigarette":["🚬"],"coffin":["⚰️"],"headstone":["🪦"],"funeral":["⚱️"],"urn":["⚱️"],"nazar":["🧿"],"amulet":["🧿"],"hamsa":["🪬"],"moai":["🗿"],"placard":["🪧"],"identification":["🪪"],"atm":["🏧"],"litter":["🚮","🚯"],"bin":["🚮"],"potable":["🚰","🚱"],"restroom":["🚻"],"closet":["🚾"],"passport":["🛂"],"customs":["🛃"],"baggage":["🛄"],"claim":["🛄"],"warn":["⚠️"],"children":["🚸"],"cross":["🚸","✝️","☦️","❌","❎"],"entry":["⛔"],"prohibited":["🚫","🈲"],"bicycles":["🚳"],"smoke":["🚭"],"non":["🚱"],"pedestrians":["🚷"],"phones":["📵"],"under":["🔞"],"eighteen":["🔞"],"radioactive":["☢️"],"biohazard":["☣️"],"curve":["↩️","↪️","⤴️","⤵️"],"clockwise":["🔃"],"arrows":["🔃","🔄"],"counterclockwise":["🔄"],"button":["🔄","🔀","🔁","🔂","▶️","⏩","⏭️","⏯️","◀️","⏪","⏮️","🔼","⏫","🔽","⏬","⏸️","⏹️","⏺️","⏏️","🔅","🔆","✅","❎","🅰️","🆎","🅱️","🆑","🆒","🆓","🆔","🆕","🆖","🅾️","🆗","🅿️","🆘","🆙","🆚","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵","🔘","🔳","🔲"],"end":["🔚"],"soon":["🔜"],"worship":["🛐"],"atom":["⚛️"],"om":["🕉️"],"david":["✡️"],"dharma":["☸️"],"yin":["☯️"],"yang":["☯️"],"latin":["✝️","🔠","🔡","🔤"],"orthodox":["☦️"],"peace":["☮️"],"menorah":["🕎"],"pointed":["🔯","✴️","🔺","🔻"],"khanda":["🪯"],"aries":["♈"],"taurus":["♉"],"gemini":["♊"],"cancer":["♋"],"leo":["♌"],"virgo":["♍"],"libra":["♎"],"scorpio":["♏"],"sagittarius":["♐"],"capricorn":["♑"],"aquarius":["♒"],"pisces":["♓"],"ophiuchus":["⛎"],"shuffle":["🔀"],"tracks":["🔀"],"repeat":["🔁","🔂"],"single":["🔂"],"fast":["⏩","⏪","⏫","⏬"],"forward":["⏩"],"next":["⏭️"],"or":["⏯️"],"pause":["⏯️","⏸️"],"reverse":["◀️","⏪"],"upwards":["🔼"],"downwards":["🔽"],"record":["⏺️"],"eject":["⏏️"],"cinema":["🎦"],"dim":["🔅"],"bright":["🔆"],"bars":["📶"],"wireless":["🛜"],"vibration":["📳"],"mode":["📳"],"female":["♀️"],"male":["♂️"],"transgender":["⚧️","🏳️‍⚧️"],"multiply":["✖️"],"plus":["➕"],"minus":["➖"],"divide":["➗"],"heavy":["🟰","💲"],"equals":["🟰"],"infinity":["♾️"],"double":["‼️","➿"],"question":["⁉️","❓","❔"],"wavy":["〰️"],"currency":["💱"],"exchange":["💱"],"recycle":["♻️"],"fleur":["⚜️"],"de":["⚜️"],"lis":["⚜️"],"trident":["🔱"],"emblem":["🔱"],"name":["📛"],"badge":["📛"],"for":["🔰","🈺"],"beginner":["🔰"],"hollow":["⭕"],"circle":["⭕","🔴","🟠","🟡","🟢","🔵","🟣","🟤","⚫","⚪"],"check":["✅","☑️","✔️"],"loop":["➰","➿"],"part":["〽️"],"alternation":["〽️"],"spoked":["✳️"],"asterisk":["✳️"],"copyright":["©️"],"registered":["®️"],"trade":["™️"],"keycap":["#️⃣","*️⃣","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"],"input":["🔠","🔡","🔢","🔣","🔤"],"uppercase":["🔠"],"lowercase":["🔡"],"numbers":["🔢"],"letters":["🔤"],"type":["🅰️","🆎","🅱️","🅾️"],"ab":["🆎"],"cl":["🆑"],"cool":["🆒"],"free":["🆓","🈶","🈚"],"information":["ℹ️"],"id":["🆔"],"circled":["Ⓜ️"],"ng":["🆖"],"sos":["🆘"],"vs":["🆚"],"here":["🈁"],"charge":["🈂️","🈶","🈚"],"monthly":["🈷️"],"amount":["🈷️"],"reserved":["🈯"],"bargain":["🉐"],"discount":["🈹"],"acceptable":["🉑"],"application":["🈸"],"pass":["🈴"],"grade":["🈴"],"vacancy":["🈳","🈵"],"congratulations":["㊗️"],"secret":["㊙️"],"business":["🈺"],"square":["🟥","🟧","🟨","🟩","🟦","🟪","🟫","⬛","⬜","◼️","◻️","◾","◽","▪️","▫️","🔳","🔲"],"triangle":["🔺","🔻"],"dot":["💠"],"chequered":["🏁"],"flags":["🎌"],"pirate":["🏴‍☠️"],"ascension":["🇦🇨"],"andorra":["🇦🇩"],"united":["🇦🇪","🇬🇧","🇺🇳","🇺🇸"],"arab":["🇦🇪"],"emirates":["🇦🇪"],"afghanistan":["🇦🇫"],"antigua":["🇦🇬"],"barbuda":["🇦🇬"],"anguilla":["🇦🇮"],"albania":["🇦🇱"],"armenia":["🇦🇲"],"angola":["🇦🇴"],"antarctica":["🇦🇶"],"argentina":["🇦🇷"],"samoa":["🇦🇸","🇼🇸"],"austria":["🇦🇹"],"aruba":["🇦🇼"],"aland":["🇦🇽"],"islands":["🇦🇽","🇨🇨","🇨🇰","🇫🇰","🇫🇴","🇬🇸","🇭🇲","🇮🇨","🇰🇾","🇲🇭","🇲🇵","🇵🇳","🇸🇧","🇹🇨","🇺🇲","🇻🇬","🇻🇮"],"azerbaijan":["🇦🇿"],"bosnia":["🇧🇦"],"herzegovina":["🇧🇦"],"barbados":["🇧🇧"],"bangladesh":["🇧🇩"],"belgium":["🇧🇪"],"burkina":["🇧🇫"],"faso":["🇧🇫"],"bulgaria":["🇧🇬"],"bahrain":["🇧🇭"],"burundi":["🇧🇮"],"benin":["🇧🇯"],"st":["🇧🇱","🇰🇳","🇱🇨","🇲🇫","🇵🇲","🇸🇭","🇻🇨"],"barthelemy":["🇧🇱"],"bermuda":["🇧🇲"],"brunei":["🇧🇳"],"bolivia":["🇧🇴"],"caribbean":["🇧🇶"],"netherlands":["🇧🇶","🇳🇱"],"brazil":["🇧🇷"],"bahamas":["🇧🇸"],"bhutan":["🇧🇹"],"bouvet":["🇧🇻"],"botswana":["🇧🇼"],"belarus":["🇧🇾"],"belize":["🇧🇿"],"canada":["🇨🇦"],"cocos":["🇨🇨"],"keel":["🇨🇨"],"congo":["🇨🇩","🇨🇬"],"kinshasa":["🇨🇩"],"central":["🇨🇫"],"african":["🇨🇫"],"republic":["🇨🇫","🇩🇴"],"brazzaville":["🇨🇬"],"switzerland":["🇨🇭"],"cote":["🇨🇮"],"ivoire":["🇨🇮"],"chile":["🇨🇱"],"cameroon":["🇨🇲"],"china":["🇨🇳","🇭🇰","🇲🇴"],"colombia":["🇨🇴"],"clipperton":["🇨🇵"],"costa":["🇨🇷"],"rica":["🇨🇷"],"cuba":["🇨🇺"],"cape":["🇨🇻"],"verde":["🇨🇻"],"curacao":["🇨🇼"],"cyprus":["🇨🇾"],"czechia":["🇨🇿"],"germany":["🇩🇪"],"diego":["🇩🇬"],"garcia":["🇩🇬"],"djibouti":["🇩🇯"],"denmark":["🇩🇰"],"dominica":["🇩🇲"],"dominican":["🇩🇴"],"algeria":["🇩🇿"],"ceuta":["🇪🇦"],"melilla":["🇪🇦"],"ecuador":["🇪🇨"],"estonia":["🇪🇪"],"egypt":["🇪🇬"],"western":["🇪🇭"],"sahara":["🇪🇭"],"eritrea":["🇪🇷"],"spain":["🇪🇸"],"ethiopia":["🇪🇹"],"european":["🇪🇺"],"union":["🇪🇺"],"finland":["🇫🇮"],"fiji":["🇫🇯"],"falkland":["🇫🇰"],"micronesia":["🇫🇲"],"faroe":["🇫🇴"],"france":["🇫🇷"],"gabon":["🇬🇦"],"kingdom":["🇬🇧"],"grenada":["🇬🇩"],"georgia":["🇬🇪","🇬🇸"],"guiana":["🇬🇫"],"guernsey":["🇬🇬"],"ghana":["🇬🇭"],"gibraltar":["🇬🇮"],"greenland":["🇬🇱"],"gambia":["🇬🇲"],"guinea":["🇬🇳","🇬🇶","🇬🇼","🇵🇬"],"guadeloupe":["🇬🇵"],"equatorial":["🇬🇶"],"greece":["🇬🇷"],"south":["🇬🇸","🇰🇷","🇸🇸","🇿🇦"],"guatemala":["🇬🇹"],"guam":["🇬🇺"],"bissau":["🇬🇼"],"guyana":["🇬🇾"],"hong":["🇭🇰"],"kong":["🇭🇰"],"sar":["🇭🇰","🇲🇴"],"heard":["🇭🇲"],"mcdonald":["🇭🇲"],"honduras":["🇭🇳"],"croatia":["🇭🇷"],"haiti":["🇭🇹"],"hungary":["🇭🇺"],"canary":["🇮🇨"],"indonesia":["🇮🇩"],"ireland":["🇮🇪"],"israel":["🇮🇱"],"isle":["🇮🇲"],"india":["🇮🇳"],"british":["🇮🇴","🇻🇬"],"indian":["🇮🇴"],"ocean":["🇮🇴"],"territory":["🇮🇴"],"iraq":["🇮🇶"],"iran":["🇮🇷"],"iceland":["🇮🇸"],"italy":["🇮🇹"],"jersey":["🇯🇪"],"jamaica":["🇯🇲"],"jordan":["🇯🇴"],"kenya":["🇰🇪"],"kyrgyzstan":["🇰🇬"],"cambodia":["🇰🇭"],"kiribati":["🇰🇮"],"comoros":["🇰🇲"],"kitts":["🇰🇳"],"nevis":["🇰🇳"],"north":["🇰🇵","🇲🇰"],"korea":["🇰🇵","🇰🇷"],"kuwait":["🇰🇼"],"cayman":["🇰🇾"],"kazakhstan":["🇰🇿"],"laos":["🇱🇦"],"lebanon":["🇱🇧"],"lucia":["🇱🇨"],"liechtenstein":["🇱🇮"],"sri":["🇱🇰"],"lanka":["🇱🇰"],"liberia":["🇱🇷"],"lesotho":["🇱🇸"],"lithuania":["🇱🇹"],"luxembourg":["🇱🇺"],"latvia":["🇱🇻"],"libya":["🇱🇾"],"morocco":["🇲🇦"],"monaco":["🇲🇨"],"moldova":["🇲🇩"],"montenegro":["🇲🇪"],"martin":["🇲🇫"],"madagascar":["🇲🇬"],"marshall":["🇲🇭"],"macedonia":["🇲🇰"],"mali":["🇲🇱"],"myanmar":["🇲🇲"],"burma":["🇲🇲"],"mongolia":["🇲🇳"],"macao":["🇲🇴"],"northern":["🇲🇵"],"mariana":["🇲🇵"],"martinique":["🇲🇶"],"mauritania":["🇲🇷"],"montserrat":["🇲🇸"],"malta":["🇲🇹"],"mauritius":["🇲🇺"],"maldives":["🇲🇻"],"malawi":["🇲🇼"],"mexico":["🇲🇽"],"malaysia":["🇲🇾"],"mozambique":["🇲🇿"],"namibia":["🇳🇦"],"caledonia":["🇳🇨"],"niger":["🇳🇪"],"norfolk":["🇳🇫"],"nigeria":["🇳🇬"],"nicaragua":["🇳🇮"],"norway":["🇳🇴"],"nepal":["🇳🇵"],"nauru":["🇳🇷"],"niue":["🇳🇺"],"zealand":["🇳🇿"],"oman":["🇴🇲"],"panama":["🇵🇦"],"peru":["🇵🇪"],"polynesia":["🇵🇫"],"papua":["🇵🇬"],"philippines":["🇵🇭"],"pakistan":["🇵🇰"],"poland":["🇵🇱"],"pierre":["🇵🇲"],"miquelon":["🇵🇲"],"pitcairn":["🇵🇳"],"puerto":["🇵🇷"],"rico":["🇵🇷"],"palestinian":["🇵🇸"],"territories":["🇵🇸","🇹🇫"],"portugal":["🇵🇹"],"palau":["🇵🇼"],"paraguay":["🇵🇾"],"qatar":["🇶🇦"],"reunion":["🇷🇪"],"romania":["🇷🇴"],"serbia":["🇷🇸"],"russia":["🇷🇺"],"rwanda":["🇷🇼"],"saudi":["🇸🇦"],"arabia":["🇸🇦"],"solomon":["🇸🇧"],"seychelles":["🇸🇨"],"sudan":["🇸🇩","🇸🇸"],"sweden":["🇸🇪"],"singapore":["🇸🇬"],"helena":["🇸🇭"],"slovenia":["🇸🇮"],"svalbard":["🇸🇯"],"jan":["🇸🇯"],"mayen":["🇸🇯"],"slovakia":["🇸🇰"],"sierra":["🇸🇱"],"leone":["🇸🇱"],"san":["🇸🇲"],"marino":["🇸🇲"],"senegal":["🇸🇳"],"somalia":["🇸🇴"],"suriname":["🇸🇷"],"sao":["🇸🇹"],"tome":["🇸🇹"],"principe":["🇸🇹"],"el":["🇸🇻"],"salvador":["🇸🇻"],"sint":["🇸🇽"],"maarten":["🇸🇽"],"syria":["🇸🇾"],"eswatini":["🇸🇿"],"tristan":["🇹🇦"],"da":["🇹🇦"],"cunha":["🇹🇦"],"turks":["🇹🇨"],"caicos":["🇹🇨"],"chad":["🇹🇩"],"southern":["🇹🇫"],"togo":["🇹🇬"],"thailand":["🇹🇭"],"tajikistan":["🇹🇯"],"tokelau":["🇹🇰"],"timor":["🇹🇱"],"leste":["🇹🇱"],"turkmenistan":["🇹🇲"],"tunisia":["🇹🇳"],"tonga":["🇹🇴"],"trinidad":["🇹🇹"],"tobago":["🇹🇹"],"tuvalu":["🇹🇻"],"taiwan":["🇹🇼"],"tanzania":["🇹🇿"],"ukraine":["🇺🇦"],"uganda":["🇺🇬"],"us":["🇺🇲","🇻🇮"],"outly":["🇺🇲"],"nations":["🇺🇳"],"states":["🇺🇸"],"uruguay":["🇺🇾"],"uzbekistan":["🇺🇿"],"vatican":["🇻🇦"],"city":["🇻🇦"],"vincent":["🇻🇨"],"grenadines":["🇻🇨"],"venezuela":["🇻🇪"],"virgin":["🇻🇬","🇻🇮"],"vietnam":["🇻🇳"],"vanuatu":["🇻🇺"],"wallis":["🇼🇫"],"futuna":["🇼🇫"],"kosovo":["🇽🇰"],"yemen":["🇾🇪"],"mayotte":["🇾🇹"],"zambia":["🇿🇲"],"zimbabwe":["🇿🇼"],"england":["🏴󠁧󠁢󠁥󠁮󠁧󠁿"],"scotland":["🏴󠁧󠁢󠁳󠁣󠁴󠁿"],"wales":["🏴󠁧󠁢󠁷󠁬󠁳󠁿"]}
 },{}],93:[function(require,module,exports){
-arguments[4][45][0].apply(exports,arguments)
-},{"dup":45}],94:[function(require,module,exports){
-arguments[4][52][0].apply(exports,arguments)
-},{"dup":52}],95:[function(require,module,exports){
+module.exports={"10":["🔟"],"grin":["😀","😃","😄","😆","😅","😺","😸"],"face":["😀","😃","😄","😁","😆","😅","😂","🙂","🙃","🫠","😉","😊","😇","🥰","😍","😘","😗","☺️","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🫢","🫣","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😶‍🌫️","😏","😒","🙄","😬","😮‍💨","🤥","🫨","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","😵‍💫","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹️","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","🤡","🤛","🤜","🐵","🐶","🐱","🐯","🐴","🐮","🐷","🐭","🐰","🐥","🐲","🌚","🌛","🌜","🌝","🌞","🌬️","📄"],"big":["😃"],"eyes":["😃","😄","😁","😊","😍","😚","😙","🫢","🙄","😵","😵‍💫","😸","😻","👀"],"smile":["😄","😁","🙂","😊","😇","🥰","😍","☺️","😙","🥲","🤗","😎","😈","😸","😻","😼"],"beam":["😁"],"squint":["😆","😝"],"sweat":["😅","😰","😓","💦"],"roll":["🤣","🙄","🧻"],"on":["🤣","🤬","❤️‍🔥","🍖","⛱️","🔛"],"the":["🤣","🤘","🫵"],"floor":["🤣"],"laugh":["🤣"],"tears":["😂","🥹","😹"],"joy":["😂","😹"],"slightly":["🙂","🙁"],"upside":["🙃"],"down":["🙃","🫳","👇","👎","↘️","⬇️","↙️","↕️","⤵️","⏬","🔻"],"melt":["🫠"],"wink":["😉","😜"],"halo":["😇"],"hearts":["🥰","💞","💕"],"heart":["😍","😻","💘","💝","💖","💗","💓","💟","❣️","💔","❤️‍🔥","❤️‍🩹","❤️","🩷","🧡","💛","💚","💙","🩵","💜","🤎","🖤","🩶","🤍","🫶","🫀","💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩","♥️"],"star":["🤩","⭐","🌟","🌠","✡️","☪️","🔯","✴️"],"struck":["🤩"],"blow":["😘"],"kiss":["😘","😗","😚","😙","😽","💋","💏","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍💋‍👩"],"closed":["😚","🌂","📕","📫","📪"],"tear":["🥲","📆"],"savore":["😋"],"food":["😋","🥘","🍲","🥫"],"tongue":["😛","😜","😝","👅"],"zany":["🤪"],"money":["🤑","💰","💸"],"mouth":["🤑","🤭","🫢","🤐","😶","🫤","😮","😦","🤬","👄"],"open":["🤗","🫢","😮","😦","👐","📖","📬","📭","📂","🈺"],"hands":["🤗","👏","🙌","🫶","👐","🙏","🧑‍🤝‍🧑","👭","👫","👬"],"hand":["🤭","🫢","👋","🤚","🖐️","✋","🫱","🫲","🫳","🫴","🫷","🫸","👌","🤏","✌️","🫰","🤙","✍️","💁","💁‍♂️","💁‍♀️","🙋","🙋‍♂️","🙋‍♀️","🪭"],"over":["🤭","🫢","🌄"],"and":["🫢","☠️","🫰","👫","🍽️","🍴","⛈️","⚒️","🛠️","🏹","🔩","🛋️","☪️"],"peek":["🫣"],"eye":["🫣","👁️‍🗨️","👁️"],"shush":["🤫"],"think":["🤔"],"salute":["🫡","🖖"],"zipper":["🤐"],"raised":["🤨","🤚","✋","✊","📫","📬"],"eyebrow":["🤨"],"neutral":["😐"],"expressionless":["😑"],"without":["😶","🍵","⛄"],"dotted":["🫥","🔯"],"line":["🫥"],"in":["😶‍🌫️","😱","👁️‍🗨️","🤵","🤵‍♂️","🤵‍♀️","🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🕴️","🧖","🧖‍♂️","🧖‍♀️","🧘","🧘‍♂️","🧘‍♀️","🛌","👤","👥","🍃","⛳","🚮"],"clouds":["😶‍🌫️"],"smirk":["😏"],"unamused":["😒"],"grimace":["😬"],"exhale":["😮‍💨"],"lying":["🤥"],"shake":["🫨"],"relieved":["😌","😥"],"pensive":["😔"],"sleepy":["😪"],"drool":["🤤"],"sleep":["😴"],"medical":["😷","⚕️"],"mask":["😷","🤿"],"thermometer":["🤒","🌡️"],"head":["🤕","🤯","🗣️"],"bandage":["🤕","🩹"],"nauseated":["🤢"],"vomite":["🤮"],"sneez":["🤧"],"hot":["🥵","🌶️","🌭","☕","♨️"],"cold":["🥶"],"woozy":["🥴"],"crossed":["😵","🤞","🫰","⚔️","🎌"],"out":["😵"],"spiral":["😵‍💫","🐚","🗒️","🗓️"],"explode":["🤯"],"cowboy":["🤠"],"hat":["🤠","👒","🎩"],"party":["🥳","🎉"],"disguised":["🥸"],"sunglasses":["😎","🕶️"],"nerd":["🤓"],"monocle":["🧐"],"confused":["😕"],"diagonal":["🫤"],"worried":["😟"],"frown":["🙁","☹️","😦","🙍","🙍‍♂️","🙍‍♀️"],"hushed":["😯"],"astonished":["😲"],"flushed":["😳"],"plead":["🥺"],"hold":["🥹","🧑‍🤝‍🧑","👭","👫","👬"],"back":["🥹","🤚","🔙"],"anguished":["😧"],"fearful":["😨"],"anxious":["😰"],"sad":["😥"],"but":["😥"],"cry":["😢","😭","😿"],"loudly":["😭"],"scream":["😱"],"fear":["😱"],"confounded":["😖"],"persever":["😣"],"disappointed":["😞"],"downcast":["😓"],"weary":["😩","🙀"],"tired":["😫"],"yawn":["🥱"],"steam":["😤","🍜"],"from":["😤"],"nose":["😤","👃","🐽"],"enraged":["😡"],"angry":["😠","👿"],"symbols":["🤬","🔣"],"horns":["😈","👿","🤘"],"skull":["💀","☠️"],"crossbones":["☠️"],"pile":["💩"],"poo":["💩"],"clown":["🤡"],"ogre":["👹"],"goblin":["👺"],"ghost":["👻"],"alien":["👽","👾"],"monster":["👾"],"robot":["🤖"],"cat":["😺","😸","😹","😻","😼","😽","🙀","😿","😾","🐱","🐈","🐈‍⬛"],"wry":["😼"],"pout":["😾","🙎","🙎‍♂️","🙎‍♀️"],"see":["🙈"],"no":["🙈","🙉","🙊","🙅","🙅‍♂️","🙅‍♀️","⛔","🚳","🚭","🚯","🚷","📵","🔞","🈵"],"evil":["🙈","🙉","🙊"],"monkey":["🙈","🙉","🙊","🐵","🐒"],"hear":["🙉","🦻"],"speak":["🙊","🗣️"],"love":["💌","🤟","🏩"],"letter":["💌"],"arrow":["💘","📲","📩","🏹","⬆️","↗️","➡️","↘️","⬇️","↙️","⬅️","↖️","↕️","↔️","↩️","↪️","⤴️","⤵️","🔙","🔚","🔛","🔜","🔝"],"ribbon":["💝","🎀","🎗️"],"sparkle":["💖","❇️"],"grow":["💗"],"beat":["💓"],"revolve":["💞"],"two":["💕","🐫","🕑","🕝"],"decoration":["💟","🎍"],"exclamation":["❣️","‼️","⁉️","❕","❗"],"broken":["💔"],"fire":["❤️‍🔥","🚒","🔥","🧯"],"mend":["❤️‍🩹"],"red":["❤️","👨‍🦰","👩‍🦰","🧑‍🦰","🍎","🧧","🀄","🏮","❓","❗","⭕","🔴","🟥","🔺","🔻"],"pink":["🩷"],"orange":["🧡","📙","🟠","🟧","🔶","🔸"],"yellow":["💛","🟡","🟨"],"green":["💚","🍏","🥬","🥗","📗","🟢","🟩"],"blue":["💙","🩵","📘","🔵","🟦","🔷","🔹"],"light":["🩵","🚈","🚨","🚥","🚦","💡"],"purple":["💜","🟣","🟪"],"brown":["🤎","🟤","🟫"],"black":["🖤","🐈‍⬛","🐦‍⬛","✒️","⚫","⬛","◼️","◾","▪️","🔲","🏴"],"grey":["🩶"],"white":["🤍","👨‍🦳","👩‍🦳","🧑‍🦳","🧑‍🦯","👨‍🦯","👩‍🦯","💮","🦯","❔","❕","⚪","⬜","◻️","◽","▫️","🔳","🏳️"],"mark":["💋","‼️","⁉️","❓","❔","❕","❗","✅","✔️","❌","❎","〽️","™️"],"hundred":["💯"],"points":["💯"],"anger":["💢","🗯️"],"symbol":["💢","♿","🚼","⚛️","☮️","⚧️","⚕️","♻️","🔰"],"collision":["💥"],"dizzy":["💫"],"droplets":["💦"],"dash":["💨","〰️"],"away":["💨"],"hole":["🕳️","⛳"],"speech":["💬","👁️‍🗨️","🗨️"],"balloon":["💬","💭","🎈"],"bubble":["👁️‍🗨️","🗨️","🗯️","🧋"],"left":["🗨️","👈","🤛","🔍","🛅","↙️","⬅️","↖️","↔️","↩️","↪️"],"right":["🗯️","👉","🤜","🔎","↗️","➡️","↘️","↔️","↩️","↪️","⤴️","⤵️"],"thought":["💭"],"zzz":["💤"],"wave":["👋","🌊"],"fingers":["🖐️","🤌","🤞"],"splayed":["🖐️"],"vulcan":["🖖"],"rightwards":["🫱","🫸"],"leftwards":["🫲","🫷"],"palm":["🫳","🫴","🌴"],"up":["🫴","👆","☝️","👍","🤲","📄","🗞️","⬆️","↗️","↖️","↕️","⤴️","⏫","🆙","🔺"],"push":["🫷","🫸"],"ok":["👌","🙆","🙆‍♂️","🙆‍♀️","🆗"],"pinched":["🤌"],"pinch":["🤏"],"victory":["✌️"],"index":["🫰","👈","👉","👆","👇","☝️","🫵","🗂️","📇"],"finger":["🫰","🖕"],"thumb":["🫰"],"you":["🤟"],"gesture":["🤟","🙅","🙅‍♂️","🙅‍♀️","🙆","🙆‍♂️","🙆‍♀️"],"sign":["🤘","🛑","🏧","🚮","♀️","♂️","🟰","💲"],"call":["🤙"],"me":["🤙"],"backhand":["👈","👉","👆","👇"],"point":["👈","👉","👆","👇","☝️","🫵"],"middle":["🖕"],"at":["🫵","🌆","🌉"],"viewer":["🫵"],"thumbs":["👍","👎"],"fist":["✊","👊","🤛","🤜"],"oncome":["👊","🚍","🚔","🚖","🚘"],"clap":["👏"],"raise":["🙌","🙋","🙋‍♂️","🙋‍♀️"],"palms":["🤲"],"together":["🤲"],"handshake":["🤝"],"folded":["🙏"],"write":["✍️"],"nail":["💅"],"polish":["💅"],"selfie":["🤳"],"flexed":["💪"],"biceps":["💪"],"mechanical":["🦾","🦿"],"arm":["🦾"],"leg":["🦿","🦵","🍗"],"foot":["🦶"],"ear":["👂","🦻","🌽"],"aid":["🦻"],"brain":["🧠"],"anatomical":["🫀"],"lungs":["🫁"],"tooth":["🦷"],"bone":["🦴","🍖"],"bite":["🫦"],"lip":["🫦"],"baby":["👶","👩‍🍼","👨‍🍼","🧑‍🍼","👼","🐤","🐥","🍼","🚼"],"child":["🧒"],"boy":["👦","👨‍👩‍👦","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👨‍👦","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👩‍👩‍👦","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👨‍👦","👨‍👦‍👦","👨‍👧‍👦","👩‍👦","👩‍👦‍👦","👩‍👧‍👦"],"girl":["👧","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👧‍👧","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👧‍👧","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👧‍👧","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"person":["🧑","👱","🧔","🧑‍🦰","🧑‍🦱","🧑‍🦳","🧑‍🦲","🧓","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","🫅","👳","👲","🤵","👰","🫄","🧑‍🍼","💆","💇","🚶","🧍","🧎","🧑‍🦯","🧑‍🦼","🧑‍🦽","🏃","🕴️","🧖","🧗","🤺","🏌️","🏄","🚣","🏊","⛹️","🏋️","🚴","🚵","🤸","🤽","🤾","🤹","🧘","🛀","🛌"],"blond":["👱","👱‍♀️","👱‍♂️"],"hair":["👱","👨‍🦰","👨‍🦱","👨‍🦳","👩‍🦰","🧑‍🦰","👩‍🦱","🧑‍🦱","👩‍🦳","🧑‍🦳","👱‍♀️","👱‍♂️","🪮"],"man":["👨","🧔‍♂️","👨‍🦰","👨‍🦱","👨‍🦳","👨‍🦲","👱‍♂️","👴","🙍‍♂️","🙎‍♂️","🙅‍♂️","🙆‍♂️","💁‍♂️","🙋‍♂️","🧏‍♂️","🙇‍♂️","🤦‍♂️","🤷‍♂️","👨‍⚕️","👨‍🎓","👨‍🏫","👨‍⚖️","👨‍🌾","👨‍🍳","👨‍🔧","👨‍🏭","👨‍💼","👨‍🔬","👨‍💻","👨‍🎤","👨‍🎨","👨‍✈️","👨‍🚀","👨‍🚒","👮‍♂️","🕵️‍♂️","💂‍♂️","👷‍♂️","👳‍♂️","🤵‍♂️","👰‍♂️","🫃","👨‍🍼","🦸‍♂️","🦹‍♂️","🧙‍♂️","🧚‍♂️","🧛‍♂️","🧝‍♂️","🧞‍♂️","🧟‍♂️","💆‍♂️","💇‍♂️","🚶‍♂️","🧍‍♂️","🧎‍♂️","👨‍🦯","👨‍🦼","👨‍🦽","🏃‍♂️","🕺","🧖‍♂️","🧗‍♂️","🏌️‍♂️","🏄‍♂️","🚣‍♂️","🏊‍♂️","⛹️‍♂️","🏋️‍♂️","🚴‍♂️","🚵‍♂️","🤸‍♂️","🤽‍♂️","🤾‍♂️","🤹‍♂️","🧘‍♂️","👫","👩‍❤️‍💋‍👨","👨‍❤️‍💋‍👨","👩‍❤️‍👨","👨‍❤️‍👨","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👞","🇮🇲"],"beard":["🧔","🧔‍♂️","🧔‍♀️"],"woman":["🧔‍♀️","👩","👩‍🦰","👩‍🦱","👩‍🦳","👩‍🦲","👱‍♀️","👵","🙍‍♀️","🙎‍♀️","🙅‍♀️","🙆‍♀️","💁‍♀️","🙋‍♀️","🧏‍♀️","🙇‍♀️","🤦‍♀️","🤷‍♀️","👩‍⚕️","👩‍🎓","👩‍🏫","👩‍⚖️","👩‍🌾","👩‍🍳","👩‍🔧","👩‍🏭","👩‍💼","👩‍🔬","👩‍💻","👩‍🎤","👩‍🎨","👩‍✈️","👩‍🚀","👩‍🚒","👮‍♀️","🕵️‍♀️","💂‍♀️","👷‍♀️","👳‍♀️","🧕","🤵‍♀️","👰‍♀️","🤰","👩‍🍼","🦸‍♀️","🦹‍♀️","🧙‍♀️","🧚‍♀️","🧛‍♀️","🧝‍♀️","🧞‍♀️","🧟‍♀️","💆‍♀️","💇‍♀️","🚶‍♀️","🧍‍♀️","🧎‍♀️","👩‍🦯","👩‍🦼","👩‍🦽","🏃‍♀️","💃","🧖‍♀️","🧗‍♀️","🏌️‍♀️","🏄‍♀️","🚣‍♀️","🏊‍♀️","⛹️‍♀️","🏋️‍♀️","🚴‍♀️","🚵‍♀️","🤸‍♀️","🤽‍♀️","🤾‍♀️","🤹‍♀️","🧘‍♀️","👫","👩‍❤️‍💋‍👨","👩‍❤️‍💋‍👩","👩‍❤️‍👨","👩‍❤️‍👩","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧","👚","👡","👢","👒"],"curly":["👨‍🦱","👩‍🦱","🧑‍🦱","➰","➿"],"bald":["👨‍🦲","👩‍🦲","🧑‍🦲"],"older":["🧓"],"old":["👴","👵","🗝️"],"tip":["💁","💁‍♂️","💁‍♀️"],"deaf":["🧏","🧏‍♂️","🧏‍♀️"],"bow":["🙇","🙇‍♂️","🙇‍♀️","🏹"],"facepalm":["🤦","🤦‍♂️","🤦‍♀️"],"shrug":["🤷","🤷‍♂️","🤷‍♀️"],"health":["🧑‍⚕️","👨‍⚕️","👩‍⚕️"],"worker":["🧑‍⚕️","👨‍⚕️","👩‍⚕️","🧑‍🏭","👨‍🏭","👩‍🏭","🧑‍💼","👨‍💼","👩‍💼","👷","👷‍♂️","👷‍♀️","⛑️"],"student":["🧑‍🎓","👨‍🎓","👩‍🎓"],"teacher":["🧑‍🏫","👨‍🏫","👩‍🏫"],"judge":["🧑‍⚖️","👨‍⚖️","👩‍⚖️"],"farmer":["🧑‍🌾","👨‍🌾","👩‍🌾"],"cook":["🧑‍🍳","👨‍🍳","👩‍🍳","🍳","🇨🇰"],"mechanic":["🧑‍🔧","👨‍🔧","👩‍🔧"],"factory":["🧑‍🏭","👨‍🏭","👩‍🏭","🏭"],"office":["🧑‍💼","👨‍💼","👩‍💼","🏢","🏣","🏤"],"scientist":["🧑‍🔬","👨‍🔬","👩‍🔬"],"technologist":["🧑‍💻","👨‍💻","👩‍💻"],"singer":["🧑‍🎤","👨‍🎤","👩‍🎤"],"artist":["🧑‍🎨","👨‍🎨","👩‍🎨","🎨"],"pilot":["🧑‍✈️","👨‍✈️","👩‍✈️"],"astronaut":["🧑‍🚀","👨‍🚀","👩‍🚀"],"firefighter":["🧑‍🚒","👨‍🚒","👩‍🚒"],"police":["👮","👮‍♂️","👮‍♀️","🚓","🚔","🚨"],"officer":["👮","👮‍♂️","👮‍♀️"],"detective":["🕵️","🕵️‍♂️","🕵️‍♀️"],"guard":["💂","💂‍♂️","💂‍♀️"],"ninja":["🥷"],"construction":["👷","👷‍♂️","👷‍♀️","🏗️","🚧"],"crown":["🫅","👑"],"prince":["🤴"],"princess":["👸"],"wear":["👳","👳‍♂️","👳‍♀️"],"turban":["👳","👳‍♂️","👳‍♀️"],"skullcap":["👲"],"headscarf":["🧕"],"tuxedo":["🤵","🤵‍♂️","🤵‍♀️"],"veil":["👰","👰‍♂️","👰‍♀️"],"pregnant":["🤰","🫃","🫄"],"breast":["🤱"],"feed":["🤱","👩‍🍼","👨‍🍼","🧑‍🍼"],"angel":["👼"],"santa":["🎅"],"claus":["🎅","🤶","🧑‍🎄"],"mrs":["🤶"],"mx":["🧑‍🎄"],"superhero":["🦸","🦸‍♂️","🦸‍♀️"],"supervillain":["🦹","🦹‍♂️","🦹‍♀️"],"mage":["🧙","🧙‍♂️","🧙‍♀️"],"fairy":["🧚","🧚‍♂️","🧚‍♀️"],"vampire":["🧛","🧛‍♂️","🧛‍♀️"],"merperson":["🧜"],"merman":["🧜‍♂️"],"mermaid":["🧜‍♀️"],"elf":["🧝","🧝‍♂️","🧝‍♀️"],"genie":["🧞","🧞‍♂️","🧞‍♀️"],"zombie":["🧟","🧟‍♂️","🧟‍♀️"],"troll":["🧌"],"gett":["💆","💆‍♂️","💆‍♀️","💇","💇‍♂️","💇‍♀️"],"massage":["💆","💆‍♂️","💆‍♀️"],"haircut":["💇","💇‍♂️","💇‍♀️"],"walk":["🚶","🚶‍♂️","🚶‍♀️"],"stand":["🧍","🧍‍♂️","🧍‍♀️"],"kneel":["🧎","🧎‍♂️","🧎‍♀️"],"cane":["🧑‍🦯","👨‍🦯","👩‍🦯","🦯"],"motorized":["🧑‍🦼","👨‍🦼","👩‍🦼","🦼"],"wheelchair":["🧑‍🦼","👨‍🦼","👩‍🦼","🧑‍🦽","👨‍🦽","👩‍🦽","🦽","🦼","♿"],"manual":["🧑‍🦽","👨‍🦽","👩‍🦽","🦽"],"run":["🏃","🏃‍♂️","🏃‍♀️","🎽","👟"],"dance":["💃","🕺"],"suit":["🕴️","♠️","♥️","♦️","♣️"],"levitate":["🕴️"],"people":["👯","🤼","🧑‍🤝‍🧑","🫂"],"bunny":["👯","👯‍♂️","👯‍♀️"],"ears":["👯","👯‍♂️","👯‍♀️"],"men":["👯‍♂️","🤼‍♂️","👬","🚹"],"women":["👯‍♀️","🤼‍♀️","👭","🚺"],"steamy":["🧖","🧖‍♂️","🧖‍♀️"],"room":["🧖","🧖‍♂️","🧖‍♀️","🚹","🚺"],"climb":["🧗","🧗‍♂️","🧗‍♀️"],"fence":["🤺"],"horse":["🏇","🐴","🐎","🎠"],"race":["🏇","🏎️"],"skier":["⛷️"],"snowboarder":["🏂"],"golf":["🏌️","🏌️‍♂️","🏌️‍♀️"],"surf":["🏄","🏄‍♂️","🏄‍♀️"],"row":["🚣","🚣‍♂️","🚣‍♀️"],"boat":["🚣","🚣‍♂️","🚣‍♀️","🛥️"],"swim":["🏊","🏊‍♂️","🏊‍♀️"],"bounce":["⛹️","⛹️‍♂️","⛹️‍♀️"],"ball":["⛹️","⛹️‍♂️","⛹️‍♀️","🍙","🎊","⚽","🎱","🔮","🪩"],"lift":["🏋️","🏋️‍♂️","🏋️‍♀️"],"weights":["🏋️","🏋️‍♂️","🏋️‍♀️"],"bike":["🚴","🚴‍♂️","🚴‍♀️","🚵","🚵‍♂️","🚵‍♀️"],"mountain":["🚵","🚵‍♂️","🚵‍♀️","🏔️","⛰️","🚞","🚠"],"cartwheel":["🤸","🤸‍♂️","🤸‍♀️"],"wrestle":["🤼","🤼‍♂️","🤼‍♀️"],"play":["🤽","🤽‍♂️","🤽‍♀️","🤾","🤾‍♂️","🤾‍♀️","🎴","▶️","⏯️"],"water":["🤽","🤽‍♂️","🤽‍♀️","🐃","🌊","🔫","🚰","🚾","🚱"],"polo":["🤽","🤽‍♂️","🤽‍♀️"],"handball":["🤾","🤾‍♂️","🤾‍♀️"],"juggle":["🤹","🤹‍♂️","🤹‍♀️"],"lotus":["🧘","🧘‍♂️","🧘‍♀️","🪷"],"position":["🧘","🧘‍♂️","🧘‍♀️"],"take":["🛀"],"bath":["🛀"],"bed":["🛌","🛏️"],"couple":["💑","👩‍❤️‍👨","👨‍❤️‍👨","👩‍❤️‍👩"],"family":["👪","👨‍👩‍👦","👨‍👩‍👧","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧","👨‍👨‍👦","👨‍👨‍👧","👨‍👨‍👧‍👦","👨‍👨‍👦‍👦","👨‍👨‍👧‍👧","👩‍👩‍👦","👩‍👩‍👧","👩‍👩‍👧‍👦","👩‍👩‍👦‍👦","👩‍👩‍👧‍👧","👨‍👦","👨‍👦‍👦","👨‍👧","👨‍👧‍👦","👨‍👧‍👧","👩‍👦","👩‍👦‍👦","👩‍👧","👩‍👧‍👦","👩‍👧‍👧"],"bust":["👤"],"silhouette":["👤","👥"],"busts":["👥"],"hug":["🫂"],"footprints":["👣"],"gorilla":["🦍"],"orangutan":["🦧"],"dog":["🐶","🐕","🦮","🐕‍🦺","🌭"],"guide":["🦮"],"service":["🐕‍🦺","🈂️"],"poodle":["🐩"],"wolf":["🐺"],"fox":["🦊"],"raccoon":["🦝"],"lion":["🦁"],"tiger":["🐯","🐅"],"leopard":["🐆"],"moose":["🫎"],"donkey":["🫏"],"unicorn":["🦄"],"zebra":["🦓"],"deer":["🦌"],"bison":["🦬"],"cow":["🐮","🐄"],"ox":["🐂"],"buffalo":["🐃"],"pig":["🐷","🐖","🐽"],"boar":["🐗"],"ram":["🐏"],"ewe":["🐑"],"goat":["🐐"],"camel":["🐪","🐫"],"hump":["🐫"],"llama":["🦙"],"giraffe":["🦒"],"elephant":["🐘"],"mammoth":["🦣"],"rhinoceros":["🦏"],"hippopotamus":["🦛"],"mouse":["🐭","🐁","🖱️","🪤"],"rat":["🐀"],"hamster":["🐹"],"rabbit":["🐰","🐇"],"chipmunk":["🐿️"],"beaver":["🦫"],"hedgehog":["🦔"],"bat":["🦇"],"bear":["🐻","🐻‍❄️","🧸"],"polar":["🐻‍❄️"],"koala":["🐨"],"panda":["🐼"],"sloth":["🦥"],"otter":["🦦"],"skunk":["🦨"],"kangaroo":["🦘"],"badger":["🦡"],"paw":["🐾"],"prints":["🐾"],"turkey":["🦃","🇹🇷"],"chicken":["🐔"],"rooster":["🐓"],"hatch":["🐣"],"chick":["🐣","🐤","🐥"],"front":["🐥"],"bird":["🐦","🐦‍⬛"],"penguin":["🐧"],"dove":["🕊️"],"eagle":["🦅"],"duck":["🦆"],"swan":["🦢"],"owl":["🦉"],"dodo":["🦤"],"feather":["🪶"],"flamingo":["🦩"],"peacock":["🦚"],"parrot":["🦜"],"wing":["🪽"],"goose":["🪿"],"frog":["🐸"],"crocodile":["🐊"],"turtle":["🐢"],"lizard":["🦎"],"snake":["🐍"],"dragon":["🐲","🐉","🀄"],"sauropod":["🦕"],"rex":["🦖"],"spout":["🐳"],"whale":["🐳","🐋"],"dolphin":["🐬"],"seal":["🦭"],"fish":["🐟","🐠","🍥","🎣"],"tropical":["🐠","🍹"],"blowfish":["🐡"],"shark":["🦈"],"octopus":["🐙"],"shell":["🐚"],"coral":["🪸"],"jellyfish":["🪼"],"snail":["🐌"],"butterfly":["🦋"],"bug":["🐛"],"ant":["🐜"],"honeybee":["🐝"],"beetle":["🪲","🐞"],"lady":["🐞"],"cricket":["🦗","🏏"],"cockroach":["🪳"],"spider":["🕷️","🕸️"],"web":["🕸️"],"scorpion":["🦂"],"mosquito":["🦟"],"fly":["🪰","🛸","🥏"],"worm":["🪱"],"microbe":["🦠"],"bouquet":["💐"],"cherry":["🌸"],"blossom":["🌸","🌼"],"flower":["💮","🥀","🎴"],"rosette":["🏵️"],"rose":["🌹"],"wilted":["🥀"],"hibiscus":["🌺"],"sunflower":["🌻"],"tulip":["🌷"],"hyacinth":["🪻"],"seedle":["🌱"],"potted":["🪴"],"plant":["🪴"],"evergreen":["🌲"],"tree":["🌲","🌳","🌴","🎄","🎋"],"deciduous":["🌳"],"cactus":["🌵"],"sheaf":["🌾"],"rice":["🌾","🍘","🍙","🍚","🍛"],"herb":["🌿"],"shamrock":["☘️"],"four":["🍀","🕓","🕟"],"leaf":["🍀","🍁","🍂","🍃"],"clover":["🍀"],"maple":["🍁"],"fallen":["🍂"],"flutter":["🍃"],"wind":["🍃","🌬️","🎐"],"empty":["🪹"],"nest":["🪹","🪺","🪆"],"eggs":["🪺"],"mushroom":["🍄"],"grapes":["🍇"],"melon":["🍈"],"watermelon":["🍉"],"tangerine":["🍊"],"lemon":["🍋"],"banana":["🍌"],"pineapple":["🍍"],"mango":["🥭"],"apple":["🍎","🍏"],"pear":["🍐"],"peach":["🍑"],"cherries":["🍒"],"strawberry":["🍓"],"blueberries":["🫐"],"kiwi":["🥝"],"fruit":["🥝"],"tomato":["🍅"],"olive":["🫒"],"coconut":["🥥"],"avocado":["🥑"],"eggplant":["🍆"],"potato":["🥔","🍠"],"carrot":["🥕"],"corn":["🌽"],"pepper":["🌶️","🫑"],"bell":["🫑","🛎️","🔔","🔕"],"cucumber":["🥒"],"leafy":["🥬"],"broccoli":["🥦"],"garlic":["🧄"],"onion":["🧅"],"peanuts":["🥜"],"beans":["🫘"],"chestnut":["🌰"],"ginger":["🫚"],"root":["🫚"],"pea":["🫛"],"pod":["🫛"],"bread":["🍞","🥖"],"croissant":["🥐"],"baguette":["🥖"],"flatbread":["🫓","🥙"],"pretzel":["🥨"],"bagel":["🥯"],"pancakes":["🥞"],"waffle":["🧇"],"cheese":["🧀"],"wedge":["🧀"],"meat":["🍖","🥩"],"poultry":["🍗"],"cut":["🥩"],"bacon":["🥓"],"hamburger":["🍔"],"french":["🍟","🇬🇫","🇵🇫","🇹🇫"],"fries":["🍟"],"pizza":["🍕"],"sandwich":["🥪","🇬🇸"],"taco":["🌮"],"burrito":["🌯"],"tamale":["🫔"],"stuffed":["🥙"],"falafel":["🧆"],"egg":["🥚"],"shallow":["🥘"],"pan":["🥘"],"pot":["🍲","🍯"],"fondue":["🫕"],"bowl":["🥣","🍜","🎳"],"spoon":["🥣","🥄"],"salad":["🥗"],"popcorn":["🍿"],"butter":["🧈"],"salt":["🧂"],"canned":["🥫"],"bento":["🍱"],"box":["🍱","🥡","🧃","🥊","🗳️","🗃️","☑️"],"cracker":["🍘"],"cooked":["🍚"],"curry":["🍛"],"spaghetti":["🍝"],"roasted":["🍠"],"sweet":["🍠"],"oden":["🍢"],"sushi":["🍣"],"fried":["🍤"],"shrimp":["🍤","🦐"],"cake":["🍥","🥮","🎂"],"swirl":["🍥"],"moon":["🥮","🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘","🌙","🌚","🌛","🌜","🌝","🎑"],"dango":["🍡"],"dumple":["🥟"],"fortune":["🥠"],"cookie":["🥠","🍪"],"takeout":["🥡"],"crab":["🦀"],"lobster":["🦞"],"squid":["🦑"],"oyster":["🦪"],"soft":["🍦"],"ice":["🍦","🍧","🍨","🧊","🏒","⛸️"],"cream":["🍦","🍨"],"shaved":["🍧"],"doughnut":["🍩"],"birthday":["🎂"],"shortcake":["🍰"],"cupcake":["🧁"],"pie":["🥧"],"chocolate":["🍫"],"bar":["🍫","📊"],"candy":["🍬"],"lollipop":["🍭"],"custard":["🍮"],"honey":["🍯"],"bottle":["🍼","🍾","🧴"],"glass":["🥛","🍷","🍸","🥃","🔍","🔎"],"milk":["🥛"],"beverage":["☕","🧃"],"teapot":["🫖"],"teacup":["🍵"],"handle":["🍵"],"sake":["🍶"],"pop":["🍾"],"cork":["🍾"],"wine":["🍷"],"cocktail":["🍸"],"drink":["🍹"],"beer":["🍺","🍻"],"mug":["🍺"],"clink":["🍻","🥂"],"mugs":["🍻"],"glasses":["🥂","👓"],"tumbler":["🥃"],"pour":["🫗"],"liquid":["🫗"],"cup":["🥤"],"straw":["🥤"],"tea":["🧋"],"mate":["🧉"],"chopsticks":["🥢"],"fork":["🍽️","🍴"],"knife":["🍽️","🍴","🔪"],"plate":["🍽️"],"kitchen":["🔪"],"jar":["🫙"],"amphora":["🏺"],"globe":["🌍","🌎","🌏","🌐"],"show":["🌍","🌎","🌏"],"europe":["🌍"],"africa":["🌍","🇿🇦"],"americas":["🌎"],"asia":["🌏"],"australia":["🌏","🇦🇺"],"meridians":["🌐"],"world":["🗺️"],"map":["🗺️","🗾"],"japan":["🗾","🇯🇵"],"compass":["🧭"],"snow":["🏔️","🌨️","⛄"],"capped":["🏔️"],"volcano":["🌋"],"mount":["🗻"],"fuji":["🗻"],"camp":["🏕️"],"beach":["🏖️"],"umbrella":["🏖️","🌂","☂️","☔","⛱️"],"desert":["🏜️","🏝️"],"island":["🏝️","🇦🇨","🇧🇻","🇨🇵","🇨🇽","🇳🇫"],"national":["🏞️"],"park":["🏞️"],"stadium":["🏟️"],"classical":["🏛️"],"build":["🏛️","🏗️","🏢"],"brick":["🧱"],"rock":["🪨"],"wood":["🪵"],"hut":["🛖"],"houses":["🏘️"],"derelict":["🏚️"],"house":["🏚️","🏠","🏡"],"garden":["🏡"],"japanese":["🏣","🏯","🎎","🔰","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵"],"post":["🏣","🏤"],"hospital":["🏥"],"bank":["🏦"],"hotel":["🏨","🏩"],"convenience":["🏪"],"store":["🏪","🏬"],"school":["🏫"],"department":["🏬"],"castle":["🏯","🏰"],"wed":["💒"],"tokyo":["🗼"],"tower":["🗼"],"statue":["🗽"],"liberty":["🗽"],"church":["⛪"],"mosque":["🕌"],"hindu":["🛕"],"temple":["🛕"],"synagogue":["🕍"],"shinto":["⛩️"],"shrine":["⛩️"],"kaaba":["🕋"],"fountain":["⛲","🖋️"],"tent":["⛺","🎪"],"foggy":["🌁"],"night":["🌃","🌉"],"stars":["🌃"],"cityscape":["🏙️","🌆"],"sunrise":["🌄","🌅"],"mountains":["🌄"],"dusk":["🌆"],"sunset":["🌇"],"bridge":["🌉"],"springs":["♨️"],"carousel":["🎠"],"playground":["🛝"],"slide":["🛝"],"ferris":["🎡"],"wheel":["🎡","🛞","☸️"],"roller":["🎢","🛼"],"coaster":["🎢"],"barber":["💈"],"pole":["💈","🎣"],"circus":["🎪"],"locomotive":["🚂"],"railway":["🚃","🚞","🛤️","🚟"],"car":["🚃","🚋","🚓","🚔","🏎️","🚨"],"high":["🚄","⚡","👠","🔊"],"speed":["🚄"],"train":["🚄","🚅","🚆"],"bullet":["🚅"],"metro":["🚇"],"rail":["🚈"],"station":["🚉"],"tram":["🚊","🚋"],"monorail":["🚝"],"bus":["🚌","🚍","🚏"],"trolleybus":["🚎"],"minibus":["🚐"],"ambulance":["🚑"],"engine":["🚒"],"taxi":["🚕","🚖"],"automobile":["🚗","🚘"],"sport":["🚙"],"utility":["🚙"],"vehicle":["🚙"],"pickup":["🛻"],"truck":["🛻","🚚"],"delivery":["🚚"],"articulated":["🚛"],"lorry":["🚛"],"tractor":["🚜"],"motorcycle":["🏍️"],"motor":["🛵","🛥️"],"scooter":["🛵","🛴"],"auto":["🛺"],"rickshaw":["🛺"],"bicycle":["🚲"],"kick":["🛴"],"skateboard":["🛹"],"skate":["🛼","⛸️"],"stop":["🚏","🛑","⏹️"],"motorway":["🛣️"],"track":["🛤️","⏭️","⏮️"],"oil":["🛢️"],"drum":["🛢️","🥁","🪘"],"fuel":["⛽"],"pump":["⛽"],"horizontal":["🚥"],"traffic":["🚥","🚦"],"vertical":["🚦","🔃"],"anchor":["⚓"],"ring":["🛟","💍"],"buoy":["🛟"],"sailboat":["⛵"],"canoe":["🛶"],"speedboat":["🚤"],"passenger":["🛳️"],"ship":["🛳️","🚢"],"ferry":["⛴️"],"airplane":["✈️","🛩️","🛫","🛬"],"small":["🛩️","🌤️","◾","◽","▪️","▫️","🔸","🔹"],"departure":["🛫"],"arrival":["🛬"],"parachute":["🪂"],"seat":["💺"],"helicopter":["🚁"],"suspension":["🚟"],"cableway":["🚠"],"aerial":["🚡"],"tramway":["🚡"],"satellite":["🛰️","📡"],"rocket":["🚀"],"saucer":["🛸"],"bellhop":["🛎️"],"luggage":["🧳","🛅"],"hourglass":["⌛","⏳"],"done":["⌛","⏳"],"not":["⏳","🈶"],"watch":["⌚"],"alarm":["⏰"],"clock":["⏰","⏲️","🕰️","🕛","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚"],"stopwatch":["⏱️"],"timer":["⏲️"],"mantelpiece":["🕰️"],"twelve":["🕛","🕧"],"thirty":["🕧","🕜","🕝","🕞","🕟","🕠","🕡","🕢","🕣","🕤","🕥","🕦"],"one":["🕐","🕜","🩱","🔞"],"three":["🕒","🕞"],"five":["🕔","🕠"],"six":["🕕","🕡","🔯"],"seven":["🕖","🕢"],"eight":["🕗","🕣","✳️","✴️"],"nine":["🕘","🕤"],"ten":["🕙","🕥"],"eleven":["🕚","🕦"],"new":["🌑","🌚","🆕","🇳🇨","🇳🇿","🇵🇬"],"wax":["🌒","🌔"],"crescent":["🌒","🌘","🌙","☪️"],"first":["🌓","🌛"],"quarter":["🌓","🌗","🌛","🌜"],"gibbous":["🌔","🌖"],"full":["🌕","🌝"],"wane":["🌖","🌘"],"last":["🌗","🌜","⏮️"],"sun":["☀️","🌞","⛅","🌤️","🌥️","🌦️"],"ringed":["🪐"],"planet":["🪐"],"glow":["🌟"],"shoot":["🌠"],"milky":["🌌"],"way":["🌌"],"cloud":["☁️","⛅","⛈️","🌤️","🌥️","🌦️","🌧️","🌨️","🌩️"],"behind":["⛅","🌤️","🌥️","🌦️"],"lightning":["⛈️","🌩️"],"rain":["⛈️","🌦️","🌧️","☔"],"large":["🌥️","⬛","⬜","🔶","🔷"],"tornado":["🌪️"],"fog":["🌫️"],"cyclone":["🌀"],"rainbow":["🌈","🏳️‍🌈"],"drops":["☔"],"ground":["⛱️"],"voltage":["⚡"],"snowflake":["❄️"],"snowman":["☃️","⛄"],"comet":["☄️"],"droplet":["💧"],"jack":["🎃"],"lantern":["🎃","🏮"],"christmas":["🎄","🇨🇽"],"fireworks":["🎆"],"sparkler":["🎇"],"firecracker":["🧨"],"sparkles":["✨"],"popper":["🎉"],"confetti":["🎊"],"tanabata":["🎋"],"pine":["🎍"],"dolls":["🎎","🪆"],"carp":["🎏"],"streamer":["🎏"],"chime":["🎐"],"view":["🎑"],"ceremony":["🎑"],"envelope":["🧧","✉️","📨","📩"],"wrapped":["🎁"],"gift":["🎁"],"reminder":["🎗️"],"admission":["🎟️"],"tickets":["🎟️"],"ticket":["🎫"],"military":["🎖️","🪖"],"medal":["🎖️","🏅","🥇","🥈","🥉"],"trophy":["🏆"],"sports":["🏅"],"1st":["🥇"],"place":["🥇","🥈","🥉","🛐"],"2nd":["🥈"],"3rd":["🥉"],"soccer":["⚽"],"baseball":["⚾"],"softball":["🥎"],"basketball":["🏀"],"volleyball":["🏐"],"american":["🏈","🇦🇸"],"football":["🏈","🏉"],"rugby":["🏉"],"tennis":["🎾"],"disc":["🥏"],"game":["🏏","🎮","🎲"],"field":["🏑"],"hockey":["🏑","🏒"],"lacrosse":["🥍"],"ping":["🏓"],"pong":["🏓"],"badminton":["🏸"],"glove":["🥊"],"martial":["🥋"],"arts":["🥋","🎭"],"uniform":["🥋"],"goal":["🥅"],"net":["🥅"],"flag":["⛳","📫","📪","📬","📭","🏁","🚩","🏴","🏳️","🏳️‍🌈","🏳️‍⚧️","🏴‍☠️","🇦🇨","🇦🇩","🇦🇪","🇦🇫","🇦🇬","🇦🇮","🇦🇱","🇦🇲","🇦🇴","🇦🇶","🇦🇷","🇦🇸","🇦🇹","🇦🇺","🇦🇼","🇦🇽","🇦🇿","🇧🇦","🇧🇧","🇧🇩","🇧🇪","🇧🇫","🇧🇬","🇧🇭","🇧🇮","🇧🇯","🇧🇱","🇧🇲","🇧🇳","🇧🇴","🇧🇶","🇧🇷","🇧🇸","🇧🇹","🇧🇻","🇧🇼","🇧🇾","🇧🇿","🇨🇦","🇨🇨","🇨🇩","🇨🇫","🇨🇬","🇨🇭","🇨🇮","🇨🇰","🇨🇱","🇨🇲","🇨🇳","🇨🇴","🇨🇵","🇨🇷","🇨🇺","🇨🇻","🇨🇼","🇨🇽","🇨🇾","🇨🇿","🇩🇪","🇩🇬","🇩🇯","🇩🇰","🇩🇲","🇩🇴","🇩🇿","🇪🇦","🇪🇨","🇪🇪","🇪🇬","🇪🇭","🇪🇷","🇪🇸","🇪🇹","🇪🇺","🇫🇮","🇫🇯","🇫🇰","🇫🇲","🇫🇴","🇫🇷","🇬🇦","🇬🇧","🇬🇩","🇬🇪","🇬🇫","🇬🇬","🇬🇭","🇬🇮","🇬🇱","🇬🇲","🇬🇳","🇬🇵","🇬🇶","🇬🇷","🇬🇸","🇬🇹","🇬🇺","🇬🇼","🇬🇾","🇭🇰","🇭🇲","🇭🇳","🇭🇷","🇭🇹","🇭🇺","🇮🇨","🇮🇩","🇮🇪","🇮🇱","🇮🇲","🇮🇳","🇮🇴","🇮🇶","🇮🇷","🇮🇸","🇮🇹","🇯🇪","🇯🇲","🇯🇴","🇯🇵","🇰🇪","🇰🇬","🇰🇭","🇰🇮","🇰🇲","🇰🇳","🇰🇵","🇰🇷","🇰🇼","🇰🇾","🇰🇿","🇱🇦","🇱🇧","🇱🇨","🇱🇮","🇱🇰","🇱🇷","🇱🇸","🇱🇹","🇱🇺","🇱🇻","🇱🇾","🇲🇦","🇲🇨","🇲🇩","🇲🇪","🇲🇫","🇲🇬","🇲🇭","🇲🇰","🇲🇱","🇲🇲","🇲🇳","🇲🇴","🇲🇵","🇲🇶","🇲🇷","🇲🇸","🇲🇹","🇲🇺","🇲🇻","🇲🇼","🇲🇽","🇲🇾","🇲🇿","🇳🇦","🇳🇨","🇳🇪","🇳🇫","🇳🇬","🇳🇮","🇳🇱","🇳🇴","🇳🇵","🇳🇷","🇳🇺","🇳🇿","🇴🇲","🇵🇦","🇵🇪","🇵🇫","🇵🇬","🇵🇭","🇵🇰","🇵🇱","🇵🇲","🇵🇳","🇵🇷","🇵🇸","🇵🇹","🇵🇼","🇵🇾","🇶🇦","🇷🇪","🇷🇴","🇷🇸","🇷🇺","🇷🇼","🇸🇦","🇸🇧","🇸🇨","🇸🇩","🇸🇪","🇸🇬","🇸🇭","🇸🇮","🇸🇯","🇸🇰","🇸🇱","🇸🇲","🇸🇳","🇸🇴","🇸🇷","🇸🇸","🇸🇹","🇸🇻","🇸🇽","🇸🇾","🇸🇿","🇹🇦","🇹🇨","🇹🇩","🇹🇫","🇹🇬","🇹🇭","🇹🇯","🇹🇰","🇹🇱","🇹🇲","🇹🇳","🇹🇴","🇹🇷","🇹🇹","🇹🇻","🇹🇼","🇹🇿","🇺🇦","🇺🇬","🇺🇲","🇺🇳","🇺🇸","🇺🇾","🇺🇿","🇻🇦","🇻🇨","🇻🇪","🇻🇬","🇻🇮","🇻🇳","🇻🇺","🇼🇫","🇼🇸","🇽🇰","🇾🇪","🇾🇹","🇿🇦","🇿🇲","🇿🇼","🏴󠁧󠁢󠁥󠁮󠁧󠁿","🏴󠁧󠁢󠁳󠁣󠁴󠁿","🏴󠁧󠁢󠁷󠁬󠁳󠁿"],"dive":["🤿"],"shirt":["🎽","👕"],"skis":["🎿"],"sled":["🛷"],"curl":["🥌","📃"],"stone":["🥌","💎"],"bullseye":["🎯"],"yo":["🪀"],"kite":["🪁"],"pistol":["🔫"],"pool":["🎱"],"crystal":["🔮"],"magic":["🪄"],"wand":["🪄"],"video":["🎮","📹"],"joystick":["🕹️"],"slot":["🎰"],"machine":["🎰","📠"],"die":["🎲"],"puzzle":["🧩"],"piece":["🧩","🩱"],"teddy":["🧸"],"pinata":["🪅"],"mirror":["🪩","🪞"],"spade":["♠️"],"diamond":["♦️","🔶","🔷","🔸","🔹","💠"],"club":["♣️"],"chess":["♟️"],"pawn":["♟️"],"joker":["🃏"],"mahjong":["🀄"],"cards":["🎴"],"perform":["🎭"],"framed":["🖼️"],"picture":["🖼️"],"palette":["🎨"],"thread":["🧵"],"sew":["🪡"],"needle":["🪡"],"yarn":["🧶"],"knot":["🪢"],"goggles":["🥽"],"lab":["🥼"],"coat":["🥼","🧥"],"safety":["🦺","🧷"],"vest":["🦺"],"necktie":["👔"],"jeans":["👖"],"scarf":["🧣"],"gloves":["🧤"],"socks":["🧦"],"dress":["👗"],"kimono":["👘"],"sari":["🥻"],"swimsuit":["🩱"],"briefs":["🩲"],"shorts":["🩳"],"bikini":["👙"],"clothes":["👚"],"fold":["🪭"],"fan":["🪭"],"purse":["👛"],"handbag":["👜"],"clutch":["👝"],"bag":["👝","💰"],"shop":["🛍️","🛒"],"bags":["🛍️"],"backpack":["🎒"],"thong":["🩴"],"sandal":["🩴","👡"],"shoe":["👞","👟","🥿","👠"],"hike":["🥾"],"boot":["🥾","👢"],"flat":["🥿"],"heeled":["👠"],"ballet":["🩰"],"shoes":["🩰"],"pick":["🪮","⛏️","⚒️"],"top":["🎩","🔝"],"graduation":["🎓"],"cap":["🎓","🧢"],"billed":["🧢"],"helmet":["🪖","⛑️"],"rescue":["⛑️"],"prayer":["📿"],"beads":["📿"],"lipstick":["💄"],"gem":["💎"],"muted":["🔇"],"speaker":["🔇","🔈","🔉","🔊"],"low":["🔈","🪫"],"volume":["🔈","🔉","🔊"],"medium":["🔉","◼️","◻️","◾","◽"],"loudspeaker":["📢"],"megaphone":["📣"],"postal":["📯"],"horn":["📯"],"slash":["🔕"],"musical":["🎼","🎵","🎶","🎹"],"score":["🎼"],"note":["🎵"],"notes":["🎶"],"studio":["🎙️"],"microphone":["🎙️","🎤"],"level":["🎚️"],"slider":["🎚️"],"control":["🎛️","🛂"],"knobs":["🎛️"],"headphone":["🎧"],"radio":["📻","🔘"],"saxophone":["🎷"],"accordion":["🪗"],"guitar":["🎸"],"keyboard":["🎹","⌨️"],"trumpet":["🎺"],"violin":["🎻"],"banjo":["🪕"],"long":["🪘"],"maracas":["🪇"],"flute":["🪈"],"mobile":["📱","📲","📵","📴"],"phone":["📱","📲","📴"],"telephone":["☎️","📞"],"receiver":["📞"],"pager":["📟"],"fax":["📠"],"battery":["🔋","🪫"],"electric":["🔌"],"plug":["🔌"],"laptop":["💻"],"desktop":["🖥️"],"computer":["🖥️","🖱️","💽"],"printer":["🖨️"],"trackball":["🖲️"],"disk":["💽","💾","💿"],"floppy":["💾"],"optical":["💿"],"dvd":["📀"],"abacus":["🧮"],"movie":["🎥"],"camera":["🎥","📷","📸","📹"],"film":["🎞️","📽️"],"frames":["🎞️"],"projector":["📽️"],"clapper":["🎬"],"board":["🎬"],"television":["📺"],"flash":["📸"],"videocassette":["📼"],"magnify":["🔍","🔎"],"tilted":["🔍","🔎"],"candle":["🕯️"],"bulb":["💡"],"flashlight":["🔦"],"paper":["🏮","🧻"],"diya":["🪔"],"lamp":["🪔","🛋️"],"notebook":["📔","📓"],"decorative":["📔"],"cover":["📔"],"book":["📕","📖","📗","📘","📙"],"books":["📚"],"ledger":["📒"],"page":["📃","📄"],"scroll":["📜"],"newspaper":["📰","🗞️"],"rolled":["🗞️"],"bookmark":["📑","🔖"],"tabs":["📑"],"label":["🏷️"],"coin":["🪙"],"yen":["💴","💹"],"banknote":["💴","💵","💶","💷"],"dollar":["💵","💲"],"euro":["💶"],"pound":["💷"],"wings":["💸"],"credit":["💳"],"card":["💳","🗂️","📇","🗃️","🪪"],"receipt":["🧾"],"chart":["💹","📈","📉","📊"],"increase":["💹","📈"],"mail":["📧"],"income":["📨"],"outbox":["📤"],"tray":["📤","📥"],"inbox":["📥"],"package":["📦"],"mailbox":["📫","📪","📬","📭"],"lowered":["📪","📭"],"postbox":["📮"],"ballot":["🗳️"],"pencil":["✏️"],"nib":["✒️"],"pen":["🖋️","🖊️","🔏"],"paintbrush":["🖌️"],"crayon":["🖍️"],"memo":["📝"],"briefcase":["💼"],"file":["📁","📂","🗃️","🗄️"],"folder":["📁","📂"],"dividers":["🗂️"],"calendar":["📅","📆","🗓️"],"off":["📆","📴"],"notepad":["🗒️"],"decrease":["📉"],"clipboard":["📋"],"pushpin":["📌","📍"],"round":["📍"],"paperclip":["📎"],"linked":["🖇️"],"paperclips":["🖇️"],"straight":["📏"],"ruler":["📏","📐"],"triangular":["📐","🚩"],"scissors":["✂️"],"cabinet":["🗄️"],"wastebasket":["🗑️"],"locked":["🔒","🔏","🔐"],"unlocked":["🔓"],"key":["🔐","🔑","🗝️"],"hammer":["🔨","⚒️","🛠️"],"axe":["🪓"],"wrench":["🛠️","🔧"],"dagger":["🗡️"],"swords":["⚔️"],"bomb":["💣"],"boomerang":["🪃"],"shield":["🛡️"],"carpentry":["🪚"],"saw":["🪚"],"screwdriver":["🪛"],"nut":["🔩"],"bolt":["🔩"],"gear":["⚙️"],"clamp":["🗜️"],"balance":["⚖️"],"scale":["⚖️"],"link":["🔗"],"chains":["⛓️"],"hook":["🪝"],"toolbox":["🧰"],"magnet":["🧲"],"ladder":["🪜"],"alembic":["⚗️"],"test":["🧪"],"tube":["🧪"],"petri":["🧫"],"dish":["🧫"],"dna":["🧬"],"microscope":["🔬"],"telescope":["🔭"],"antenna":["📡","📶"],"syringe":["💉"],"drop":["🩸"],"blood":["🩸","🅰️","🆎","🅱️","🅾️"],"pill":["💊"],"adhesive":["🩹"],"crutch":["🩼"],"stethoscope":["🩺"],"ray":["🩻"],"door":["🚪"],"elevator":["🛗"],"window":["🪟"],"couch":["🛋️"],"chair":["🪑"],"toilet":["🚽"],"plunger":["🪠"],"shower":["🚿"],"bathtub":["🛁"],"trap":["🪤"],"razor":["🪒"],"lotion":["🧴"],"pin":["🧷"],"broom":["🧹"],"basket":["🧺"],"bucket":["🪣"],"soap":["🧼"],"bubbles":["🫧"],"toothbrush":["🪥"],"sponge":["🧽"],"extinguisher":["🧯"],"cart":["🛒"],"cigarette":["🚬"],"coffin":["⚰️"],"headstone":["🪦"],"funeral":["⚱️"],"urn":["⚱️"],"nazar":["🧿"],"amulet":["🧿"],"hamsa":["🪬"],"moai":["🗿"],"placard":["🪧"],"identification":["🪪"],"atm":["🏧"],"litter":["🚮","🚯"],"bin":["🚮"],"potable":["🚰","🚱"],"restroom":["🚻"],"closet":["🚾"],"passport":["🛂"],"customs":["🛃"],"baggage":["🛄"],"claim":["🛄"],"warn":["⚠️"],"children":["🚸"],"cross":["🚸","✝️","☦️","❌","❎"],"entry":["⛔"],"prohibited":["🚫","🈲"],"bicycles":["🚳"],"smoke":["🚭"],"non":["🚱"],"pedestrians":["🚷"],"phones":["📵"],"under":["🔞"],"eighteen":["🔞"],"radioactive":["☢️"],"biohazard":["☣️"],"curve":["↩️","↪️","⤴️","⤵️"],"clockwise":["🔃"],"arrows":["🔃","🔄"],"counterclockwise":["🔄"],"button":["🔄","🔀","🔁","🔂","▶️","⏩","⏭️","⏯️","◀️","⏪","⏮️","🔼","⏫","🔽","⏬","⏸️","⏹️","⏺️","⏏️","🔅","🔆","✅","❎","🅰️","🆎","🅱️","🆑","🆒","🆓","🆔","🆕","🆖","🅾️","🆗","🅿️","🆘","🆙","🆚","🈁","🈂️","🈷️","🈶","🈯","🉐","🈹","🈚","🈲","🉑","🈸","🈴","🈳","㊗️","㊙️","🈺","🈵","🔘","🔳","🔲"],"end":["🔚"],"soon":["🔜"],"worship":["🛐"],"atom":["⚛️"],"om":["🕉️"],"david":["✡️"],"dharma":["☸️"],"yin":["☯️"],"yang":["☯️"],"latin":["✝️","🔠","🔡","🔤"],"orthodox":["☦️"],"peace":["☮️"],"menorah":["🕎"],"pointed":["🔯","✴️","🔺","🔻"],"khanda":["🪯"],"aries":["♈"],"taurus":["♉"],"gemini":["♊"],"cancer":["♋"],"leo":["♌"],"virgo":["♍"],"libra":["♎"],"scorpio":["♏"],"sagittarius":["♐"],"capricorn":["♑"],"aquarius":["♒"],"pisces":["♓"],"ophiuchus":["⛎"],"shuffle":["🔀"],"tracks":["🔀"],"repeat":["🔁","🔂"],"single":["🔂"],"fast":["⏩","⏪","⏫","⏬"],"forward":["⏩"],"next":["⏭️"],"or":["⏯️"],"pause":["⏯️","⏸️"],"reverse":["◀️","⏪"],"upwards":["🔼"],"downwards":["🔽"],"record":["⏺️"],"eject":["⏏️"],"cinema":["🎦"],"dim":["🔅"],"bright":["🔆"],"bars":["📶"],"wireless":["🛜"],"vibration":["📳"],"mode":["📳"],"female":["♀️"],"male":["♂️"],"transgender":["⚧️","🏳️‍⚧️"],"multiply":["✖️"],"plus":["➕"],"minus":["➖"],"divide":["➗"],"heavy":["🟰","💲"],"equals":["🟰"],"infinity":["♾️"],"double":["‼️","➿"],"question":["⁉️","❓","❔"],"wavy":["〰️"],"currency":["💱"],"exchange":["💱"],"recycle":["♻️"],"fleur":["⚜️"],"de":["⚜️"],"lis":["⚜️"],"trident":["🔱"],"emblem":["🔱"],"name":["📛"],"badge":["📛"],"for":["🔰","🈺"],"beginner":["🔰"],"hollow":["⭕"],"circle":["⭕","🔴","🟠","🟡","🟢","🔵","🟣","🟤","⚫","⚪"],"check":["✅","☑️","✔️"],"loop":["➰","➿"],"part":["〽️"],"alternation":["〽️"],"spoked":["✳️"],"asterisk":["✳️"],"copyright":["©️"],"registered":["®️"],"trade":["™️"],"keycap":["#️⃣","*️⃣","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"],"input":["🔠","🔡","🔢","🔣","🔤"],"uppercase":["🔠"],"lowercase":["🔡"],"numbers":["🔢"],"letters":["🔤"],"type":["🅰️","🆎","🅱️","🅾️"],"ab":["🆎"],"cl":["🆑"],"cool":["🆒"],"free":["🆓","🈶","🈚"],"information":["ℹ️"],"id":["🆔"],"circled":["Ⓜ️"],"ng":["🆖"],"sos":["🆘"],"vs":["🆚"],"here":["🈁"],"charge":["🈂️","🈶","🈚"],"monthly":["🈷️"],"amount":["🈷️"],"reserved":["🈯"],"bargain":["🉐"],"discount":["🈹"],"acceptable":["🉑"],"application":["🈸"],"pass":["🈴"],"grade":["🈴"],"vacancy":["🈳","🈵"],"congratulations":["㊗️"],"secret":["㊙️"],"business":["🈺"],"square":["🟥","🟧","🟨","🟩","🟦","🟪","🟫","⬛","⬜","◼️","◻️","◾","◽","▪️","▫️","🔳","🔲"],"triangle":["🔺","🔻"],"dot":["💠"],"chequered":["🏁"],"flags":["🎌"],"pirate":["🏴‍☠️"],"ascension":["🇦🇨"],"andorra":["🇦🇩"],"united":["🇦🇪","🇬🇧","🇺🇳","🇺🇸"],"arab":["🇦🇪"],"emirates":["🇦🇪"],"afghanistan":["🇦🇫"],"antigua":["🇦🇬"],"barbuda":["🇦🇬"],"anguilla":["🇦🇮"],"albania":["🇦🇱"],"armenia":["🇦🇲"],"angola":["🇦🇴"],"antarctica":["🇦🇶"],"argentina":["🇦🇷"],"samoa":["🇦🇸","🇼🇸"],"austria":["🇦🇹"],"aruba":["🇦🇼"],"aland":["🇦🇽"],"islands":["🇦🇽","🇨🇨","🇨🇰","🇫🇰","🇫🇴","🇬🇸","🇭🇲","🇮🇨","🇰🇾","🇲🇭","🇲🇵","🇵🇳","🇸🇧","🇹🇨","🇺🇲","🇻🇬","🇻🇮"],"azerbaijan":["🇦🇿"],"bosnia":["🇧🇦"],"herzegovina":["🇧🇦"],"barbados":["🇧🇧"],"bangladesh":["🇧🇩"],"belgium":["🇧🇪"],"burkina":["🇧🇫"],"faso":["🇧🇫"],"bulgaria":["🇧🇬"],"bahrain":["🇧🇭"],"burundi":["🇧🇮"],"benin":["🇧🇯"],"st":["🇧🇱","🇰🇳","🇱🇨","🇲🇫","🇵🇲","🇸🇭","🇻🇨"],"barthelemy":["🇧🇱"],"bermuda":["🇧🇲"],"brunei":["🇧🇳"],"bolivia":["🇧🇴"],"caribbean":["🇧🇶"],"netherlands":["🇧🇶","🇳🇱"],"brazil":["🇧🇷"],"bahamas":["🇧🇸"],"bhutan":["🇧🇹"],"bouvet":["🇧🇻"],"botswana":["🇧🇼"],"belarus":["🇧🇾"],"belize":["🇧🇿"],"canada":["🇨🇦"],"cocos":["🇨🇨"],"keel":["🇨🇨"],"congo":["🇨🇩","🇨🇬"],"kinshasa":["🇨🇩"],"central":["🇨🇫"],"african":["🇨🇫"],"republic":["🇨🇫","🇩🇴"],"brazzaville":["🇨🇬"],"switzerland":["🇨🇭"],"cote":["🇨🇮"],"ivoire":["🇨🇮"],"chile":["🇨🇱"],"cameroon":["🇨🇲"],"china":["🇨🇳","🇭🇰","🇲🇴"],"colombia":["🇨🇴"],"clipperton":["🇨🇵"],"costa":["🇨🇷"],"rica":["🇨🇷"],"cuba":["🇨🇺"],"cape":["🇨🇻"],"verde":["🇨🇻"],"curacao":["🇨🇼"],"cyprus":["🇨🇾"],"czechia":["🇨🇿"],"germany":["🇩🇪"],"diego":["🇩🇬"],"garcia":["🇩🇬"],"djibouti":["🇩🇯"],"denmark":["🇩🇰"],"dominica":["🇩🇲"],"dominican":["🇩🇴"],"algeria":["🇩🇿"],"ceuta":["🇪🇦"],"melilla":["🇪🇦"],"ecuador":["🇪🇨"],"estonia":["🇪🇪"],"egypt":["🇪🇬"],"western":["🇪🇭"],"sahara":["🇪🇭"],"eritrea":["🇪🇷"],"spain":["🇪🇸"],"ethiopia":["🇪🇹"],"european":["🇪🇺"],"union":["🇪🇺"],"finland":["🇫🇮"],"fiji":["🇫🇯"],"falkland":["🇫🇰"],"micronesia":["🇫🇲"],"faroe":["🇫🇴"],"france":["🇫🇷"],"gabon":["🇬🇦"],"kingdom":["🇬🇧"],"grenada":["🇬🇩"],"georgia":["🇬🇪","🇬🇸"],"guiana":["🇬🇫"],"guernsey":["🇬🇬"],"ghana":["🇬🇭"],"gibraltar":["🇬🇮"],"greenland":["🇬🇱"],"gambia":["🇬🇲"],"guinea":["🇬🇳","🇬🇶","🇬🇼","🇵🇬"],"guadeloupe":["🇬🇵"],"equatorial":["🇬🇶"],"greece":["🇬🇷"],"south":["🇬🇸","🇰🇷","🇸🇸","🇿🇦"],"guatemala":["🇬🇹"],"guam":["🇬🇺"],"bissau":["🇬🇼"],"guyana":["🇬🇾"],"hong":["🇭🇰"],"kong":["🇭🇰"],"sar":["🇭🇰","🇲🇴"],"heard":["🇭🇲"],"mcdonald":["🇭🇲"],"honduras":["🇭🇳"],"croatia":["🇭🇷"],"haiti":["🇭🇹"],"hungary":["🇭🇺"],"canary":["🇮🇨"],"indonesia":["🇮🇩"],"ireland":["🇮🇪"],"israel":["🇮🇱"],"isle":["🇮🇲"],"india":["🇮🇳"],"british":["🇮🇴","🇻🇬"],"indian":["🇮🇴"],"ocean":["🇮🇴"],"territory":["🇮🇴"],"iraq":["🇮🇶"],"iran":["🇮🇷"],"iceland":["🇮🇸"],"italy":["🇮🇹"],"jersey":["🇯🇪"],"jamaica":["🇯🇲"],"jordan":["🇯🇴"],"kenya":["🇰🇪"],"kyrgyzstan":["🇰🇬"],"cambodia":["🇰🇭"],"kiribati":["🇰🇮"],"comoros":["🇰🇲"],"kitts":["🇰🇳"],"nevis":["🇰🇳"],"north":["🇰🇵","🇲🇰"],"korea":["🇰🇵","🇰🇷"],"kuwait":["🇰🇼"],"cayman":["🇰🇾"],"kazakhstan":["🇰🇿"],"laos":["🇱🇦"],"lebanon":["🇱🇧"],"lucia":["🇱🇨"],"liechtenstein":["🇱🇮"],"sri":["🇱🇰"],"lanka":["🇱🇰"],"liberia":["🇱🇷"],"lesotho":["🇱🇸"],"lithuania":["🇱🇹"],"luxembourg":["🇱🇺"],"latvia":["🇱🇻"],"libya":["🇱🇾"],"morocco":["🇲🇦"],"monaco":["🇲🇨"],"moldova":["🇲🇩"],"montenegro":["🇲🇪"],"martin":["🇲🇫"],"madagascar":["🇲🇬"],"marshall":["🇲🇭"],"macedonia":["🇲🇰"],"mali":["🇲🇱"],"myanmar":["🇲🇲"],"burma":["🇲🇲"],"mongolia":["🇲🇳"],"macao":["🇲🇴"],"northern":["🇲🇵"],"mariana":["🇲🇵"],"martinique":["🇲🇶"],"mauritania":["🇲🇷"],"montserrat":["🇲🇸"],"malta":["🇲🇹"],"mauritius":["🇲🇺"],"maldives":["🇲🇻"],"malawi":["🇲🇼"],"mexico":["🇲🇽"],"malaysia":["🇲🇾"],"mozambique":["🇲🇿"],"namibia":["🇳🇦"],"caledonia":["🇳🇨"],"niger":["🇳🇪"],"norfolk":["🇳🇫"],"nigeria":["🇳🇬"],"nicaragua":["🇳🇮"],"norway":["🇳🇴"],"nepal":["🇳🇵"],"nauru":["🇳🇷"],"niue":["🇳🇺"],"zealand":["🇳🇿"],"oman":["🇴🇲"],"panama":["🇵🇦"],"peru":["🇵🇪"],"polynesia":["🇵🇫"],"papua":["🇵🇬"],"philippines":["🇵🇭"],"pakistan":["🇵🇰"],"poland":["🇵🇱"],"pierre":["🇵🇲"],"miquelon":["🇵🇲"],"pitcairn":["🇵🇳"],"puerto":["🇵🇷"],"rico":["🇵🇷"],"palestinian":["🇵🇸"],"territories":["🇵🇸","🇹🇫"],"portugal":["🇵🇹"],"palau":["🇵🇼"],"paraguay":["🇵🇾"],"qatar":["🇶🇦"],"reunion":["🇷🇪"],"romania":["🇷🇴"],"serbia":["🇷🇸"],"russia":["🇷🇺"],"rwanda":["🇷🇼"],"saudi":["🇸🇦"],"arabia":["🇸🇦"],"solomon":["🇸🇧"],"seychelles":["🇸🇨"],"sudan":["🇸🇩","🇸🇸"],"sweden":["🇸🇪"],"singapore":["🇸🇬"],"helena":["🇸🇭"],"slovenia":["🇸🇮"],"svalbard":["🇸🇯"],"jan":["🇸🇯"],"mayen":["🇸🇯"],"slovakia":["🇸🇰"],"sierra":["🇸🇱"],"leone":["🇸🇱"],"san":["🇸🇲"],"marino":["🇸🇲"],"senegal":["🇸🇳"],"somalia":["🇸🇴"],"suriname":["🇸🇷"],"sao":["🇸🇹"],"tome":["🇸🇹"],"principe":["🇸🇹"],"el":["🇸🇻"],"salvador":["🇸🇻"],"sint":["🇸🇽"],"maarten":["🇸🇽"],"syria":["🇸🇾"],"eswatini":["🇸🇿"],"tristan":["🇹🇦"],"da":["🇹🇦"],"cunha":["🇹🇦"],"turks":["🇹🇨"],"caicos":["🇹🇨"],"chad":["🇹🇩"],"southern":["🇹🇫"],"togo":["🇹🇬"],"thailand":["🇹🇭"],"tajikistan":["🇹🇯"],"tokelau":["🇹🇰"],"timor":["🇹🇱"],"leste":["🇹🇱"],"turkmenistan":["🇹🇲"],"tunisia":["🇹🇳"],"tonga":["🇹🇴"],"trinidad":["🇹🇹"],"tobago":["🇹🇹"],"tuvalu":["🇹🇻"],"taiwan":["🇹🇼"],"tanzania":["🇹🇿"],"ukraine":["🇺🇦"],"uganda":["🇺🇬"],"us":["🇺🇲","🇻🇮"],"outly":["🇺🇲"],"nations":["🇺🇳"],"states":["🇺🇸"],"uruguay":["🇺🇾"],"uzbekistan":["🇺🇿"],"vatican":["🇻🇦"],"city":["🇻🇦"],"vincent":["🇻🇨"],"grenadines":["🇻🇨"],"venezuela":["🇻🇪"],"virgin":["🇻🇬","🇻🇮"],"vietnam":["🇻🇳"],"vanuatu":["🇻🇺"],"wallis":["🇼🇫"],"futuna":["🇼🇫"],"kosovo":["🇽🇰"],"yemen":["🇾🇪"],"mayotte":["🇾🇹"],"zambia":["🇿🇲"],"zimbabwe":["🇿🇼"],"england":["🏴󠁧󠁢󠁥󠁮󠁧󠁿"],"scotland":["🏴󠁧󠁢󠁳󠁣󠁴󠁿"],"wales":["🏴󠁧󠁢󠁷󠁬󠁳󠁿"]}
+},{}],94:[function(require,module,exports){
+arguments[4][46][0].apply(exports,arguments)
+},{"dup":46}],95:[function(require,module,exports){
+arguments[4][53][0].apply(exports,arguments)
+},{"dup":53}],96:[function(require,module,exports){
 /*
 	String Kit
 
@@ -41019,7 +41220,7 @@ module.exports = function( str ) {
 
 
 
-},{"./json-data/latinize-map.json":93}],96:[function(require,module,exports){
+},{"./json-data/latinize-map.json":94}],97:[function(require,module,exports){
 /*
 	String Kit
 
@@ -41381,10 +41582,10 @@ unicode.isEmojiModifierCodePoint = code =>
 	code === 0xfe0f ;	// VARIATION SELECTOR-16 [VS16] {emoji variation selector}
 
 
-},{"./json-data/unicode-emoji-width-ranges.json":94}],97:[function(require,module,exports){
+},{"./json-data/unicode-emoji-width-ranges.json":95}],98:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.6.7",
+  "version": "0.7.0",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
@@ -41434,9 +41635,9 @@ module.exports={
   }
 }
 
-},{}],98:[function(require,module,exports){
-
 },{}],99:[function(require,module,exports){
+
+},{}],100:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -41588,7 +41789,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],100:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 (function (Buffer){(function (){
 /*!
  * The buffer module from node.js, for the browser.
@@ -43369,7 +43570,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":99,"buffer":100,"ieee754":101}],101:[function(require,module,exports){
+},{"base64-js":100,"buffer":101,"ieee754":102}],102:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -43456,7 +43657,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],102:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -43479,7 +43680,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],103:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -44012,7 +44213,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":104}],104:[function(require,module,exports){
+},{"_process":105}],105:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -44198,7 +44399,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],105:[function(require,module,exports){
+},{}],106:[function(require,module,exports){
 (function (setImmediate,clearImmediate){(function (){
 var nextTick = require('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -44277,5 +44478,5 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
   delete immediateIds[id];
 };
 }).call(this)}).call(this,require("timers").setImmediate,require("timers").clearImmediate)
-},{"process/browser.js":104,"timers":105}]},{},[34])(34)
+},{"process/browser.js":105,"timers":106}]},{},[35])(35)
 });

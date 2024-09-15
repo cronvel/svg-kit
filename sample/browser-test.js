@@ -340,6 +340,45 @@ async function pathTest() {
 
 
 
+async function polygonTest() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
+
+	var vgPolygon = new svgKit.VGPolygon( {
+		style: {
+			fill: '%lighter green' ,
+			stroke: '%red' ,
+			strokeWidth: 2
+		} ,
+		points: [
+			{ x: 200 , y: 120 } ,
+			{ x: 350 , y: 140 } ,
+			{ x: 450 , y: 250 } ,
+			{ x: 350 , y: 370 } ,
+			{ x: 200 , y: 340 } ,
+			{ x: 110 , y: 200 }
+		]
+	} ) ;
+	console.warn( "VG:" , vg ) ;
+
+	vg.addEntity( vgPolygon ) ;
+
+	renderAll( vg ) ;
+	
+	var $canvas = document.getElementById( 'canvas' ) ;
+	$canvas.addEventListener( 'click' , event => {
+		var coords = svgKit.canvas.screenToCanvasCoords( $canvas , { x: event.clientX , y: event.clientY } ) ;
+		console.log( "coords:" , coords ) ;
+		if ( vgPolygon.isInside( coords ) ) {
+			console.warn( "Inside!" ) ;
+		}
+	} ) ;
+}
+
+
+
 async function renderAll( vg ) {
 	var $canvas = document.getElementById( 'canvas' ) ,
 		$svgDom = document.getElementById( 'svgDom' ) ,
@@ -410,7 +449,8 @@ async function renderCanvas( vg ) {
 
 
 //svgKit.domKit.ready( test ) ;
-svgKit.domKit.ready( pathTest ) ;
+//svgKit.domKit.ready( pathTest ) ;
+svgKit.domKit.ready( polygonTest ) ;
 //svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
 
