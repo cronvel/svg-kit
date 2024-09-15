@@ -309,6 +309,37 @@ async function test() {
 	renderAll( vg ) ;
 }
 
+
+
+async function pathTest() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
+
+	var vgPath = new svgKit.VGPath( {
+		style: {
+			fill: '%lighter blue' ,
+			stroke: '%red-violet' ,
+			strokeWidth: 2
+		}
+	} ) ;
+	vgPath.moveTo( { x: 200 , y: 120 } ) ;
+	vgPath.lineTo( { x: 350 , y: 140 } ) ;
+	vgPath.lineTo( { x: 450 , y: 250 } ) ;
+	vgPath.lineTo( { x: 350 , y: 370 } ) ;
+	vgPath.lineTo( { x: 200 , y: 340 } ) ;
+	vgPath.lineTo( { x: 110 , y: 200 } ) ;
+	vgPath.close() ;
+	console.warn( "VG:" , vg ) ;
+
+	vg.addEntity( vgPath ) ;
+
+	renderAll( vg ) ;
+}
+
+
+
 async function renderAll( vg ) {
 	var $canvas = document.getElementById( 'canvas' ) ,
 		$svgDom = document.getElementById( 'svgDom' ) ,
@@ -350,6 +381,8 @@ async function renderAll( vg ) {
 	$svgText.appendChild( anchor ) ;
 }
 
+
+
 async function renderCanvas( vg ) {
 	var $canvas = document.getElementById( 'canvas' ) ;
 
@@ -374,7 +407,10 @@ async function renderCanvas( vg ) {
 	await vg.renderCanvas( ctx ) ;
 }
 
-svgKit.domKit.ready( test ) ;
+
+
+//svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( pathTest ) ;
 //svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
 
