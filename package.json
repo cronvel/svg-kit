@@ -1,6 +1,6 @@
 {
   "name": "svg-kit",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {

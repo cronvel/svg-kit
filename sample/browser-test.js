@@ -361,9 +361,25 @@ async function polygonTest() {
 			{ x: 110 , y: 200 }
 		]
 	} ) ;
-	console.warn( "VG:" , vg ) ;
-
 	vg.addEntity( vgPolygon ) ;
+
+	var vgPolygon2 = new svgKit.VGPolygon( {
+		style: {
+			fill: '%lighter violet' ,
+			stroke: '%red' ,
+			strokeWidth: 2
+		} ,
+		build: {
+			x: 250 ,
+			y: 250 ,
+			radius: 50 ,
+			sides: 6 ,
+			angleDeg: -90
+		}
+	} ) ;
+	vg.addEntity( vgPolygon2 ) ;
+
+	console.warn( "VG:" , vg ) ;
 
 	renderAll( vg ) ;
 	
@@ -372,7 +388,70 @@ async function polygonTest() {
 		var coords = svgKit.canvas.screenToCanvasCoords( $canvas , { x: event.clientX , y: event.clientY } ) ;
 		console.log( "coords:" , coords ) ;
 		if ( vgPolygon.isInside( coords ) ) {
-			console.warn( "Inside!" ) ;
+			console.warn( "Inside 1!" ) ;
+		}
+
+		if ( vgPolygon2.isInside( coords ) ) {
+			console.warn( "Inside 2!" ) ;
+		}
+	} ) ;
+}
+
+
+
+async function hexaTilesTest() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
+
+	var vgPolygonList = [] ,
+		radius = 50 ,
+		startingX = 100 ,
+		startingY = 100 ;
+
+	const createPolygonAt = ( x , y , boardX , boardY ) => {
+		return new svgKit.VGPolygon( {
+			data: { boardX , boardY } ,
+			style: {
+				fill: '%lighter violet' ,
+				stroke: '%red' ,
+				strokeWidth: 2
+			} ,
+			build: {
+				x , y , radius ,
+				sides: 6 ,
+				angleDeg: -90
+			}
+		} ) ;
+	} ;
+
+	const sqrt3 = Math.sqrt( 3 ) ;
+
+	for ( let j = 0 ; j < 5 ; j ++ ) {
+		let y = startingX + radius * sqrt3 * j ;
+
+		for ( let i = 0 ; i < 5 ; i ++ ) {
+			let x = startingX + radius * ( 2 * i + ( j % 2 ? 2 : 1 ) ) ;
+			let vgPolygon = createPolygonAt( x , y , i , j ) ;
+			vg.addEntity( vgPolygon ) ;
+			vgPolygonList.push( vgPolygon ) ;
+		}
+	}
+
+	console.warn( "VG:" , vg ) ;
+
+	renderAll( vg ) ;
+	
+	var $canvas = document.getElementById( 'canvas' ) ;
+	$canvas.addEventListener( 'click' , event => {
+		var coords = svgKit.canvas.screenToCanvasCoords( $canvas , { x: event.clientX , y: event.clientY } ) ;
+		console.log( "coords:" , coords ) ;
+
+		for ( let vgPolygon of vgPolygonList ) {
+			if ( vgPolygon.isInside( coords ) ) {
+				console.warn( "Inside!" , vgPolygon.data ) ;
+			}
 		}
 	} ) ;
 }
@@ -450,7 +529,8 @@ async function renderCanvas( vg ) {
 
 //svgKit.domKit.ready( test ) ;
 //svgKit.domKit.ready( pathTest ) ;
-svgKit.domKit.ready( polygonTest ) ;
+//svgKit.domKit.ready( polygonTest ) ;
+svgKit.domKit.ready( hexaTilesTest ) ;
 //svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
 
