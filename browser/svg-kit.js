@@ -1611,6 +1611,7 @@ VGContainer.prototype.morphSvgDom = function() {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const BoundingBox = require( './BoundingBox.js' ) ;
 const canvasUtilities = require( './canvas-utilities.js' ) ;
 
 
@@ -1677,6 +1678,12 @@ VGEllipse.prototype.export = function( data = {} ) {
 
 
 
+VGEllipse.prototype.getBoundingBox = function() {
+	return new BoundingBox( this.x - this.rx , this.y - this.ry , this.x + this.rx , this.y + this.ry ) ;
+} ;
+
+
+
 VGEllipse.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		cx: this.x ,
@@ -1708,7 +1715,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./canvas-utilities.js":27}],10:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":10,"./canvas-utilities.js":27}],10:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -2390,9 +2397,35 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , isR
 	}
 
 	var promise = this.renderCanvasPromise = new Promise() ,
+		hasTransform = false ,
 		shouldRender = true ;
 
-	options.pixelsPerUnit = + options.pixelsPerUnit || 1 ;
+	// Manage position, rotation and scale using canvas' transformation methods
+	if ( master === this ) {
+		let translateX = options.x || 0 ,
+			translateY = options.y || 0 ,
+			rotation = options.rotation || 0 ,
+			scale = options.scale || 1 ,
+			scaleX = options.scaleX || scale ,
+			scaleY = options.scaleY || scale ;
+		
+		if ( options.stretch && this.viewBox ) {
+			translateX = - this.viewBox.x ;
+			translateY = - this.viewBox.y ;
+			scaleX = canvasCtx.canvas.width / this.viewBox.width ;
+			scaleY = canvasCtx.canvas.height / this.viewBox.height ;
+		}
+
+		if ( translateX || translateY || rotation || scaleX !== 1 || scaleY !== 1 ) {
+			hasTransform = true ;
+			canvasCtx.save() ;
+
+			if ( translateX || translateY ) { canvasCtx.translate( translateX , translateY ) ; }
+			if ( rotation ) { canvasCtx.rotate( rotation ) ; }
+			if ( scaleX !== 1 || scaleY !== 1 ) { canvasCtx.scale( scaleX , scaleY ) ; }
+		}
+	}
+
 	this.backgroundImageUsed = false ;
 
 	if ( isRedraw ) {
@@ -2467,6 +2500,9 @@ VGEntity.prototype.renderCanvas = async function( canvasCtx , options = {} , isR
 			}
 		}
 	}
+
+	// Restore, removing transformations
+	if ( hasTransform ) { canvasCtx.restore() ; }
 
 	//if ( this.root === this ) { console.warn( "<<< root renderCanvas()" , isRedraw ? 'redraw' : 'draw' ) ; }
 	this.needFullDraw = false ;
@@ -5502,6 +5538,7 @@ VGGroup.prototype.set = function( params ) {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const BoundingBox = require( './BoundingBox.js' ) ;
 const getImageSize = require( './getImageSize.js' ) ;
 
 const dom = require( 'dom-kit' ) ;
@@ -5605,6 +5642,12 @@ VGImage.prototype.export = function( data = {} ) {
 	if ( this.aspect !== 'stretch' ) { data.aspect = this.aspect ; }
 
 	return data ;
+} ;
+
+
+
+VGImage.prototype.getBoundingBox = function() {
+	return new BoundingBox( this.x , this.y , this.x + this.width , this.y + this.height ) ;
 } ;
 
 
@@ -6051,7 +6094,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./getImageSize.js":33,"dom-kit":69}],21:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":10,"./getImageSize.js":33,"dom-kit":69}],21:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6563,6 +6606,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 
 const VGEntity = require( './VGEntity.js' ) ;
 const Polygon = require( './Polygon.js' ) ;
+const BoundingBox = require( './BoundingBox.js' ) ;
 const canvasUtilities = require( './canvas-utilities.js' ) ;
 
 
@@ -6613,6 +6657,24 @@ VGPolygon.prototype.export = function( data = {} ) {
 	VGEntity.prototype.export.call( this , data ) ;
 	Polygon.prototype.export.call( this , data ) ;
 	return data ;
+} ;
+
+
+
+VGPolygon.prototype.getBoundingBox = function() {
+	var xmin = Infinity ,
+		xmax = - Infinity ,
+		ymin = Infinity ,
+		ymax = - Infinity ;
+
+	for ( let point of this.points ) {
+		if ( point.x < xmin ) { xmin = point.x ; }
+		if ( point.x > xmax ) { xmax = point.x ; }
+		if ( point.y < ymin ) { ymin = point.y ; }
+		if ( point.y > ymax ) { ymax = point.y ; }
+	}
+
+	return new BoundingBox( xmin , ymin , xmax , ymax ) ;
 } ;
 
 
@@ -6677,7 +6739,7 @@ VGPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":98,"./Polygon.js":5,"./VGEntity.js":10,"./canvas-utilities.js":27}],23:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./Polygon.js":5,"./VGEntity.js":10,"./canvas-utilities.js":27}],23:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6863,6 +6925,7 @@ VGPseudoEntity.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const BoundingBox = require( './BoundingBox.js' ) ;
 const canvasUtilities = require( './canvas-utilities.js' ) ;
 
 
@@ -6927,6 +6990,12 @@ VGRect.prototype.export = function( data = {} ) {
 
 
 
+VGRect.prototype.getBoundingBox = function() {
+	return new BoundingBox( this.x , this.y , this.x + this.width , this.y + this.height ) ;
+} ;
+
+
+
 VGRect.prototype.svgAttributes = function( master = this ) {
 	var attr = {
 		x: this.x ,
@@ -6973,7 +7042,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./canvas-utilities.js":27}],26:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":10,"./canvas-utilities.js":27}],26:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -41621,7 +41690,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":95}],98:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {

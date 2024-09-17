@@ -340,6 +340,35 @@ async function pathTest() {
 
 
 
+async function viewBoxTest() {
+	var vg = new svgKit.VG( {
+		//invertY: true
+	} ) ;
+
+	var vgPolygon = new svgKit.VGPolygon( {
+		style: {
+			fill: '%lighter green' ,
+			stroke: '%red' ,
+			strokeWidth: 2
+		} ,
+		build: {
+			x: 0 ,
+			y: 0 ,
+			radius: 100 ,
+			sides: 6
+		}
+	} ) ;
+	vg.addEntity( vgPolygon ) ;
+	vg.viewBox.set( vgPolygon.getBoundingBox() ) ;
+
+	console.warn( "VG:" , vg ) ;
+
+	//renderAll( vg , { x: 50 , y: 50 } ) ;
+	renderAll( vg , { stretch: true } ) ;
+}
+
+
+
 async function polygonTest() {
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -458,7 +487,7 @@ async function hexaTilesTest() {
 
 
 
-async function renderAll( vg ) {
+async function renderAll( vg , options = null ) {
 	var $canvas = document.getElementById( 'canvas' ) ,
 		$svgDom = document.getElementById( 'svgDom' ) ,
 		$svgText = document.getElementById( 'svgText' ) ;
@@ -481,7 +510,7 @@ async function renderAll( vg ) {
 
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
-	await vg.renderCanvas( ctx ) ;
+	await vg.renderCanvas( ctx , options ) ;
 
 	// Display using SVG DOM renderer
 	$svgDom.appendChild( await vg.renderSvgDom() ) ;
@@ -501,7 +530,7 @@ async function renderAll( vg ) {
 
 
 
-async function renderCanvas( vg ) {
+async function renderCanvas( vg , options ) {
 	var $canvas = document.getElementById( 'canvas' ) ;
 
 	svgKit.fontLib.setFontUrl( 'serif' , '../fonts/serif.ttf' ) ;
@@ -522,15 +551,16 @@ async function renderCanvas( vg ) {
 
 	// Display using the Canvas renderer
 	$canvas.classList.remove( 'hidden' ) ;
-	await vg.renderCanvas( ctx ) ;
+	await vg.renderCanvas( ctx , options ) ;
 }
 
 
 
 //svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( viewBoxTest ) ;
 //svgKit.domKit.ready( pathTest ) ;
 //svgKit.domKit.ready( polygonTest ) ;
-svgKit.domKit.ready( hexaTilesTest ) ;
+//svgKit.domKit.ready( hexaTilesTest ) ;
 //svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
 
