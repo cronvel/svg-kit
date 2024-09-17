@@ -364,7 +364,9 @@ async function viewBoxTest() {
 	console.warn( "VG:" , vg ) ;
 
 	//renderAll( vg , { x: 50 , y: 50 } ) ;
-	renderAll( vg , { stretch: true } ) ;
+	//renderAll( vg , { stretch: true } ) ;
+	renderAll( vg , { stretch: 'contain' } ) ;
+	//renderAll( vg , { stretch: 'contain' , rotation: Math.PI / 5 } ) ;
 }
 
 
