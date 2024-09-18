@@ -345,12 +345,13 @@ async function viewBoxTest() {
 		//invertY: true
 	} ) ;
 
-	var vgPolygon = new svgKit.VGPolygon( {
+	var vgPolygon = new svgKit.VGConvexPolygon( {
+		/*
 		style: {
 			fill: '%lighter green' ,
 			stroke: '%red' ,
 			strokeWidth: 2
-		} ,
+		} ,*/
 		build: {
 			x: 0 ,
 			y: 0 ,
@@ -377,7 +378,7 @@ async function polygonTest() {
 		//invertY: true
 	} ) ;
 
-	var vgPolygon = new svgKit.VGPolygon( {
+	var vgPolygon = new svgKit.VGConvexPolygon( {
 		style: {
 			fill: '%lighter green' ,
 			stroke: '%red' ,
@@ -394,7 +395,7 @@ async function polygonTest() {
 	} ) ;
 	vg.addEntity( vgPolygon ) ;
 
-	var vgPolygon2 = new svgKit.VGPolygon( {
+	var vgPolygon2 = new svgKit.VGConvexPolygon( {
 		style: {
 			fill: '%lighter violet' ,
 			stroke: '%red' ,
@@ -442,7 +443,7 @@ async function hexaTilesTest() {
 		startingY = 100 ;
 
 	const createPolygonAt = ( x , y , boardX , boardY ) => {
-		return new svgKit.VGPolygon( {
+		return new svgKit.VGConvexPolygon( {
 			data: { boardX , boardY } ,
 			style: {
 				fill: '%lighter violet' ,

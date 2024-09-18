@@ -185,6 +185,199 @@ BoundingBox.prototype.isInside = function( coords ) {
 
 
 
+const pathUtilities = require( './path-utilities.js' ) ;
+
+
+
+function ConvexPolygon( params ) {
+	// Note: all properties should be copied to VGConvexPolygon as well
+	this.points = [] ;
+	this.sides = [] ;
+	this.clockwise = true ;
+	this.autofix = false ;
+	this.badConvexPolygon = false ;
+
+	if ( params ) { this.set( params ) ; }
+}
+
+module.exports = ConvexPolygon ;
+
+
+
+ConvexPolygon.prototype.set = function( params ) {
+	if ( params.points ) { this.setPoints( params.points ) ; }
+	if ( typeof params.clockwise === 'boolean' ) { this.clockwise = params.clockwise ; }
+} ;
+
+
+
+ConvexPolygon.prototype.setPoints = function( points ) {
+	this.points.length = 0 ;
+	this.sides.length = 0 ;
+
+	if ( ! Array.isArray( points ) ) { return ; }
+	for ( let point of points ) { this.addPoint( point , true ) ; }
+	this.addClosingSide() ;
+
+	if ( this.autofix ) { this.fixConvexPolygon() ; }
+} ;
+
+
+
+ConvexPolygon.prototype.addPoint = function( point , noClosingSide = false ) {
+	if ( ! point || typeof point !== 'object' ) { return ; }
+
+	this.points.push( {
+		x: + point.x || 0 ,
+		y: + point.y || 0
+	} ) ;
+
+	this.addLastSide() ;
+	if ( ! noClosingSide ) { this.addClosingSide() ; }
+} ;
+
+
+
+ConvexPolygon.prototype.addLastSide = function() {
+	var count = this.points.length ;
+	if ( count <= 1 ) { return ; }
+	this.sides[ count - 2 ] = this.getParametricLineParameters( this.points[ count - 2 ] , this.points[ count - 1 ] ) ;
+} ;
+
+
+
+ConvexPolygon.prototype.addClosingSide = function() {
+	var count = this.points.length ;
+	if ( count < 3 ) { return ; }
+	this.sides[ count - 1 ] = this.getParametricLineParameters( this.points[ count - 1 ] , this.points[ 0 ] ) ;
+} ;
+
+
+
+ConvexPolygon.prototype.export = function( data = {} ) {
+	data.points = this.points.map( p => ( { x: p.x , y: p.y } ) ) ;
+	return data ;
+} ;
+
+
+
+ConvexPolygon.prototype.toD = function( invertY = false ) {
+	return pathUtilities.polygonPointsToD( this.points , invertY ) ;
+} ;
+
+
+
+/*
+	Get the parametric line equation's parameters.
+	The equation is:   ax + by + c
+	The result is =0 on the line, >0 on the left (point 1 toward point 2), <0 on the right.
+*/
+ConvexPolygon.prototype.getParametricLineParameters = function( point1 , point2 ) {
+	var dx = point2.x - point1.x ,
+		dy = point2.y - point1.y ;
+
+	return {
+		a: - dy ,
+		b: dx ,
+		c: - dx * point1.y + dy * point1.x
+	} ;
+} ;
+
+
+
+ConvexPolygon.prototype.isInside = function( coords ) {
+	if ( ! this.sides.length ) { return false ; }
+
+	return this.clockwise ?
+		this.sides.every( side => ConvexPolygon.sideTest( side , coords ) <= 0 ) :
+		this.sides.every( side => ConvexPolygon.sideTest( side , coords ) >= 0 ) ;
+} ;
+
+
+
+// Find out if the points are really clowkwise or anti-clockwise
+ConvexPolygon.prototype.fixConvexPolygon = function( coords ) {
+	if ( ! this.sides.length ) { return ; }
+
+	var clockwiseOk = true ,
+		antiClockwiseOk = true ;
+
+	this.badConvexPolygon = false ;
+
+	for ( let i = 0 ; i < this.sides.length ; i ++ ) {
+		let side = this.sides[ i ] ;
+
+		for ( let j = i + 2 ; j < this.points.length ; j ++ ) {
+			if ( j === i || j === ( i + 1 ) % this.sides.length ) {
+				// We don't check points of the current side
+				continue ;
+			}
+
+			let point = this.points[ j ] ;
+
+			if ( clockwiseOk && ConvexPolygon.sideTest( side , point ) > 0 ) { clockwiseOk = false ; }
+			if ( antiClockwiseOk && ConvexPolygon.sideTest( side , point ) < 0 ) { antiClockwiseOk = false ; }
+
+			if ( ! clockwiseOk && ! antiClockwiseOk ) {
+				console.warn( "Bad convex polygon, probably not simple/convex" ) ;
+				this.badConvexPolygon = true ;
+				return ;
+			}
+		}
+	}
+
+	if ( clockwiseOk && ! antiClockwiseOk ) {
+		console.warn( "Clockwise detected!" ) ;
+		this.clockwise = true ;
+	}
+	else if ( ! clockwiseOk && antiClockwiseOk ) {
+		console.warn( "Anti-clockwise detected!" ) ;
+		this.clockwise = false ;
+	}
+	else {
+		console.warn( "Bad polygon" ) ;
+		this.badConvexPolygon = true ;
+	}
+} ;
+
+
+
+ConvexPolygon.sideTest = function( side , coords ) {
+	return side.a * coords.x + side.b * coords.y + side.c ;
+} ;
+
+
+},{"./path-utilities.js":34}],3:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
 //const svgKit = require( './svg-kit.js' ) ;
 const BoundingBox = require( './BoundingBox.js' ) ;
 
@@ -405,7 +598,7 @@ DynamicArea.prototype.restore = function( canvasCtx ) {
 } ;
 
 
-},{"../package.json":98,"./BoundingBox.js":1}],3:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1}],4:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -796,7 +989,7 @@ DynamicManager.prototype.getAllBabylonControlEmittableEvents = function( eventNa
 } ;
 
 
-},{"../package.json":98,"./canvas-utilities.js":27,"nextgen-events/lib/LeanEvents.js":70,"seventh":86}],4:[function(require,module,exports){
+},{"../package.json":98,"./canvas-utilities.js":27,"nextgen-events/lib/LeanEvents.js":70,"seventh":86}],5:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -913,200 +1106,7 @@ Metric.isEqual = function( a , b ) {
 } ;
 
 
-},{}],5:[function(require,module,exports){
-/*
-	SVG Kit
-
-	Copyright (c) 2017 - 2023 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-
-
-const pathUtilities = require( './path-utilities.js' ) ;
-
-
-
-function Polygon( params ) {
-	// Note: all properties should be copied to VGPolygon as well
-	this.points = [] ;
-	this.sides = [] ;
-	this.clockwise = true ;
-	this.autofix = false ;
-	this.badPolygon = false ;
-
-	if ( params ) { this.set( params ) ; }
-}
-
-module.exports = Polygon ;
-
-
-
-Polygon.prototype.set = function( params ) {
-	if ( params.points ) { this.setPoints( params.points ) ; }
-	if ( typeof params.clockwise === 'boolean' ) { this.clockwise = params.clockwise ; }
-} ;
-
-
-
-Polygon.prototype.setPoints = function( points ) {
-	this.points.length = 0 ;
-	this.sides.length = 0 ;
-
-	if ( ! Array.isArray( points ) ) { return ; }
-	for ( let point of points ) { this.addPoint( point , true ) ; }
-	this.addClosingSide() ;
-
-	if ( this.autofix ) { this.fixPolygon() ; }
-} ;
-
-
-
-Polygon.prototype.addPoint = function( point , noClosingSide = false ) {
-	if ( ! point || typeof point !== 'object' ) { return ; }
-
-	this.points.push( {
-		x: + point.x || 0 ,
-		y: + point.y || 0
-	} ) ;
-
-	this.addLastSide() ;
-	if ( ! noClosingSide ) { this.addClosingSide() ; }
-} ;
-
-
-
-Polygon.prototype.addLastSide = function() {
-	var count = this.points.length ;
-	if ( count <= 1 ) { return ; }
-	this.sides[ count - 2 ] = this.getParametricLineParameters( this.points[ count - 2 ] , this.points[ count - 1 ] ) ;
-} ;
-
-
-
-Polygon.prototype.addClosingSide = function() {
-	var count = this.points.length ;
-	if ( count < 3 ) { return ; }
-	this.sides[ count - 1 ] = this.getParametricLineParameters( this.points[ count - 1 ] , this.points[ 0 ] ) ;
-} ;
-
-
-
-Polygon.prototype.export = function( data = {} ) {
-	data.points = this.points.map( p => ( { x: p.x , y: p.y } ) ) ;
-	return data ;
-} ;
-
-
-
-Polygon.prototype.toD = function( invertY = false ) {
-	return pathUtilities.polygonPointsToD( this.points , invertY ) ;
-} ;
-
-
-
-/*
-	Get the parametric line equation's parameters.
-	The equation is:   ax + by + c
-	The result is =0 on the line, >0 on the left (point 1 toward point 2), <0 on the right.
-*/
-Polygon.prototype.getParametricLineParameters = function( point1 , point2 ) {
-	var dx = point2.x - point1.x ,
-		dy = point2.y - point1.y ;
-
-	return {
-		a: - dy ,
-		b: dx ,
-		c: - dx * point1.y + dy * point1.x
-	} ;
-} ;
-
-
-
-Polygon.prototype.isInside = function( coords ) {
-	if ( ! this.sides.length ) { return false ; }
-
-	return this.clockwise ?
-		this.sides.every( side => Polygon.sideTest( side , coords ) <= 0 ) :
-		this.sides.every( side => Polygon.sideTest( side , coords ) >= 0 ) ;
-} ;
-
-
-
-// Find out if the points are really clowkwise or anti-clockwise
-Polygon.prototype.fixPolygon = function( coords ) {
-	if ( ! this.sides.length ) { return ; }
-
-	var clockwiseOk = true ,
-		antiClockwiseOk = true ;
-
-	this.badPolygon = false ;
-
-	for ( let i = 0 ; i < this.sides.length ; i ++ ) {
-		let side = this.sides[ i ] ;
-
-		for ( let j = i + 2 ; j < this.points.length ; j ++ ) {
-			if ( j === i || j === ( i + 1 ) % this.sides.length ) {
-				// We don't check points of the current side
-				continue ;
-			}
-
-			let point = this.points[ j ] ;
-
-			if ( clockwiseOk && Polygon.sideTest( side , point ) > 0 ) { clockwiseOk = false ; }
-			if ( antiClockwiseOk && Polygon.sideTest( side , point ) < 0 ) { antiClockwiseOk = false ; }
-
-			if ( ! clockwiseOk && ! antiClockwiseOk ) {
-				console.warn( "Bad polygon, probably not simple/convex" ) ;
-				this.badPolygon = true ;
-				return ;
-			}
-		}
-	}
-
-	if ( clockwiseOk && ! antiClockwiseOk ) {
-		console.warn( "Clockwise detected!" ) ;
-		this.clockwise = true ;
-	}
-	else if ( ! clockwiseOk && antiClockwiseOk ) {
-		console.warn( "Anti-clockwise detected!" ) ;
-		this.clockwise = false ;
-	}
-	else {
-		console.warn( "Bad polygon" ) ;
-		this.badPolygon = true ;
-	}
-} ;
-
-
-
-Polygon.sideTest = function( side , coords ) {
-	return side.a * coords.x + side.b * coords.y + side.c ;
-} ;
-
-
-},{"./path-utilities.js":34}],6:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1373,7 +1373,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":98,"./VGContainer.js":8,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],8:[function(require,module,exports){
+},{"../package.json":98,"./VGContainer.js":8,"./VGEntity.js":11,"./svg-kit.js":35,"array-kit":57}],8:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1579,7 +1579,173 @@ VGContainer.prototype.morphSvgDom = function() {
 } ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],9:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":11,"./svg-kit.js":35,"array-kit":57}],9:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+const VGEntity = require( './VGEntity.js' ) ;
+const ConvexPolygon = require( './ConvexPolygon.js' ) ;
+const BoundingBox = require( './BoundingBox.js' ) ;
+const canvasUtilities = require( './canvas-utilities.js' ) ;
+
+
+
+function VGConvexPolygon( params ) {
+	VGEntity.call( this , params ) ;
+
+	// Note: All properties of ConvexPolygon should be copied here
+	this.points = [] ;
+	this.sides = [] ;
+	this.clockwise = true ;
+	this.autofix = true ;
+	this.badConvexPolygon = false ;
+
+	if ( params ) { this.set( params ) ; }
+}
+
+module.exports = VGConvexPolygon ;
+
+VGConvexPolygon.prototype = Object.create( VGEntity.prototype ) ;
+VGConvexPolygon.prototype.constructor = VGConvexPolygon ;
+VGConvexPolygon.prototype.__prototypeUID__ = 'svg-kit/VGConvexPolygon' ;
+VGConvexPolygon.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+// Pseudo inheritance from ConvexPolygon:
+Object.assign( VGConvexPolygon.prototype , ConvexPolygon.prototype ) ;
+
+
+
+VGConvexPolygon.prototype.svgTag = 'path' ;
+
+
+
+VGConvexPolygon.prototype.set = function( params ) {
+	ConvexPolygon.prototype.set.call( this , params ) ;
+	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( params.build ) { this.build( params.build ) ; }
+
+	if ( params.points && this.badConvexPolygon ) {
+		//throw new Error( "Bad polygon (not simple, not convex, or degenerate case)" ) ;
+	}
+} ;
+
+
+
+VGConvexPolygon.prototype.export = function( data = {} ) {
+	VGEntity.prototype.export.call( this , data ) ;
+	ConvexPolygon.prototype.export.call( this , data ) ;
+	return data ;
+} ;
+
+
+
+VGConvexPolygon.prototype.getBoundingBox = function() {
+	var xmin = Infinity ,
+		xmax = - Infinity ,
+		ymin = Infinity ,
+		ymax = - Infinity ;
+
+	for ( let point of this.points ) {
+		if ( point.x < xmin ) { xmin = point.x ; }
+		if ( point.x > xmax ) { xmax = point.x ; }
+		if ( point.y < ymin ) { ymin = point.y ; }
+		if ( point.y > ymax ) { ymax = point.y ; }
+	}
+
+	return new BoundingBox( xmin , ymin , xmax , ymax ) ;
+} ;
+
+
+
+const degToRad = deg => deg * Math.PI / 180 ;
+
+VGConvexPolygon.prototype.build = function( data = {} ) {
+	var points = [] ,
+		cx = data.cx !== undefined ? + data.cx || 0 : + data.x || 0 ,
+		cy = data.cy !== undefined ? + data.cy || 0 : + data.y || 0 ,
+		sides = + data.sides || 1 ,
+		angleInc = 2 * Math.PI / sides ,
+		angle = data.angleDeg !== undefined ? degToRad( + data.angleDeg || 0 ) : + data.angle || 0 ,
+		radius = + data.radius || 0 ;
+
+	for ( let i = 0 ; i < sides ; i ++ , angle += angleInc ) {
+		points.push( {
+			x: cx + Math.cos( angle ) * radius ,
+			y: cy + Math.sin( angle ) * radius
+		} ) ;
+	}
+	console.warn( "points: " , points ) ;
+
+	this.set( { points } ) ;
+} ;
+
+
+
+//VGConvexPolygon.prototype.isInside = function( coords ) { return ConvexPolygon.prototype.isInside.call( this , coords ) ; } ;
+
+
+
+VGConvexPolygon.prototype.svgAttributes = function( master = this ) {
+	var attr = {
+		// SVG attribute 'd' (data)
+		d: this.toD()
+	} ;
+
+	return attr ;
+} ;
+
+
+
+// Build the SVG 'd' attribute
+VGConvexPolygon.prototype.toD = function() {
+	return ConvexPolygon.prototype.toD.call( this , this.root.invertY ) ;
+} ;
+
+
+
+VGConvexPolygon.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
+	canvasCtx.save() ;
+	canvasCtx.beginPath() ;
+	canvasUtilities.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
+	canvasCtx.restore() ;
+} ;
+
+
+
+VGConvexPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , master = this ) {
+	path2D.addPath( new Path2D( this.toD() ) ) ;
+} ;
+
+
+},{"../package.json":98,"./BoundingBox.js":1,"./ConvexPolygon.js":2,"./VGEntity.js":11,"./canvas-utilities.js":27}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1715,7 +1881,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":10,"./canvas-utilities.js":27}],10:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":11,"./canvas-utilities.js":27}],11:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -2690,7 +2856,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":98,"./BoundingBox.js":1,"./DynamicArea.js":2,"./color-utilities.js":28,"./fontLib.js":30,"./fx/fx.js":31,"_process":105,"dom-kit":69,"seventh":86,"string-kit/lib/camel":88,"string-kit/lib/escape":91}],11:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./DynamicArea.js":3,"./color-utilities.js":28,"./fontLib.js":30,"./fx/fx.js":31,"_process":105,"dom-kit":69,"seventh":86,"string-kit/lib/camel":88,"string-kit/lib/escape":91}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2775,7 +2941,7 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 } ;
 
 
-},{"./TextMetrics.js":15}],12:[function(require,module,exports){
+},{"./TextMetrics.js":16}],13:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3015,7 +3181,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 } ;
 
 
-},{"./TextAttribute.js":14,"./TextMetrics.js":15,"string-kit/lib/escape.js":91}],13:[function(require,module,exports){
+},{"./TextAttribute.js":15,"./TextMetrics.js":16,"string-kit/lib/escape.js":91}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3290,7 +3456,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 } ;
 
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3912,7 +4078,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 } ;
 
 
-},{"../Metric.js":4,"../color-utilities.js":28,"palette-shade":77}],15:[function(require,module,exports){
+},{"../Metric.js":5,"../color-utilities.js":28,"palette-shade":77}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4052,7 +4218,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 } ;
 
 
-},{"../fontLib.js":30,"../getImageSize.js":33}],16:[function(require,module,exports){
+},{"../fontLib.js":30,"../getImageSize.js":33}],17:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4872,7 +5038,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":98,"../BoundingBox.js":1,"../VGPseudoContainer.js":23,"../canvas-utilities.js":27,"../fontLib.js":30,"./StructuredTextLine.js":11,"./StructuredTextPart.js":12,"./StructuredTextRenderer.js":13,"./TextAttribute.js":14,"./TextMetrics.js":15,"./VGFlowingTextImagePart.js":17,"./VGFlowingTextPart.js":18,"book-source":66,"dom-kit":69}],17:[function(require,module,exports){
+},{"../../package.json":98,"../BoundingBox.js":1,"../VGPseudoContainer.js":23,"../canvas-utilities.js":27,"../fontLib.js":30,"./StructuredTextLine.js":12,"./StructuredTextPart.js":13,"./StructuredTextRenderer.js":14,"./TextAttribute.js":15,"./TextMetrics.js":16,"./VGFlowingTextImagePart.js":18,"./VGFlowingTextPart.js":19,"book-source":66,"dom-kit":69}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5022,7 +5188,7 @@ VGFlowingTextImagePart.prototype.renderHookForCanvas = async function( canvasCtx
 } ;
 
 
-},{"../../package.json":98,"../VGPseudoEntity.js":24,"dom-kit":69}],18:[function(require,module,exports){
+},{"../../package.json":98,"../VGPseudoEntity.js":24,"dom-kit":69}],19:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5461,7 +5627,7 @@ VGFlowingTextPart.prototype.renderHookForPath2D = async function( path2D , canva
 } ;
 
 
-},{"../../package.json":98,"../VGPseudoEntity.js":24,"../canvas-utilities.js":27,"../fontLib.js":30,"./TextAttribute.js":14,"./TextMetrics.js":15,"string-kit/lib/unicode.js":97}],19:[function(require,module,exports){
+},{"../../package.json":98,"../VGPseudoEntity.js":24,"../canvas-utilities.js":27,"../fontLib.js":30,"./TextAttribute.js":15,"./TextMetrics.js":16,"string-kit/lib/unicode.js":97}],20:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5518,7 +5684,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":98,"./VGContainer.js":8,"./svg-kit.js":35}],20:[function(require,module,exports){
+},{"../package.json":98,"./VGContainer.js":8,"./svg-kit.js":35}],21:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6106,7 +6272,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":10,"./getImageSize.js":33,"dom-kit":69}],21:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":11,"./getImageSize.js":33,"dom-kit":69}],22:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6585,173 +6751,7 @@ VGPath.prototype.forwardNegativeTurn = function( data ) {
 } ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./canvas-utilities.js":27,"./path-utilities.js":34}],22:[function(require,module,exports){
-/*
-	SVG Kit
-
-	Copyright (c) 2017 - 2023 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-
-
-const VGEntity = require( './VGEntity.js' ) ;
-const Polygon = require( './Polygon.js' ) ;
-const BoundingBox = require( './BoundingBox.js' ) ;
-const canvasUtilities = require( './canvas-utilities.js' ) ;
-
-
-
-function VGPolygon( params ) {
-	VGEntity.call( this , params ) ;
-
-	// Note: All properties of Polygon should be copied here
-	this.points = [] ;
-	this.sides = [] ;
-	this.clockwise = true ;
-	this.autofix = true ;
-	this.badPolygon = false ;
-
-	if ( params ) { this.set( params ) ; }
-}
-
-module.exports = VGPolygon ;
-
-VGPolygon.prototype = Object.create( VGEntity.prototype ) ;
-VGPolygon.prototype.constructor = VGPolygon ;
-VGPolygon.prototype.__prototypeUID__ = 'svg-kit/VGPolygon' ;
-VGPolygon.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
-
-// Pseudo inheritance from Polygon:
-Object.assign( VGPolygon.prototype , Polygon.prototype ) ;
-
-
-
-VGPolygon.prototype.svgTag = 'path' ;
-
-
-
-VGPolygon.prototype.set = function( params ) {
-	Polygon.prototype.set.call( this , params ) ;
-	VGEntity.prototype.set.call( this , params ) ;
-
-	if ( params.build ) { this.build( params.build ) ; }
-
-	if ( params.points && this.badPolygon ) {
-		//throw new Error( "Bad polygon (not simple, not convex, or degenerate case)" ) ;
-	}
-} ;
-
-
-
-VGPolygon.prototype.export = function( data = {} ) {
-	VGEntity.prototype.export.call( this , data ) ;
-	Polygon.prototype.export.call( this , data ) ;
-	return data ;
-} ;
-
-
-
-VGPolygon.prototype.getBoundingBox = function() {
-	var xmin = Infinity ,
-		xmax = - Infinity ,
-		ymin = Infinity ,
-		ymax = - Infinity ;
-
-	for ( let point of this.points ) {
-		if ( point.x < xmin ) { xmin = point.x ; }
-		if ( point.x > xmax ) { xmax = point.x ; }
-		if ( point.y < ymin ) { ymin = point.y ; }
-		if ( point.y > ymax ) { ymax = point.y ; }
-	}
-
-	return new BoundingBox( xmin , ymin , xmax , ymax ) ;
-} ;
-
-
-
-const degToRad = deg => deg * Math.PI / 180 ;
-
-VGPolygon.prototype.build = function( data = {} ) {
-	var points = [] ,
-		cx = data.cx !== undefined ? + data.cx || 0 : + data.x || 0 ,
-		cy = data.cy !== undefined ? + data.cy || 0 : + data.y || 0 ,
-		sides = + data.sides || 1 ,
-		angleInc = 2 * Math.PI / sides ,
-		angle = data.angleDeg !== undefined ? degToRad( + data.angleDeg || 0 ) : + data.angle || 0 ,
-		radius = + data.radius || 0 ;
-
-	for ( let i = 0 ; i < sides ; i ++ , angle += angleInc ) {
-		points.push( {
-			x: cx + Math.cos( angle ) * radius ,
-			y: cy + Math.sin( angle ) * radius
-		} ) ;
-	}
-	console.warn( "points: " , points ) ;
-
-	this.set( { points } ) ;
-} ;
-
-
-
-//VGPolygon.prototype.isInside = function( coords ) { return Polygon.prototype.isInside.call( this , coords ) ; } ;
-
-
-
-VGPolygon.prototype.svgAttributes = function( master = this ) {
-	var attr = {
-		// SVG attribute 'd' (data)
-		d: this.toD()
-	} ;
-
-	return attr ;
-} ;
-
-
-
-// Build the SVG 'd' attribute
-VGPolygon.prototype.toD = function() {
-	return Polygon.prototype.toD.call( this , this.root.invertY ) ;
-} ;
-
-
-
-VGPolygon.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
-	canvasCtx.save() ;
-	canvasCtx.beginPath() ;
-	canvasUtilities.fillAndStrokeUsingStyle( canvasCtx , this.style , master?.palette , new Path2D( this.toD() ) ) ;
-	canvasCtx.restore() ;
-} ;
-
-
-
-VGPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = {} , master = this ) {
-	path2D.addPath( new Path2D( this.toD() ) ) ;
-} ;
-
-
-},{"../package.json":98,"./BoundingBox.js":1,"./Polygon.js":5,"./VGEntity.js":10,"./canvas-utilities.js":27}],23:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":11,"./canvas-utilities.js":27,"./path-utilities.js":34}],23:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6847,7 +6847,7 @@ VGPseudoContainer.prototype.clearPseudoEntities = function() {
 VGPseudoContainer.prototype.computePseudoEntities = async function() {} ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],24:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":11,"./svg-kit.js":35,"array-kit":57}],24:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6905,7 +6905,7 @@ VGPseudoEntity.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 //VGPseudoEntity.prototype.isPseudoEntity = true ;
 
 
-},{"../package.json":98,"./VGEntity.js":10,"./svg-kit.js":35,"array-kit":57}],25:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":11,"./svg-kit.js":35,"array-kit":57}],25:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7054,7 +7054,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":10,"./canvas-utilities.js":27}],26:[function(require,module,exports){
+},{"../package.json":98,"./BoundingBox.js":1,"./VGEntity.js":11,"./canvas-utilities.js":27}],26:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7231,7 +7231,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRe
 } ;
 
 
-},{"../package.json":98,"./VGEntity.js":10}],27:[function(require,module,exports){
+},{"../package.json":98,"./VGEntity.js":11}],27:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8807,7 +8807,7 @@ exports.fade = ( params ) => {
 
 
 
-},{"../VGFlowingText/TextAttribute.js":14,"./mathFn.js":32}],32:[function(require,module,exports){
+},{"../VGFlowingText/TextAttribute.js":15,"./mathFn.js":32}],32:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9325,7 +9325,7 @@ svgKit.path = require( './path-utilities.js' ) ;
 svgKit.canvas = require( './canvas-utilities.js' ) ;
 
 svgKit.BoundingBox = require( './BoundingBox.js' ) ;
-svgKit.Polygon = require( './Polygon.js' ) ;
+svgKit.ConvexPolygon = require( './ConvexPolygon.js' ) ;
 
 svgKit.VG = require( './VG.js' ) ;
 svgKit.VGEntity = require( './VGEntity.js' ) ;
@@ -9333,7 +9333,7 @@ svgKit.VGContainer = require( './VGContainer.js' ) ;
 svgKit.VGGroup = require( './VGGroup.js' ) ;
 svgKit.VGClip = require( './VGClip.js' ) ;
 svgKit.VGRect = require( './VGRect.js' ) ;
-svgKit.VGPolygon = require( './VGPolygon.js' ) ;
+svgKit.VGConvexPolygon = require( './VGConvexPolygon.js' ) ;
 svgKit.VGEllipse = require( './VGEllipse.js' ) ;
 svgKit.VGPath = require( './VGPath.js' ) ;
 svgKit.VGText = require( './VGText.js' ) ;
@@ -9376,7 +9376,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 } ;
 
 
-},{"./BoundingBox.js":1,"./DynamicArea.js":2,"./DynamicManager.js":3,"./Polygon.js":5,"./VG.js":6,"./VGClip.js":7,"./VGContainer.js":8,"./VGEllipse.js":9,"./VGEntity.js":10,"./VGFlowingText/StructuredTextLine.js":11,"./VGFlowingText/StructuredTextPart.js":12,"./VGFlowingText/TextAttribute.js":14,"./VGFlowingText/TextMetrics.js":15,"./VGFlowingText/VGFlowingText.js":16,"./VGGroup.js":19,"./VGImage.js":20,"./VGPath.js":21,"./VGPolygon.js":22,"./VGRect.js":25,"./VGText.js":26,"./canvas-utilities.js":27,"./color-utilities.js":28,"./core-utilities.js":29,"./fontLib.js":30,"./fx/fx.js":31,"./path-utilities.js":34,"dom-kit":69,"opentype.js":73}],36:[function(require,module,exports){
+},{"./BoundingBox.js":1,"./ConvexPolygon.js":2,"./DynamicArea.js":3,"./DynamicManager.js":4,"./VG.js":6,"./VGClip.js":7,"./VGContainer.js":8,"./VGConvexPolygon.js":9,"./VGEllipse.js":10,"./VGEntity.js":11,"./VGFlowingText/StructuredTextLine.js":12,"./VGFlowingText/StructuredTextPart.js":13,"./VGFlowingText/TextAttribute.js":15,"./VGFlowingText/TextMetrics.js":16,"./VGFlowingText/VGFlowingText.js":17,"./VGGroup.js":20,"./VGImage.js":21,"./VGPath.js":22,"./VGRect.js":25,"./VGText.js":26,"./canvas-utilities.js":27,"./color-utilities.js":28,"./core-utilities.js":29,"./fontLib.js":30,"./fx/fx.js":31,"./path-utilities.js":34,"dom-kit":69,"opentype.js":73}],36:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -41702,7 +41702,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":95}],98:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
