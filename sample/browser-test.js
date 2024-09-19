@@ -558,8 +558,8 @@ async function renderCanvas( vg , options ) {
 
 
 
-svgKit.domKit.ready( test ) ;
-//svgKit.domKit.ready( viewBoxTest ) ;
+//svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( viewBoxTest ) ;
 //svgKit.domKit.ready( pathTest ) ;
 //svgKit.domKit.ready( polygonTest ) ;
 //svgKit.domKit.ready( hexaTilesTest ) ;

@@ -1268,9 +1268,12 @@ Style.prototype.getSvgStyleString = function( palette , addInitialSpace = false 
 		}
 		else if ( this[ key ] === DEFAULT_STYLE[ key ] ) { continue ; }
 
-		let value = this[ key ] === null ? '' : this[ key ] ;
+		let value = this[ key ] ;
 
-		if ( typeof value === 'number' && STYLE_PROPERTY_UNIT[ key ] ) {
+		if ( value === null ) {
+			value = '' ;
+		}
+		else if ( typeof value === 'number' && STYLE_PROPERTY_UNIT[ key ] ) {
 			value = '' + value + STYLE_PROPERTY_UNIT[ key ] ;
 		}
 		else if ( STYLE_PROPERTY_COLOR[ key ] ) {
@@ -1295,9 +1298,12 @@ Style.prototype.getSvgStyleString = function( palette , addInitialSpace = false 
 
 Style.prototype.setDomSvgStyle = function( $element , palette ) {
 	for ( let key of Object.keys( DEFAULT_STYLE ) ) {
-		let value = this[ key ] === null ? '' : this[ key ] ;
+		let value = this[ key ] ;
 
-		if ( typeof value === 'number' && STYLE_PROPERTY_UNIT[ key ] ) {
+		if ( value === null ) {
+			value = '' ;
+		}
+		else if ( typeof value === 'number' && STYLE_PROPERTY_UNIT[ key ] ) {
 			value = '' + value + STYLE_PROPERTY_UNIT[ key ] ;
 		}
 		else if ( STYLE_PROPERTY_COLOR[ key ] ) {
@@ -1878,7 +1884,8 @@ VGConvexPolygon.prototype.getBoundingBox = function() {
 	var xmin = Infinity ,
 		xmax = - Infinity ,
 		ymin = Infinity ,
-		ymax = - Infinity ;
+		ymax = - Infinity ,
+		strokeWidth = this.style.stroke ? this.style.strokeWidth : 0 ;
 
 	for ( let point of this.points ) {
 		if ( point.x < xmin ) { xmin = point.x ; }
@@ -1887,7 +1894,12 @@ VGConvexPolygon.prototype.getBoundingBox = function() {
 		if ( point.y > ymax ) { ymax = point.y ; }
 	}
 
-	return new BoundingBox( xmin , ymin , xmax , ymax ) ;
+	return new BoundingBox(
+		xmin - strokeWidth ,
+		ymin - strokeWidth ,
+		xmax + strokeWidth ,
+		ymax + strokeWidth
+	) ;
 } ;
 
 
@@ -2052,7 +2064,14 @@ VGEllipse.prototype.export = function( data = {} ) {
 
 
 VGEllipse.prototype.getBoundingBox = function() {
-	return new BoundingBox( this.x - this.rx , this.y - this.ry , this.x + this.rx , this.y + this.ry ) ;
+	var strokeWidth = this.style.stroke ? this.style.strokeWidth : 0 ;
+
+	return new BoundingBox(
+		this.x - this.rx - strokeWidth ,
+		this.y - this.ry - strokeWidth ,
+		this.x + this.rx + strokeWidth ,
+		this.y + this.ry + strokeWidth
+	) ;
 } ;
 
 
@@ -2449,8 +2468,10 @@ VGEntity.prototype.renderSvgText = async function( options = {} , master = this 
 
 	str += this.attrToString( attr , undefined , true ) ;
 	if ( this.data ) { str += this.attrToString( this.data , 'data-' , true ) ; }
-	//str += this.styleToString( this.style , master?.palette , true ) ;
-	str += this.style.getSvgStyleString( master?.palette , true ) ;
+
+	if ( ! this.isContainer ) {
+		str += this.style.getSvgStyleString( master?.palette , true ) ;
+	}
 
 	if ( this.svgTextNode ) { textNodeStr = this.svgTextNode() ; }
 
@@ -2576,8 +2597,10 @@ VGEntity.prototype.renderSvgDom = async function( options = {} , master = this )
 
 	dom.attr( this.$element , attr ) ;
 	if ( this.data ) { dom.attr( this.$element , this.data , 'data-' ) ; }
-	//this.domStyle( this.$element , this.style , master?.palette ) ;
-	this.style.setDomSvgStyle( this.$element , master?.palette ) ;
+
+	if ( ! this.isContainer ) {
+		this.style.setDomSvgStyle( this.$element , master?.palette ) ;
+	}
 
 	if ( this.svgTextNode ) {
 		this.$element.appendChild( document.createTextNode( this.svgTextNode() ) ) ;
@@ -3647,6 +3670,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 
 const colorUtilities = require( '../color-utilities.js' ) ;
 const Metric = require( '../Metric.js' ) ;
+const Style = require( '../Style.js' ) ;
 const Color = require( 'palette-shade' ).Color ;
 
 
@@ -4055,6 +4079,8 @@ TextAttribute.prototype.getFrameCornerRadius = function( inherit = null , relTo 
 
 // Utilities
 
+const PAINT_ORDER = [ 'stroke' , 'fill' , 'markers' ] ;
+
 TextAttribute.prototype.getTextSvgStyleString = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
@@ -4089,7 +4115,7 @@ TextAttribute.prototype.getTextSvgStyleString = function( inherit = null , relTo
 TextAttribute.prototype.getTextSvgStyle = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
-	var style = {} ,
+	var style = new Style() ,
 		color = this.getColor( inherit ) ,
 		opacity = this.getOpacity( inherit ) ,
 		outline = this.getOutline( inherit ) ,
@@ -4109,7 +4135,7 @@ TextAttribute.prototype.getTextSvgStyle = function( inherit = null , relTo = nul
 		else { style.stroke = colorUtilities.colorToString( color , palette ) ; }
 
 		style.strokeWidth = outlineWidth * 2 ;
-		style.paintOrder = 'stroke' ;
+		style.paintOrder = PAINT_ORDER ;
 	}
 
 	return style ;
@@ -4150,7 +4176,7 @@ TextAttribute.prototype.getLineSvgStyleString = function( inherit = null , relTo
 TextAttribute.prototype.getLineSvgStyle = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
-	var style = {} ,
+	var style = new Style() ,
 		color = this.getLineColor( inherit ) ,
 		opacity = this.getOpacity( inherit ) ,
 		outline = this.getLineOutline( inherit ) ,
@@ -4170,7 +4196,7 @@ TextAttribute.prototype.getLineSvgStyle = function( inherit = null , relTo = nul
 		else { style.stroke = colorUtilities.colorToString( color , palette ) ; }
 
 		style.strokeWidth = outlineWidth * 2 ;
-		style.paintOrder = 'stroke' ;
+		style.paintOrder = PAINT_ORDER ;
 	}
 
 	return style ;
@@ -4210,7 +4236,7 @@ TextAttribute.prototype.getFrameSvgStyleString = function( inherit = null , relT
 TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = null , palette = null ) {
 	relTo = relTo ?? this.getFontSize( inherit ) ;
 
-	var style = {} ,
+	var style = new Style() ,
 		color = this.getFrameColor( inherit ) ,
 		opacity = this.getOpacity( inherit ) ,
 		outlineWidth = this.getFrameOutlineWidth( inherit , relTo ) ;
@@ -4229,14 +4255,14 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 		else { style.stroke = colorUtilities.colorToString( color , palette ) ; }
 
 		style.strokeWidth = outlineWidth * 2 ;
-		style.paintOrder = 'stroke' ;
+		style.paintOrder = PAINT_ORDER ;
 	}
 
 	return style ;
 } ;
 
 
-},{"../Metric.js":5,"../color-utilities.js":29,"palette-shade":78}],17:[function(require,module,exports){
+},{"../Metric.js":5,"../Style.js":6,"../color-utilities.js":29,"palette-shade":78}],17:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7161,7 +7187,14 @@ VGRect.prototype.export = function( data = {} ) {
 
 
 VGRect.prototype.getBoundingBox = function() {
-	return new BoundingBox( this.x , this.y , this.x + this.width , this.y + this.height ) ;
+	var strokeWidth = this.style.stroke ? this.style.strokeWidth : 0 ;
+
+	return new BoundingBox(
+		this.x - strokeWidth ,
+		this.y - strokeWidth ,
+		this.x + this.width + strokeWidth ,
+		this.y + this.height + strokeWidth
+	) ;
 } ;
 
 
