@@ -154,6 +154,45 @@ BoundingBox.prototype.isInside = function( coords ) {
 } ;
 
 
+
+BoundingBox.prototype.enlarge = function( value ) {
+	value = + value || 0 ;
+	if ( value < 0 ) { return this.shrink( - value ) ; }
+	this.xmin -= value ;
+	this.xmax += value ;
+	this.ymin -= value ;
+	this.ymax += value ;
+} ;
+
+
+
+BoundingBox.prototype.shrink = function( value , min = 0 ) {
+	value = + value || 0 ;
+	if ( value < 0 ) { return this.enlarge( - value ) ; }
+
+	var width = this.xmax - this.xmin ,
+		height = this.ymax - this.ymin ;
+
+	if ( width < 2 * value ) {
+		this.xmin += width / 2 - min / 2 ;
+		this.xmax -= width / 2 - min / 2 ;
+	}
+	else {
+		this.xmin += value ;
+		this.xmax -= value ;
+	}
+
+	if ( height < 2 * value ) {
+		this.ymin += height / 2 - min / 2 ;
+		this.ymax -= height / 2 - min / 2 ;
+	}
+	else {
+		this.ymin += value ;
+		this.ymax -= value ;
+	}
+} ;
+
+
 },{}],2:[function(require,module,exports){
 /*
 	SVG Kit
@@ -41902,7 +41941,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":96}],99:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
