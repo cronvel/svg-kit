@@ -1,94 +1,6 @@
 
 "use strict" ;
 
-async function bookSourceFlowTest() {
-	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
-	console.log( rawDoc ) ;
-
-	var vg = new svgKit.VG( {
-		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
-		//invertY: false
-	} ) ;
-
-	var vgFlowingText = new svgKit.VGFlowingText( {
-		x: 20 ,
-		y: 50 ,
-		//width: 400 , height: 200 ,
-		width: 300 , height: 400 ,
-		//clip: false ,
-		debugContainer: true ,
-		//textWrapping: 'ellipsis' ,
-		textWrapping: 'wordWrap' ,
-		//textVerticalAlignment: 'bottom' ,
-		//textHorizontalAlignment: 'center' ,
-		attr: {
-			fontSize: 20 ,
-			color: '#444' ,
-			//outline: true ,
-			//frameCornerRadius: '0.2em' ,
-			//frameOutlineWidth: '0.1em' ,
-			//outlineColor: '#afa' ,
-			//lineOutline: true ,
-			//lineColor: '#559'
-		} ,
-		markupText: rawDoc
-	} ) ;
-	vg.addEntity( vgFlowingText ) ;
-
-	renderAll( vg ) ;
-
-	console.warn( "BoundingBox:" , vgFlowingText.getBoundingBox() ) ;
-	console.warn( "Content BoundingBox:" , await vgFlowingText.getContentBoundingBox() ) ;
-}
-
-
-
-async function flowTest() {
-	var vg = new svgKit.VG( {
-		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
-		//invertY: false
-	} ) ;
-
-	var vgFlowingText = new svgKit.VGFlowingText( {
-		x: 20 ,
-		y: 50 ,
-		//width: 400 , height: 200 ,
-		width: 200 , height: 400 ,
-		//clip: false ,
-		debugContainer: true ,
-		//textWrapping: 'ellipsis' ,
-		textWrapping: 'wordWrap' ,
-		//textVerticalAlignment: 'bottom' ,
-		//textHorizontalAlignment: 'center' ,
-		attr: {
-			fontSize: 28 , color: '#555' ,
-			//outline: true ,
-			//frameCornerRadius: '0.2em' ,
-			//frameOutlineWidth: '0.1em' ,
-			//outlineColor: '#afa' ,
-			//lineOutline: true ,
-			//lineColor: '#559'
-		} ,
-		//markupText: "Grigrigredin-menufretin ! [Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:light blue> and _listen_..." ,
-		structuredText: [
-			{ text: "Hello" , attr: { color: '#5e5' } } ,
-			{ text: " my friend " } ,
-			{ image: './smiley-mini.png' } ,
-			{ text: " stay " } ,
-			{ text: "awhile" , attr: { frame: true , frameCornerRadius: '0.2em' , frameColor: '#afa' } } ,
-			{ text: " and " } ,
-			{ text: "listen" , attr: { underline: true , lineColor: '#599' } } ,
-			{ text: "..." } ,
-		] ,
-	} ) ;
-	vg.addEntity( vgFlowingText ) ;
-
-	//renderCanvas( vg ) ;
-	renderAll( vg ) ;
-}
-
-
-
 async function test() {
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -311,6 +223,134 @@ async function test() {
 
 
 
+async function clippingTest() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
+	console.warn( "VG:" , vg ) ;
+
+
+	var vgImage = new svgKit.VGImage( {
+		x: 100 ,
+		y: 100 ,
+		width: 300 ,
+		height: 200 ,
+		sourceLeftWidth: 70 ,
+		sourceRightWidth: 70 ,
+		sourceTopHeight: 70 ,
+		sourceBottomHeight: 70 ,
+		url: './9p.png'
+	} ) ;
+	//vg.addEntity( vgImage ) ;
+	
+	//*
+	var vgClip = new svgKit.VGClip() ;
+	vg.addEntity( vgClip ) ;
+
+	let vgClipper = new svgKit.VGEllipse( {
+		x: 250 ,
+		y: 200 ,
+		rx: 140 ,
+		ry: 110
+	} ) ;
+	vgClip.addClippingEntity( vgClipper ) ;
+	vgClip.addEntity( vgImage ) ;
+	//*/
+
+	renderAll( vg ) ;
+}
+
+
+
+async function bookSourceFlowTest() {
+	var rawDoc = await ( await fetch( 'doc.bks' ) ).text() ;
+	console.log( rawDoc ) ;
+
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: false
+	} ) ;
+
+	var vgFlowingText = new svgKit.VGFlowingText( {
+		x: 20 ,
+		y: 50 ,
+		//width: 400 , height: 200 ,
+		width: 300 , height: 400 ,
+		//clip: false ,
+		debugContainer: true ,
+		//textWrapping: 'ellipsis' ,
+		textWrapping: 'wordWrap' ,
+		//textVerticalAlignment: 'bottom' ,
+		//textHorizontalAlignment: 'center' ,
+		attr: {
+			fontSize: 20 ,
+			color: '#444' ,
+			//outline: true ,
+			//frameCornerRadius: '0.2em' ,
+			//frameOutlineWidth: '0.1em' ,
+			//outlineColor: '#afa' ,
+			//lineOutline: true ,
+			//lineColor: '#559'
+		} ,
+		markupText: rawDoc
+	} ) ;
+	vg.addEntity( vgFlowingText ) ;
+
+	renderAll( vg ) ;
+
+	console.warn( "BoundingBox:" , vgFlowingText.getBoundingBox() ) ;
+	console.warn( "Content BoundingBox:" , await vgFlowingText.getContentBoundingBox() ) ;
+}
+
+
+
+async function flowTest() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: false
+	} ) ;
+
+	var vgFlowingText = new svgKit.VGFlowingText( {
+		x: 20 ,
+		y: 50 ,
+		//width: 400 , height: 200 ,
+		width: 200 , height: 400 ,
+		//clip: false ,
+		debugContainer: true ,
+		//textWrapping: 'ellipsis' ,
+		textWrapping: 'wordWrap' ,
+		//textVerticalAlignment: 'bottom' ,
+		//textHorizontalAlignment: 'center' ,
+		attr: {
+			fontSize: 28 , color: '#555' ,
+			//outline: true ,
+			//frameCornerRadius: '0.2em' ,
+			//frameOutlineWidth: '0.1em' ,
+			//outlineColor: '#afa' ,
+			//lineOutline: true ,
+			//lineColor: '#559'
+		} ,
+		//markupText: "Grigrigredin-menufretin ! [Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:light blue> and _listen_..." ,
+		structuredText: [
+			{ text: "Hello" , attr: { color: '#5e5' } } ,
+			{ text: " my friend " } ,
+			{ image: './smiley-mini.png' } ,
+			{ text: " stay " } ,
+			{ text: "awhile" , attr: { frame: true , frameCornerRadius: '0.2em' , frameColor: '#afa' } } ,
+			{ text: " and " } ,
+			{ text: "listen" , attr: { underline: true , lineColor: '#599' } } ,
+			{ text: "..." } ,
+		] ,
+	} ) ;
+	vg.addEntity( vgFlowingText ) ;
+
+	//renderCanvas( vg ) ;
+	renderAll( vg ) ;
+}
+
+
+
 async function pathTest() {
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -460,7 +500,7 @@ async function hexaTilesTest() {
 	const sqrt3 = Math.sqrt( 3 ) ;
 
 	for ( let j = 0 ; j < 5 ; j ++ ) {
-		let y = startingX + radius * sqrt3 * j ;
+		let y = startingY + radius * sqrt3 * j ;
 
 		for ( let i = 0 ; i < 5 ; i ++ ) {
 			let x = startingX + radius * ( 2 * i + ( j % 2 ? 2 : 1 ) ) ;
@@ -559,7 +599,8 @@ async function renderCanvas( vg , options ) {
 
 
 //svgKit.domKit.ready( test ) ;
-svgKit.domKit.ready( viewBoxTest ) ;
+svgKit.domKit.ready( clippingTest ) ;
+//svgKit.domKit.ready( viewBoxTest ) ;
 //svgKit.domKit.ready( pathTest ) ;
 //svgKit.domKit.ready( polygonTest ) ;
 //svgKit.domKit.ready( hexaTilesTest ) ;
