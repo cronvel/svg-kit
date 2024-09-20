@@ -224,7 +224,7 @@ BoundingBox.prototype.shrink = function( value , min = 0 ) {
 
 
 
-const pathUtilities = require( './path-utilities.js' ) ;
+const Path = require( './Path/Path.js' ) ;
 
 
 
@@ -240,6 +240,9 @@ function ConvexPolygon( params ) {
 }
 
 module.exports = ConvexPolygon ;
+
+ConvexPolygon.prototype.__prototypeUID__ = 'svg-kit/ConvexPolygon' ;
+ConvexPolygon.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
 
 
 
@@ -301,7 +304,7 @@ ConvexPolygon.prototype.export = function( data = {} ) {
 
 
 ConvexPolygon.prototype.toD = function( invertY = false ) {
-	return pathUtilities.polygonPointsToD( this.points , invertY ) ;
+	return Path.polygonPointsToD( this.points , invertY ) ;
 } ;
 
 
@@ -386,7 +389,7 @@ ConvexPolygon.sideTest = function( side , coords ) {
 } ;
 
 
-},{"./path-utilities.js":35}],3:[function(require,module,exports){
+},{"../package.json":99,"./Path/Path.js":6}],3:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1028,7 +1031,7 @@ DynamicManager.prototype.getAllBabylonControlEmittableEvents = function( eventNa
 } ;
 
 
-},{"../package.json":99,"./canvas-utilities.js":28,"nextgen-events/lib/LeanEvents.js":71,"seventh":87}],5:[function(require,module,exports){
+},{"../package.json":99,"./canvas-utilities.js":29,"nextgen-events/lib/LeanEvents.js":71,"seventh":87}],5:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1146,6 +1149,708 @@ Metric.isEqual = function( a , b ) {
 
 
 },{}],6:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2023 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+"use strict" ;
+
+
+
+function Path( commands ) {
+	this.commands = [] ;
+
+	if ( commands ) { this.set( commands ) ; }
+}
+
+module.exports = Path ;
+
+Path.prototype.__prototypeUID__ = 'svg-kit/Path' ;
+Path.prototype.__prototypeVersion__ = require( '../../package.json' ).version ;
+
+
+
+Path.prototype.set = function( commands ) {
+	if ( ! Array.isArray( commands ) ) { return ; }
+
+	for ( let command of commands ) {
+		if ( Path.commands[ command.type ].add ) {
+			Path.commands[ command.type ].add( this.commands , command ) ;
+		}
+	}
+} ;
+
+
+
+Path.prototype.export = function( data = {} ) {
+	if ( this.commands.length ) { data.commands = this.commands ; }
+	return data ;
+} ;
+
+
+
+Path.prototype.toD = function( invertY = false ) {
+	return Path.commandsToD( this.commands , invertY )  ;
+} ;
+
+
+
+/*
+	Now add path commands.
+	First, true SVG path commands.
+*/
+
+const degToRad = deg => deg * Math.PI / 180 ;
+//const radToDeg = rad => rad * 180 / Math.PI ;
+
+Path.commands = {} ;
+
+Path.commands.close = {
+	add: ( commands ) => commands.push( { type: 'close' } ) ,
+	toD: ( command , build ) => build.d += 'z'
+} ;
+
+Path.commands.move = {
+	add: ( commands , data ) => commands.push( {
+		type: 'move' ,
+		rel: true ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 'm ' + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'M ' + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'move' (rel: false)
+Path.commands.moveTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'move' ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+Path.commands.line = {
+	add: ( commands , data ) => commands.push( {
+		type: 'line' ,
+		rel: true ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 'l ' + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'L ' + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'line' (rel: false)
+Path.commands.lineTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'line' ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+Path.commands.curve = {
+	add: ( commands , data ) => commands.push( {
+		type: 'curve' ,
+		rel: true ,
+		cx1: data.cx1 || 0 ,
+		cy1: data.cy1 || 0 ,
+		cx2: data.cx2 || 0 ,
+		cy2: data.cy2 || 0 ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var cy1 = build.invertY ? - command.cy1 : command.cy1 ,
+			cy2 = build.invertY ? - command.cy2 : command.cy2 ,
+			y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 'c ' + command.cx1 + ' ' + cy1 + ' ' + command.cx2 + ' ' + cy2 + ' '  + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'C ' + command.cx1 + ' ' + cy1 + ' ' + command.cx2 + ' ' + cy2 + ' '  + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'curve'
+Path.commands.curveTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'curve' ,
+		cx1: data.cx1 || 0 ,
+		cy1: data.cy1 || 0 ,
+		cx2: data.cx2 || 0 ,
+		cy2: data.cy2 || 0 ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+Path.commands.smoothCurve = {
+	add: ( commands , data ) => commands.push( {
+		type: 'smoothCurve' ,
+		rel: true ,
+		cx: data.cx || data.cx2 || 0 ,
+		cy: data.cy || data.cy2 || 0 ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var cy = build.invertY ? - command.cy : command.cy ,
+			y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 's ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'S ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'smoothCurve'
+Path.commands.smoothCurveTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'smoothCurve' ,
+		cx: data.cx || data.cx2 || 0 ,
+		cy: data.cy || data.cy2 || 0 ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+// q-curve = Quadratic curve, it uses just one controle point instead of two
+Path.commands.qCurve = {
+	add: ( commands , data ) => commands.push( {
+		type: 'qCurve' ,
+		rel: true ,
+		cx: data.cx || data.cx1 || 0 ,
+		cy: data.cy || data.cy1 || 0 ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var cy = build.invertY ? - command.cy : command.cy ,
+			y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 'q ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'Q ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'qCurve'
+Path.commands.qCurveTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'qCurve' ,
+		cx: data.cx || data.cx1 || 0 ,
+		cy: data.cy || data.cy1 || 0 ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+Path.commands.smoothQCurve = {
+	add: ( commands , data ) => commands.push( {
+		type: 'smoothQCurve' ,
+		rel: true ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 't ' + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'T ' + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'smoothQCurve'
+Path.commands.smoothQCurveTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'smoothQCurve' ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+Path.commands.arc = {
+	add: ( commands , data ) => commands.push( {
+		type: 'arc' ,
+		rel: true ,
+		rx: data.rx || 0 ,
+		ry: data.ry || 0 ,
+		ra: data.ra || data.a || 0 ,	// x-axis rotation
+		la:
+			data.largeArc !== undefined ? !! data.largeArc :
+			data.longArc !== undefined ? !! data.longArc :
+			data.la !== undefined ? !! data.la :
+			false ,
+		pr:
+			data.positiveRotation !== undefined ? !! data.positiveRotation :
+			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
+			data.pr !== undefined ? !! data.pr :
+			true ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var ra = build.invertY ? - command.ra : command.ra ,
+			pr = build.invertY ? ! command.pr : command.pr ,
+			y = build.invertY ? - command.y : command.y ;
+
+		if ( command.rel ) {
+			build.d += 'a ' + command.rx + ' ' + command.ry + ' ' + ra + ' ' + ( + command.la ) + ' '  + ( + pr ) + ' ' + command.x + ' ' + y ;
+			build.cx += command.x ;
+			build.cy += y ;
+		}
+		else {
+			build.d += 'A ' + command.rx + ' ' + command.ry + ' ' + ra + ' ' + ( + command.la ) + ' '  + ( + pr ) + ' ' + command.x + ' ' + y ;
+			build.cx = command.x ;
+			build.cy = y ;
+		}
+	}
+} ;
+
+// Converted to 'arc'
+Path.commands.arcTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'arc' ,
+		rx: data.rx || 0 ,
+		ry: data.ry || 0 ,
+		ra: data.ra || data.a || 0 ,	// x-axis rotation
+		la:
+			data.largeArc !== undefined ? !! data.largeArc :
+			data.longArc !== undefined ? !! data.longArc :
+			data.la !== undefined ? !! data.la :
+			false ,
+		pr:
+			data.positiveRotation !== undefined ? !! data.positiveRotation :
+			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
+			data.pr !== undefined ? !! data.pr :
+			true ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+// Converted to 'arc'
+// All angles use positive as Y-axis to X-axis (Spellcast usage)
+Path.commands.negativeArc = {
+	add: ( commands , data ) => commands.push( {
+		type: 'arc' ,
+		rel: true ,
+		rx: data.rx || 0 ,
+		ry: data.ry || 0 ,
+		ra: - ( data.ra || data.a || 0 ) ,	// x-axis rotation
+		la:
+			data.largeArc !== undefined ? !! data.largeArc :
+			data.longArc !== undefined ? !! data.longArc :
+			data.la !== undefined ? !! data.la :
+			false ,
+		pr: ! (
+			data.positiveRotation !== undefined ? !! data.positiveRotation :
+			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
+			data.pr !== undefined ? !! data.pr :
+			true
+		) ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+// Converted to 'arc'
+// All angles use positive as Y-axis to X-axis (Spellcast usage)
+Path.commands.negativeArcTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'arc' ,
+		rx: data.rx || 0 ,
+		ry: data.ry || 0 ,
+		ra: - ( data.ra || data.a || 0 ) ,	// x-axis rotation
+		la:
+			data.largeArc !== undefined ? !! data.largeArc :
+			data.longArc !== undefined ? !! data.longArc :
+			data.la !== undefined ? !! data.la :
+			false ,
+		pr: ! (
+			data.positiveRotation !== undefined ? !! data.positiveRotation :
+			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
+			data.pr !== undefined ? !! data.pr :
+			true
+		) ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+
+
+/*
+	VG-specific commands.
+*/
+
+// NOT CODED
+// Better arc-like command, but use curve behind the scene
+Path.commands.centerArc = {
+	add: ( commands , data ) => commands.push( {
+		type: 'centerArc' ,
+		rel: true ,
+		cx: data.cx || 0 ,
+		cy: data.cy || 0 ,
+		la: data.largeArc !== undefined ? !! data.largeArc :
+		data.longArc !== undefined ? !! data.longArc :
+		data.la !== undefined ? !! data.la :
+		false ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} ) ,
+	toD: ( command , build ) => {
+		// ---------------------------------------------------------------------------------- NOT CODED ----------------------------------------------------------------
+
+		// It's supposed to ease circle creation inside path, converting them to SVG curves...
+
+		var { x , y , cx , cy } = command ;
+
+		if ( command.rel ) {
+			x += build.cx ;
+			y += build.cy ;
+			cx += build.cx ;
+			cy += build.cy ;
+		}
+
+		var startAngle = Math.atan2( build.cy - cy , build.cx - cx ) ,
+			endAngle = Math.atan2( y - cy , x - cx ) ;
+
+		build.cx = x ;
+		build.cy = y ;
+	}
+} ;
+
+// NOT CODED
+// Converted to 'centerArc'
+Path.commands.centerArcTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'centerArc' ,
+		cx: data.cx || 0 ,
+		cy: data.cy || 0 ,
+		la: data.largeArc !== undefined ? !! data.largeArc :
+		data.longArc !== undefined ? !! data.longArc :
+		data.la !== undefined ? !! data.la :
+		false ,
+		x: data.x || 0 ,
+		y: data.y || 0
+	} )
+} ;
+
+/*
+	Approximation of circles using cubic bezier curves.
+
+	Controle point distance/radius ratio for quarter of circle: 0.55228475 or 4/3 (sqrt(2)-1)
+	For half of a circle: 4/3
+
+	From: https://www.tinaja.com/glib/bezcirc2.pdf
+	The arc is bissected by the X-axis.
+	x0 = cos( / 2)			y0 = sin( / 2)
+	x3 = x1					y3 = - y0
+	x1 = (4 - x0) / 3		y1 = (1 - x0)(3 - x0) / 3 y0
+	x2 = x1					y2 = -y1
+
+	This distance ensure that the mid-time point is exactly on the arc.
+	It works very well for angle ranging from 0-90°, can be good enough for 90-180°,
+	but it's bad for greater than 180°.
+	In fact it's not possible to approximate a 270° arc with a single cubic bezier curve.
+*/
+function controleDistance( angle ) {
+	if ( ! angle ) { return 0 ; }
+	var angleRad = degToRad( angle ) ;
+	var x0 = Math.cos( angleRad / 2 ) ,
+		y0 = Math.sin( angleRad / 2 ) ,
+		x1 = ( 4 - x0 ) / 3 ,
+		y1 = ( 1 - x0 ) * ( 3 - x0 ) / ( 3 * y0 ) ;
+	return Math.sqrt( ( x0 - x1 ) ** 2 + ( y0 - y1 ) ** 2 ) ;
+}
+
+
+
+/*
+	Turtle-like commands.
+*/
+
+// Not a user command, user should use penUp or penDown
+Path.commands.pen = {
+	add: ( commands , data ) => commands.push( {
+		type: 'pen' ,
+		u: !! data.up
+	} ) ,
+	toD: ( command , build ) => {
+		build.pu = command.u ;
+	}
+} ;
+
+// Converted to 'pen'
+Path.commands.penUp = {
+	add: ( commands ) => commands.push( {
+		type: 'pen' ,
+		u: true
+	} )
+} ;
+
+// Converted to 'pen'
+Path.commands.penDown = {
+	add: ( commands ) => commands.push( {
+		type: 'pen' ,
+		u: false
+	} )
+} ;
+
+Path.commands.forward = {
+	add: ( commands , data ) => commands.push( {
+		type: 'forward' ,
+		l: typeof data === 'number' ? data : data.length || data.l || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var dx = command.l * Math.cos( build.ca ) ,
+			dy = command.l * Math.sin( build.ca ) ;
+
+		if ( build.pu ) { build.d += 'm ' + dx + ' ' + dy ; }
+		else { build.d += 'l ' + dx + ' ' + dy ; }
+
+		build.cx += dx ;
+		build.cy += dy ;
+	}
+} ;
+
+// Converted to 'forward'
+Path.commands.backward = {
+	add: ( commands , data ) => commands.push( {
+		type: 'forward' ,
+		l: - ( typeof data === 'number' ? data : data.length || data.l || 0 )
+	} )
+} ;
+
+// Turn using positive as X-axis to Y-axis
+Path.commands.turn = {
+	add: ( commands , data ) => commands.push( {
+		type: 'turn' ,
+		rel: true ,
+		a: typeof data === 'number' ? data : data.angle || data.a || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var a = build.invertY ? - command.a : command.a ;
+
+		if ( command.rel ) {
+			build.ca += degToRad( a ) ;
+		}
+		else {
+			build.ca = degToRad( a ) ;
+		}
+	}
+} ;
+
+// Converted to 'turn'
+// Turn from X-axis to Y-axis
+Path.commands.turnTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'turn' ,
+		a: typeof data === 'number' ? data : data.angle || data.a || 0
+	} )
+} ;
+
+// Converted to 'turn'
+// Turn using positive as Y-axis to X-axis (Spellcast usage)
+Path.commands.negativeTurn = {
+	add: ( commands , data ) => commands.push( {
+		type: 'turn' ,
+		rel: true ,
+		a: - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
+	} )
+} ;
+
+// Converted to 'turn'
+// Turn from Y-axis to X-axis (clockwise when Y point upward, the invert of the standard 2D computer graphics) (Spellcast usage)
+Path.commands.negativeTurnTo = {
+	add: ( commands , data ) => commands.push( {
+		type: 'turn' ,
+		a: 90 - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
+	} )
+} ;
+
+// A turtle-like way of doing a curve: combine a forward and turn, moving along a circle
+Path.commands.forwardTurn = {
+	add: ( commands , data ) => commands.push( {
+		type: 'forwardTurn' ,
+		l: data.length || data.l || 0 ,
+		a: data.angle || data.a || 0
+	} ) ,
+	toD: ( command , build ) => {
+		var a = build.invertY ? - command.a : command.a ;
+
+		/*
+			We will first transpose to a circle of center 0,0 and we are starting at x=radius,y=0 and moving positively
+		*/
+		var angleRad = degToRad( a ) ,
+			angleSign = angleRad >= 0 ? 1 : - 1 ,
+			alpha = Math.abs( angleRad ) ,
+			radius = command.l / alpha ,
+			trX = radius * Math.cos( alpha ) ,
+			trY = radius * Math.sin( alpha ) ,
+			dist = Math.sqrt( ( radius - trX ) ** 2 + trY ** 2 ) ,
+			beta = Math.atan2( radius - trX , trY ) ;	// beta is the deviation
+
+		var dx = dist * Math.cos( build.ca + angleSign * beta ) ,
+			dy = dist * Math.sin( build.ca + angleSign * beta ) ;
+
+		if ( build.pu ) {
+			build.d += 'm ' + dx + ' ' + dy ;
+		}
+		else {
+			build.d += 'a ' + radius + ' ' + radius + ' 0 ' + ( alpha > Math.PI ? 1 : 0 ) + ' '  + ( angleRad >= 0 ? 1 : 0 ) + ' ' + dx + ' ' + dy ;
+		}
+
+		build.cx += dx ;
+		build.cy += dy ;
+		build.ca += angleRad ;
+	}
+} ;
+
+// Converted to 'forwardTurn'
+// Turn using positive as Y-axis to X-axis (clockwise when Y point upward, the invert of the standard 2D computer graphics) (Spellcast usage)
+Path.commands.forwardNegativeTurn = {
+	add: ( commands , data ) => commands.push( {
+		type: 'forwardTurn' ,
+		l: data.length || data.l || 0 ,
+		a: - ( data.angle || data.a || 0 )
+	} )
+} ;
+
+
+
+// Create API methods
+for ( let type in Path.commands ) {
+	if ( Path.commands[ type ].add ) {
+		Path.prototype[ type ] = function( data ) {
+			Path.commands[ type ].add( this.commands , data ) ;
+			return this ;
+		} ;
+	}
+}
+
+
+
+// Utilities
+
+/*
+	This method is used to build the SVG 'd' attribute from the SVG Kit's command format.
+*/
+
+Path.commandsToD = ( commands , invertY = false ) => {
+	var build = {
+		invertY ,
+		d: '' ,
+		pu: false ,	// Pen Up, when true, turtle-like commands move without tracing anything
+		cx: 0 ,		// cursor position x
+		cy: 0 ,		// cursor position y
+		ca: invertY ? - Math.PI / 2 : Math.PI / 2		// cursor angle, default to positive Y-axis
+	} ;
+
+	commands.forEach( ( command , index ) => {
+		if ( ! Path.commands[ command.type ].toD ) { return ; }
+		if ( index ) { build.d += ' ' ; }
+		Path.commands[ command.type ].toD( command , build ) ;
+	} ) ;
+
+	return build.d ;
+} ;
+
+
+
+// Create lines from an array of points (object with .x and .y)
+Path.linePointsToD = ( points , invertY = false ) => {
+	var yMul = invertY ? - 1 : 1 ,
+		str = 'M' ;
+
+	points.forEach( point => {
+		str += ' ' + point.x + ',' + ( point.y * yMul ) ;
+	} ) ;
+
+	return str ;
+} ;
+
+Path.polygonPointsToD = ( points , invertY = false ) => Path.linePointsToD( points , invertY ) + ' z' ;
+
+
+},{"../../package.json":99}],7:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1358,7 +2063,7 @@ Style.prototype.setDomSvgStyle = function( $element , palette ) {
 } ;
 
 
-},{"./color-utilities.js":29,"string-kit/lib/camel":89,"string-kit/lib/escape":92}],7:[function(require,module,exports){
+},{"./color-utilities.js":30,"string-kit/lib/camel":89,"string-kit/lib/escape":92}],8:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1516,7 +2221,7 @@ VG.prototype.addCssRule = function( rule ) {
 } ;
 
 
-},{"../package.json":99,"./VGContainer.js":9,"palette-shade":78}],8:[function(require,module,exports){
+},{"../package.json":99,"./VGContainer.js":10,"palette-shade":78}],9:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1625,7 +2330,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 } ;
 
 
-},{"../package.json":99,"./VGContainer.js":9,"./VGEntity.js":12,"./svg-kit.js":36,"array-kit":58}],9:[function(require,module,exports){
+},{"../package.json":99,"./VGContainer.js":10,"./VGEntity.js":13,"./svg-kit.js":36,"array-kit":58}],10:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -1831,7 +2536,7 @@ VGContainer.prototype.morphSvgDom = function() {
 } ;
 
 
-},{"../package.json":99,"./VGEntity.js":12,"./svg-kit.js":36,"array-kit":58}],10:[function(require,module,exports){
+},{"../package.json":99,"./VGEntity.js":13,"./svg-kit.js":36,"array-kit":58}],11:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2003,7 +2708,7 @@ VGConvexPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , o
 } ;
 
 
-},{"../package.json":99,"./BoundingBox.js":1,"./ConvexPolygon.js":2,"./VGEntity.js":12,"./canvas-utilities.js":28}],11:[function(require,module,exports){
+},{"../package.json":99,"./BoundingBox.js":1,"./ConvexPolygon.js":2,"./VGEntity.js":13,"./canvas-utilities.js":29}],12:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -2146,7 +2851,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 } ;
 
 
-},{"../package.json":99,"./BoundingBox.js":1,"./VGEntity.js":12,"./canvas-utilities.js":28}],12:[function(require,module,exports){
+},{"../package.json":99,"./BoundingBox.js":1,"./VGEntity.js":13,"./canvas-utilities.js":29}],13:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -3100,7 +3805,7 @@ VGEntity.prototype.getBoundingBox = function() { return null ; } ;
 
 
 }).call(this)}).call(this,require('_process'))
-},{"../package.json":99,"./BoundingBox.js":1,"./DynamicArea.js":3,"./Style.js":6,"./color-utilities.js":29,"./fontLib.js":31,"./fx/fx.js":32,"_process":106,"dom-kit":70,"seventh":87,"string-kit/lib/camel":89,"string-kit/lib/escape":92}],13:[function(require,module,exports){
+},{"../package.json":99,"./BoundingBox.js":1,"./DynamicArea.js":3,"./Style.js":7,"./color-utilities.js":30,"./fontLib.js":32,"./fx/fx.js":33,"_process":106,"dom-kit":70,"seventh":87,"string-kit/lib/camel":89,"string-kit/lib/escape":92}],14:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3185,7 +3890,7 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 } ;
 
 
-},{"./TextMetrics.js":17}],14:[function(require,module,exports){
+},{"./TextMetrics.js":18}],15:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3425,7 +4130,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 } ;
 
 
-},{"./TextAttribute.js":16,"./TextMetrics.js":17,"string-kit/lib/escape.js":92}],15:[function(require,module,exports){
+},{"./TextAttribute.js":17,"./TextMetrics.js":18,"string-kit/lib/escape.js":92}],16:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -3700,7 +4405,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 } ;
 
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4325,7 +5030,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 } ;
 
 
-},{"../Metric.js":5,"../Style.js":6,"../color-utilities.js":29,"palette-shade":78}],17:[function(require,module,exports){
+},{"../Metric.js":5,"../Style.js":7,"../color-utilities.js":30,"palette-shade":78}],18:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -4465,7 +5170,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 } ;
 
 
-},{"../fontLib.js":31,"../getImageSize.js":34}],18:[function(require,module,exports){
+},{"../fontLib.js":32,"../getImageSize.js":35}],19:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5285,7 +5990,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 } ;
 
 
-},{"../../package.json":99,"../BoundingBox.js":1,"../VGPseudoContainer.js":24,"../canvas-utilities.js":28,"../fontLib.js":31,"./StructuredTextLine.js":13,"./StructuredTextPart.js":14,"./StructuredTextRenderer.js":15,"./TextAttribute.js":16,"./TextMetrics.js":17,"./VGFlowingTextImagePart.js":19,"./VGFlowingTextPart.js":20,"book-source":67,"dom-kit":70}],19:[function(require,module,exports){
+},{"../../package.json":99,"../BoundingBox.js":1,"../VGPseudoContainer.js":25,"../canvas-utilities.js":29,"../fontLib.js":32,"./StructuredTextLine.js":14,"./StructuredTextPart.js":15,"./StructuredTextRenderer.js":16,"./TextAttribute.js":17,"./TextMetrics.js":18,"./VGFlowingTextImagePart.js":20,"./VGFlowingTextPart.js":21,"book-source":67,"dom-kit":70}],20:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5435,7 +6140,7 @@ VGFlowingTextImagePart.prototype.renderHookForCanvas = async function( canvasCtx
 } ;
 
 
-},{"../../package.json":99,"../VGPseudoEntity.js":25,"dom-kit":70}],20:[function(require,module,exports){
+},{"../../package.json":99,"../VGPseudoEntity.js":26,"dom-kit":70}],21:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5874,7 +6579,7 @@ VGFlowingTextPart.prototype.renderHookForPath2D = async function( path2D , canva
 } ;
 
 
-},{"../../package.json":99,"../VGPseudoEntity.js":25,"../canvas-utilities.js":28,"../fontLib.js":31,"./TextAttribute.js":16,"./TextMetrics.js":17,"string-kit/lib/unicode.js":98}],21:[function(require,module,exports){
+},{"../../package.json":99,"../VGPseudoEntity.js":26,"../canvas-utilities.js":29,"../fontLib.js":32,"./TextAttribute.js":17,"./TextMetrics.js":18,"string-kit/lib/unicode.js":98}],22:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -5931,7 +6636,7 @@ VGGroup.prototype.set = function( params ) {
 } ;
 
 
-},{"../package.json":99,"./VGContainer.js":9,"./svg-kit.js":36}],22:[function(require,module,exports){
+},{"../package.json":99,"./VGContainer.js":10,"./svg-kit.js":36}],23:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6519,7 +7224,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 } ;
 
 
-},{"../package.json":99,"./BoundingBox.js":1,"./VGEntity.js":12,"./getImageSize.js":34,"dom-kit":70}],23:[function(require,module,exports){
+},{"../package.json":99,"./BoundingBox.js":1,"./VGEntity.js":13,"./getImageSize.js":35,"dom-kit":70}],24:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -6551,15 +7256,15 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const Path = require( './Path/Path.js' ) ;
 const canvasUtilities = require( './canvas-utilities.js' ) ;
-const pathUtilities = require( './path-utilities.js' ) ;
 
 
 
 function VGPath( params ) {
 	VGEntity.call( this , params ) ;
 
-	this.commands = [] ;
+	this.path = new Path() ;
 
 	if ( params ) { this.set( params ) ; }
 }
@@ -6578,7 +7283,7 @@ VGPath.prototype.svgTag = 'path' ;
 
 
 VGPath.prototype.set = function( params ) {
-	if ( Array.isArray( params.commands ) ) { this.commands = params.commands ; }
+	if ( Array.isArray( params.commands ) ) { this.path.set( params.commands ) ; }
 
 	// /!\ Bounding box should be calculated from path
 
@@ -6589,7 +7294,7 @@ VGPath.prototype.set = function( params ) {
 
 VGPath.prototype.export = function( data = {} ) {
 	VGEntity.prototype.export.call( this , data ) ;
-	if ( this.commands.length ) { data.commands = this.commands ; }
+	if ( this.path.commands.length ) { data.commands = this.path.commands ; }
 	return data ;
 } ;
 
@@ -6608,8 +7313,20 @@ VGPath.prototype.svgAttributes = function( master = this ) {
 
 // Build the SVG 'd' attribute
 VGPath.prototype.toD = function() {
-	return pathUtilities.commandsToD( this.commands , this.root.invertY ) ;
+	return this.path.toD( this.root.invertY ) ;
 } ;
+
+
+
+// Create API methods
+for ( let type in Path.commands ) {
+	if ( Path.commands[ type ].add ) {
+		VGPath.prototype[ type ] = function( data ) {
+			this.path[ type ]( data ) ;
+			return this ;
+		} ;
+	}
+}
 
 
 
@@ -6627,378 +7344,7 @@ VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-
-/*
-	Now add path commands.
-	First, true SVG path commands.
-*/
-
-VGPath.prototype.close = function() {
-	this.commands.push( { type: 'close' } ) ;
-	return this ;
-} ;
-
-VGPath.prototype.move = function( data ) {
-	this.commands.push( {
-		type: 'move' ,
-		rel: true ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.moveTo = function( data ) {
-	this.commands.push( {
-		type: 'move' ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.line = function( data ) {
-	this.commands.push( {
-		type: 'line' ,
-		rel: true ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.lineTo = function( data ) {
-	this.commands.push( {
-		type: 'line' ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.curve = function( data ) {
-	this.commands.push( {
-		type: 'curve' ,
-		rel: true ,
-		cx1: data.cx1 || 0 ,
-		cy1: data.cy1 || 0 ,
-		cx2: data.cx2 || 0 ,
-		cy2: data.cy2 || 0 ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.curveTo = function( data ) {
-	this.commands.push( {
-		type: 'curve' ,
-		cx1: data.cx1 || 0 ,
-		cy1: data.cy1 || 0 ,
-		cx2: data.cx2 || 0 ,
-		cy2: data.cy2 || 0 ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.smoothCurve = function( data ) {
-	this.commands.push( {
-		type: 'smoothCurve' ,
-		rel: true ,
-		cx: data.cx || data.cx2 || 0 ,
-		cy: data.cy || data.cy2 || 0 ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.smoothCurveTo = function( data ) {
-	this.commands.push( {
-		type: 'smoothCurve' ,
-		cx: data.cx || data.cx2 || 0 ,
-		cy: data.cy || data.cy2 || 0 ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-// q-curve = Quadratic curve, it uses just one controle point instead of two
-VGPath.prototype.qCurve = function( data ) {
-	this.commands.push( {
-		type: 'qCurve' ,
-		rel: true ,
-		cx: data.cx || data.cx1 || 0 ,
-		cy: data.cy || data.cy1 || 0 ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.qCurveTo = function( data ) {
-	this.commands.push( {
-		type: 'qCurve' ,
-		cx: data.cx || data.cx1 || 0 ,
-		cy: data.cy || data.cy1 || 0 ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.smoothQCurve = function( data ) {
-	this.commands.push( {
-		type: 'smoothQCurve' ,
-		rel: true ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.smoothQCurveTo = function( data ) {
-	this.commands.push( {
-		type: 'smoothQCurve' ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.arc = function( data ) {
-	this.commands.push( {
-		type: 'arc' ,
-		rel: true ,
-		rx: data.rx || 0 ,
-		ry: data.ry || 0 ,
-		ra: data.ra || data.a || 0 ,	// x-axis rotation
-		la:
-			data.largeArc !== undefined ? !! data.largeArc :
-			data.longArc !== undefined ? !! data.longArc :
-			data.la !== undefined ? !! data.la :
-			false ,
-		pr:
-			data.positiveRotation !== undefined ? !! data.positiveRotation :
-			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
-			data.pr !== undefined ? !! data.pr :
-			true ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.arcTo = function( data ) {
-	this.commands.push( {
-		type: 'arc' ,
-		rx: data.rx || 0 ,
-		ry: data.ry || 0 ,
-		ra: data.ra || data.a || 0 ,	// x-axis rotation
-		la:
-			data.largeArc !== undefined ? !! data.largeArc :
-			data.longArc !== undefined ? !! data.longArc :
-			data.la !== undefined ? !! data.la :
-			false ,
-		pr:
-			data.positiveRotation !== undefined ? !! data.positiveRotation :
-			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
-			data.pr !== undefined ? !! data.pr :
-			true ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-// All angles use positive as Y-axis to X-axis (Spellcast usage)
-VGPath.prototype.negativeArc = function( data ) {
-	this.commands.push( {
-		type: 'arc' ,
-		rel: true ,
-		rx: data.rx || 0 ,
-		ry: data.ry || 0 ,
-		ra: - ( data.ra || data.a || 0 ) ,	// x-axis rotation
-		la:
-			data.largeArc !== undefined ? !! data.largeArc :
-			data.longArc !== undefined ? !! data.longArc :
-			data.la !== undefined ? !! data.la :
-			false ,
-		pr: ! (
-			data.positiveRotation !== undefined ? !! data.positiveRotation :
-			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
-			data.pr !== undefined ? !! data.pr :
-			true
-		) ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-// All angles use positive as Y-axis to X-axis (Spellcast usage)
-VGPath.prototype.negativeArcTo = function( data ) {
-	this.commands.push( {
-		type: 'arc' ,
-		rx: data.rx || 0 ,
-		ry: data.ry || 0 ,
-		ra: - ( data.ra || data.a || 0 ) ,	// x-axis rotation
-		la:
-			data.largeArc !== undefined ? !! data.largeArc :
-			data.longArc !== undefined ? !! data.longArc :
-			data.la !== undefined ? !! data.la :
-			false ,
-		pr: ! (
-			data.positiveRotation !== undefined ? !! data.positiveRotation :
-			data.sweep !== undefined ? !! data.sweep :		// <- this is the SVG term
-			data.pr !== undefined ? !! data.pr :
-			true
-		) ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-
-
-/*
-	VG-specific commands.
-*/
-
-// Better arc-like command, but use curve behind the scene
-VGPath.prototype.centerArc = function( data ) {
-	this.commands.push( {
-		type: 'centerArc' ,
-		rel: true ,
-		cx: data.cx || 0 ,
-		cy: data.cy || 0 ,
-		la: data.largeArc !== undefined ? !! data.largeArc :
-		data.longArc !== undefined ? !! data.longArc :
-		data.la !== undefined ? !! data.la :
-		false ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.centerArcTo = function( data ) {
-	this.commands.push( {
-		type: 'centerArc' ,
-		cx: data.cx || 0 ,
-		cy: data.cy || 0 ,
-		la: data.largeArc !== undefined ? !! data.largeArc :
-		data.longArc !== undefined ? !! data.longArc :
-		data.la !== undefined ? !! data.la :
-		false ,
-		x: data.x || 0 ,
-		y: data.y || 0
-	} ) ;
-	return this ;
-} ;
-
-
-
-/*
-	Turtle-like commands.
-*/
-
-VGPath.prototype.penUp = function( data ) {
-	this.commands.push( {
-		type: 'pen' ,
-		u: true
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.penDown = function( data ) {
-	this.commands.push( {
-		type: 'pen' ,
-		u: false
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.forward = function( data ) {
-	this.commands.push( {
-		type: 'forward' ,
-		l: typeof data === 'number' ? data : data.length || data.l || 0
-	} ) ;
-	return this ;
-} ;
-
-VGPath.prototype.backward = function( data ) {
-	this.commands.push( {
-		type: 'forward' ,
-		l: - ( typeof data === 'number' ? data : data.length || data.l || 0 )
-	} ) ;
-	return this ;
-} ;
-
-// Turn using positive as X-axis to Y-axis
-VGPath.prototype.turn = function( data ) {
-	this.commands.push( {
-		type: 'turn' ,
-		rel: true ,
-		a: typeof data === 'number' ? data : data.angle || data.a || 0
-	} ) ;
-	return this ;
-} ;
-
-// Turn from X-axis to Y-axis
-VGPath.prototype.turnTo = function( data ) {
-	this.commands.push( {
-		type: 'turn' ,
-		a: typeof data === 'number' ? data : data.angle || data.a || 0
-	} ) ;
-	return this ;
-} ;
-
-// Turn using positive as Y-axis to X-axis (Spellcast usage)
-VGPath.prototype.negativeTurn = function( data ) {
-	this.commands.push( {
-		type: 'turn' ,
-		rel: true ,
-		a: - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
-	} ) ;
-	return this ;
-} ;
-
-// Turn from Y-axis to X-axis (clockwise when Y point upward, the invert of the standard 2D computer graphics) (Spellcast usage)
-VGPath.prototype.negativeTurnTo = function( data ) {
-	this.commands.push( {
-		type: 'turn' ,
-		a: 90 - ( typeof data === 'number' ? data : data.angle || data.a || 0 )
-	} ) ;
-	return this ;
-} ;
-
-// A turtle-like way of doing a curve: combine a forward and turn, moving along a circle
-VGPath.prototype.forwardTurn = function( data ) {
-	this.commands.push( {
-		type: 'forwardTurn' ,
-		l: data.length || data.l || 0 ,
-		a: data.angle || data.a || 0
-	} ) ;
-	return this ;
-} ;
-
-// Turn using positive as Y-axis to X-axis (clockwise when Y point upward, the invert of the standard 2D computer graphics) (Spellcast usage)
-VGPath.prototype.forwardNegativeTurn = function( data ) {
-	this.commands.push( {
-		type: 'forwardTurn' ,
-		l: data.length || data.l || 0 ,
-		a: - ( data.angle || data.a || 0 )
-	} ) ;
-	return this ;
-} ;
-
-
-},{"../package.json":99,"./VGEntity.js":12,"./canvas-utilities.js":28,"./path-utilities.js":35}],24:[function(require,module,exports){
+},{"../package.json":99,"./Path/Path.js":6,"./VGEntity.js":13,"./canvas-utilities.js":29}],25:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7094,7 +7440,7 @@ VGPseudoContainer.prototype.clearPseudoEntities = function() {
 VGPseudoContainer.prototype.computePseudoEntities = async function() {} ;
 
 
-},{"../package.json":99,"./VGEntity.js":12,"./svg-kit.js":36,"array-kit":58}],25:[function(require,module,exports){
+},{"../package.json":99,"./VGEntity.js":13,"./svg-kit.js":36,"array-kit":58}],26:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7152,7 +7498,7 @@ VGPseudoEntity.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 //VGPseudoEntity.prototype.isPseudoEntity = true ;
 
 
-},{"../package.json":99,"./VGEntity.js":12,"./svg-kit.js":36,"array-kit":58}],26:[function(require,module,exports){
+},{"../package.json":99,"./VGEntity.js":13,"./svg-kit.js":36,"array-kit":58}],27:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7308,7 +7654,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":99,"./BoundingBox.js":1,"./VGEntity.js":12,"./canvas-utilities.js":28}],27:[function(require,module,exports){
+},{"../package.json":99,"./BoundingBox.js":1,"./VGEntity.js":13,"./canvas-utilities.js":29}],28:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7491,7 +7837,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRe
 } ;
 
 
-},{"../package.json":99,"./VGEntity.js":12}],28:[function(require,module,exports){
+},{"../package.json":99,"./VGEntity.js":13}],29:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7656,7 +8002,7 @@ canvas.contextToCanvasCoords = ( canvasCtx , contextCoords ) => {
 } ;
 
 
-},{"./color-utilities.js":29}],29:[function(require,module,exports){
+},{"./color-utilities.js":30}],30:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -7798,7 +8144,7 @@ colorUtilities.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 } ;
 
 
-},{"palette-shade":78}],30:[function(require,module,exports){
+},{"palette-shade":78}],31:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -8250,7 +8596,7 @@ core.standalone = function( content , viewBox ) {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":106,"dom-kit":70,"fs":100,"string-kit/lib/escape.js":92}],31:[function(require,module,exports){
+},{"_process":106,"dom-kit":70,"fs":100,"string-kit/lib/escape.js":92}],32:[function(require,module,exports){
 (function (process,__dirname){(function (){
 /*
 	SVG Kit
@@ -8629,7 +8975,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'),"/lib")
-},{"_process":106,"fs":100,"opentype.js":74,"path":105}],32:[function(require,module,exports){
+},{"_process":106,"fs":100,"opentype.js":74,"path":105}],33:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9069,7 +9415,7 @@ exports.fade = ( params ) => {
 
 
 
-},{"../VGFlowingText/TextAttribute.js":16,"./mathFn.js":33}],33:[function(require,module,exports){
+},{"../VGFlowingText/TextAttribute.js":17,"./mathFn.js":34}],34:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9180,7 +9526,7 @@ easing.sine = t => 0.5 + Math.sin( - PI_OVER_2 + t * PI ) / 2 ;
 
 
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 (function (process){(function (){
 /*
 	SVG Kit
@@ -9238,316 +9584,7 @@ else {
 
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":106,"image-size":100}],35:[function(require,module,exports){
-/*
-	SVG Kit
-
-	Copyright (c) 2017 - 2023 Cédric Ronvel
-
-	The MIT License (MIT)
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
-"use strict" ;
-
-
-
-const degToRad = deg => deg * Math.PI / 180 ;
-const radToDeg = rad => rad * 180 / Math.PI ;
-
-
-
-const pathUtilities = {} ;
-module.exports = pathUtilities ;
-
-
-
-// Create lines from an array of points (object with .x and .y)
-pathUtilities.linePointsToD = ( points , invertY = false ) => {
-	var yMul = invertY ? - 1 : 1 ,
-		str = 'M' ;
-
-	points.forEach( point => {
-		str += ' ' + point.x + ',' + ( point.y * yMul ) ;
-	} ) ;
-
-	return str ;
-} ;
-
-pathUtilities.polygonPointsToD = ( points , invertY = false ) => pathUtilities.linePointsToD( points , invertY ) + ' z' ;
-
-
-
-/*
-	This part is used to build the SVG 'd' attribute from the SVG Kit's command format.
-*/
-
-pathUtilities.commandsToD = ( commands , invertY = false ) => {
-	var build = {
-		invertY ,
-		d: '' ,
-		pu: false ,	// Pen Up, when true, turtle-like commands move without tracing anything
-		cx: 0 ,		// cursor position x
-		cy: 0 ,		// cursor position y
-		ca: invertY ? - Math.PI / 2 : Math.PI / 2		// cursor angle, default to positive Y-axis
-	} ;
-
-	commands.forEach( ( command , index ) => {
-		if ( index ) { build.d += ' ' ; }
-		builders[ command.type ]( command , build ) ;
-	} ) ;
-
-	return build.d ;
-} ;
-
-
-
-const builders = pathUtilities.builders = {} ;
-
-builders.close = ( command , build ) => {
-	build.d += 'z' ;
-} ;
-
-builders.move = ( command , build ) => {
-	var y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 'm ' + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'M ' + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-builders.line = ( command , build ) => {
-	var y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 'l ' + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'L ' + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-builders.curve = ( command , build ) => {
-	var cy1 = build.invertY ? - command.cy1 : command.cy1 ,
-		cy2 = build.invertY ? - command.cy2 : command.cy2 ,
-		y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 'c ' + command.cx1 + ' ' + cy1 + ' ' + command.cx2 + ' ' + cy2 + ' '  + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'C ' + command.cx1 + ' ' + cy1 + ' ' + command.cx2 + ' ' + cy2 + ' '  + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-builders.smoothCurve = ( command , build ) => {
-	var cy = build.invertY ? - command.cy : command.cy ,
-		y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 's ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'S ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-builders.qCurve = ( command , build ) => {
-	var cy = build.invertY ? - command.cy : command.cy ,
-		y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 'q ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'Q ' + command.cx + ' ' + cy + ' ' + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-builders.smoothQCurve = ( command , build ) => {
-	var y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 't ' + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'T ' + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-builders.arc = ( command , build ) => {
-	var ra = build.invertY ? - command.ra : command.ra ,
-		pr = build.invertY ? ! command.pr : command.pr ,
-		y = build.invertY ? - command.y : command.y ;
-
-	if ( command.rel ) {
-		build.d += 'a ' + command.rx + ' ' + command.ry + ' ' + ra + ' ' + ( + command.la ) + ' '  + ( + pr ) + ' ' + command.x + ' ' + y ;
-		build.cx += command.x ;
-		build.cy += y ;
-	}
-	else {
-		build.d += 'A ' + command.rx + ' ' + command.ry + ' ' + ra + ' ' + ( + command.la ) + ' '  + ( + pr ) + ' ' + command.x + ' ' + y ;
-		build.cx = command.x ;
-		build.cy = y ;
-	}
-} ;
-
-// VG-specific
-
-/*
-	Approximation of circles using cubic bezier curves.
-
-	Controle point distance/radius ratio for quarter of circle: 0.55228475 or 4/3 (sqrt(2)-1)
-	For half of a circle: 4/3
-
-	From: https://www.tinaja.com/glib/bezcirc2.pdf
-	The arc is bissected by the X-axis.
-	x0 = cos( / 2)			y0 = sin( / 2)
-	x3 = x1					y3 = - y0
-	x1 = (4 - x0) / 3		y1 = (1 - x0)(3 - x0) / 3 y0
-	x2 = x1					y2 = -y1
-
-	This distance ensure that the mid-time point is exactly on the arc.
-	It works very well for angle ranging from 0-90°, can be good enough for 90-180°,
-	but it's bad for greater than 180°.
-	In fact it's not possible to approximate a 270° arc with a single cubic bezier curve.
-*/
-function controleDistance( angle ) {
-	if ( ! angle ) { return 0 ; }
-	var angleRad = degToRad( angle ) ;
-	var x0 = Math.cos( angleRad / 2 ) ,
-		y0 = Math.sin( angleRad / 2 ) ,
-		x1 = ( 4 - x0 ) / 3 ,
-		y1 = ( 1 - x0 ) * ( 3 - x0 ) / ( 3 * y0 ) ;
-	return Math.sqrt( ( x0 - x1 ) ** 2 + ( y0 - y1 ) ** 2 ) ;
-}
-
-builders.centerArc = ( command , build ) => {
-
-	// ---------------------------------------------------------------------------------- NOT CODED ----------------------------------------------------------------
-
-	// It's supposed to ease circle creation inside path, converting them to SVG curves...
-
-	var { x , y , cx , cy } = command ;
-
-	if ( command.rel ) {
-		x += build.cx ;
-		y += build.cy ;
-		cx += build.cx ;
-		cy += build.cy ;
-	}
-
-	var startAngle = Math.atan2( build.cy - cy , build.cx - cx ) ,
-		endAngle = Math.atan2( y - cy , x - cx ) ;
-
-	build.cx = x ;
-	build.cy = y ;
-} ;
-
-// Turtle-like
-
-builders.pen = ( command , build ) => {
-	build.pu = command.u ;
-} ;
-
-builders.forward = ( command , build ) => {
-	var dx = command.l * Math.cos( build.ca ) ,
-		dy = command.l * Math.sin( build.ca ) ;
-
-	if ( build.pu ) { build.d += 'm ' + dx + ' ' + dy ; }
-	else { build.d += 'l ' + dx + ' ' + dy ; }
-
-	build.cx += dx ;
-	build.cy += dy ;
-} ;
-
-builders.turn = ( command , build ) => {
-	var a = build.invertY ? - command.a : command.a ;
-
-	if ( command.rel ) {
-		build.ca += degToRad( a ) ;
-	}
-	else {
-		build.ca = degToRad( a ) ;
-	}
-} ;
-
-builders.forwardTurn = ( command , build ) => {
-	var a = build.invertY ? - command.a : command.a ;
-
-	/*
-		We will first transpose to a circle of center 0,0 and we are starting at x=radius,y=0 and moving positively
-	*/
-	var angleRad = degToRad( a ) ,
-		angleSign = angleRad >= 0 ? 1 : - 1 ,
-		alpha = Math.abs( angleRad ) ,
-		radius = command.l / alpha ,
-		trX = radius * Math.cos( alpha ) ,
-		trY = radius * Math.sin( alpha ) ,
-		dist = Math.sqrt( ( radius - trX ) ** 2 + trY ** 2 ) ,
-		beta = Math.atan2( radius - trX , trY ) ;	// beta is the deviation
-
-	var dx = dist * Math.cos( build.ca + angleSign * beta ) ,
-		dy = dist * Math.sin( build.ca + angleSign * beta ) ;
-
-	if ( build.pu ) {
-		build.d += 'm ' + dx + ' ' + dy ;
-	}
-	else {
-		build.d += 'a ' + radius + ' ' + radius + ' 0 ' + ( alpha > Math.PI ? 1 : 0 ) + ' '  + ( angleRad >= 0 ? 1 : 0 ) + ' ' + dx + ' ' + dy ;
-	}
-
-	build.cx += dx ;
-	build.cy += dy ;
-	build.ca += angleRad ;
-} ;
-
-
-},{}],36:[function(require,module,exports){
+},{"_process":106,"image-size":100}],36:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -9583,11 +9620,11 @@ module.exports = svgKit ;
 
 Object.assign( svgKit , require( './core-utilities.js' ) ) ;
 Object.assign( svgKit , require( './color-utilities.js' ) ) ;
-svgKit.path = require( './path-utilities.js' ) ;
 svgKit.canvas = require( './canvas-utilities.js' ) ;
 
 svgKit.BoundingBox = require( './BoundingBox.js' ) ;
 svgKit.ConvexPolygon = require( './ConvexPolygon.js' ) ;
+svgKit.Path = require( './Path/Path.js' ) ;
 svgKit.Style = require( './Style.js' ) ;
 
 svgKit.VG = require( './VG.js' ) ;
@@ -9639,7 +9676,7 @@ svgKit.objectToVG = function( object , clone = false ) {
 } ;
 
 
-},{"./BoundingBox.js":1,"./ConvexPolygon.js":2,"./DynamicArea.js":3,"./DynamicManager.js":4,"./Style.js":6,"./VG.js":7,"./VGClip.js":8,"./VGContainer.js":9,"./VGConvexPolygon.js":10,"./VGEllipse.js":11,"./VGEntity.js":12,"./VGFlowingText/StructuredTextLine.js":13,"./VGFlowingText/StructuredTextPart.js":14,"./VGFlowingText/TextAttribute.js":16,"./VGFlowingText/TextMetrics.js":17,"./VGFlowingText/VGFlowingText.js":18,"./VGGroup.js":21,"./VGImage.js":22,"./VGPath.js":23,"./VGRect.js":26,"./VGText.js":27,"./canvas-utilities.js":28,"./color-utilities.js":29,"./core-utilities.js":30,"./fontLib.js":31,"./fx/fx.js":32,"./path-utilities.js":35,"dom-kit":70,"opentype.js":74}],37:[function(require,module,exports){
+},{"./BoundingBox.js":1,"./ConvexPolygon.js":2,"./DynamicArea.js":3,"./DynamicManager.js":4,"./Path/Path.js":6,"./Style.js":7,"./VG.js":8,"./VGClip.js":9,"./VGContainer.js":10,"./VGConvexPolygon.js":11,"./VGEllipse.js":12,"./VGEntity.js":13,"./VGFlowingText/StructuredTextLine.js":14,"./VGFlowingText/StructuredTextPart.js":15,"./VGFlowingText/TextAttribute.js":17,"./VGFlowingText/TextMetrics.js":18,"./VGFlowingText/VGFlowingText.js":19,"./VGGroup.js":22,"./VGImage.js":23,"./VGPath.js":24,"./VGRect.js":27,"./VGText.js":28,"./canvas-utilities.js":29,"./color-utilities.js":30,"./core-utilities.js":31,"./fontLib.js":32,"./fx/fx.js":33,"dom-kit":70,"opentype.js":74}],37:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -41965,7 +42002,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":96}],99:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
