@@ -39,7 +39,7 @@ describe( "Find" , () => {
 
 
 
-describe( "Simple Convex Polygon test" , () => {
+describe( "Simple Convex Polygon" , () => {
 	
 	it( "should check if a coordinate is inside the polygon" , () => {
 		var polygon = new svgKit.ConvexPolygon( { points: [
@@ -71,6 +71,25 @@ describe( "Simple Convex Polygon test" , () => {
 		expect( polygon.isInside( { x: -3, y: 0 } ) ).to.be( false ) ;
 		expect( polygon.isInside( { x: -3, y: 3 } ) ).to.be( false ) ;
 		expect( polygon.isInside( { x: -3, y: -3 } ) ).to.be( false ) ;
+	} ) ;
+} ) ;
+
+
+
+describe( "Path" , () => {
+
+	it( "Bezier path" , () => {
+		var path = new svgKit.Path() ;
+		path.curve( { cx1: 3 , cy1: 3 , cx2: 3 , cy2: -3 , x: 6 , y: 0 } ) ;
+		var curves = path.computeCurves() ;
+		var curve = curves[ 0 ] ;
+		log( "Curve: %I" , curve ) ;
+
+		for ( let i = 0 ; i < curve.length ; i ++ ) {
+			let point = curve.getPointAtLength( i ) ;
+			log( "Point at length %f: %n" , i , point ) ;
+		}
+		log( "Point at length %f: %n" , curve.length , curve.getPointAtLength( curve.length ) ) ;
 	} ) ;
 } ) ;
 
