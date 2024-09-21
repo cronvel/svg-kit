@@ -80,8 +80,9 @@ describe( "Path" , () => {
 
 	it( "Bezier path" , () => {
 		var path = new svgKit.Path() ;
-		path.curve( { cx1: 3 , cy1: 3 , cx2: 3 , cy2: -3 , x: 6 , y: 0 } ) ;
+		//path.curve( { cx1: 3 , cy1: 3 , cx2: 3 , cy2: -3 , x: 6 , y: 0 } ) ;
 		//path.line( { x: 6 , y: 10 } ) ;
+		path.arc( { rx: 4 , ry: 6 , x: 6 , y: 0 } ) ;
 		var curves = path.computeCurves() ;
 		var curve = curves[ 0 ] ;
 		log( "Curve: %I" , curve ) ;
