@@ -81,15 +81,16 @@ describe( "Path" , () => {
 	it( "Bezier path" , () => {
 		var path = new svgKit.Path() ;
 		path.curve( { cx1: 3 , cy1: 3 , cx2: 3 , cy2: -3 , x: 6 , y: 0 } ) ;
+		//path.line( { x: 6 , y: 10 } ) ;
 		var curves = path.computeCurves() ;
 		var curve = curves[ 0 ] ;
 		log( "Curve: %I" , curve ) ;
 
 		for ( let i = 0 ; i < curve.length ; i ++ ) {
-			let point = curve.getPointAtLength( i ) ;
+			let point = curve.getPointAndTangentAtLength( i ) ;
 			log( "Point at length %f: %n" , i , point ) ;
 		}
-		log( "Point at length %f: %n" , curve.length , curve.getPointAtLength( curve.length ) ) ;
+		log( "Point at length %f: %n" , curve.length , curve.getPointAndTangentAtLength( curve.length ) ) ;
 	} ) ;
 } ) ;
 
