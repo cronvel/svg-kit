@@ -24,6 +24,7 @@ async function pathTest() {
 	console.warn( "VGPath:" , vgPath ) ;
 	
 	var points = [ ... vgPath.path.getPointEveryLength( 5 , { forceKeyPoints: true , minAngleDeg: 20 } ) ] ;
+	//var points = [ ... vgPath.path.getPointEveryLength( 5 , { forceKeyPoints: false , minAngleDeg: 20 } ) ] ;
 	console.log( "points count" , points.length ) ;
 	var vgPathEvery = new svgKit.VGPath( {
 		style: {
