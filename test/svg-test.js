@@ -128,7 +128,7 @@ describe( "Path" , () => {
 
 		//let point = path.getPointAtLength( 0 , true ) ; log( "Point at length %f: %n" , 0 , point ) ; return ;
 
-		for ( let data of path.getPointEveryLength( 2 , { forceKeyPoints: true } ) ) {
+		for ( let data of path.getPointEveryLength( 2 , { forceKeyPoints: false , minAngleDeg: 10 } ) ) {
 			log( "Point at length: %n" , data ) ;
 		}
 	} ) ;
