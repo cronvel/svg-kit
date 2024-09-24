@@ -23,14 +23,16 @@ async function pathTest() {
 	vg.addEntity( vgPath ) ;
 	console.warn( "VGPath:" , vgPath ) ;
 	
-	var points = [ ... vgPath.path.getPointEveryLength( 5 , { forceKeyPoints: true , minAngleDeg: 20 } ) ] ;
-	//var points = [ ... vgPath.path.getPointEveryLength( 5 , { forceKeyPoints: false , minAngleDeg: 20 } ) ] ;
-	console.log( "points count" , points.length ) ;
+	var step = 5 , forceKeyPoints = true ;
+	var points = vgPath.path.getPoints( step , { forceKeyPoints } ) ;
+	var simplifiedPoints = vgPath.path.getPoints( step , { forceKeyPoints , angleThresholdDeg: 25 } ) ;
+	console.log( "simplified points count" , simplifiedPoints.length ) ;
+
 	var vgPathEvery = new svgKit.VGPath( {
 		style: {
 			//fill: '%lighter blue' ,
 			fill: 'none' ,
-			stroke: '%red-violet' ,
+			stroke: '%green' ,
 			strokeWidth: 1
 		}
 	} ) ;
@@ -39,6 +41,20 @@ async function pathTest() {
 		else { vgPathEvery.moveTo( point ) ; }
 	} ) ;
 	vg.addEntity( vgPathEvery ) ;
+
+	var vgSimplifiedPath = new svgKit.VGPath( {
+		style: {
+			//fill: '%lighter blue' ,
+			fill: 'none' ,
+			stroke: '%red-violet' ,
+			strokeWidth: 1
+		}
+	} ) ;
+	simplifiedPoints.forEach( ( point , index ) => {
+		if ( index ) { vgSimplifiedPath.lineTo( point ) ; }
+		else { vgSimplifiedPath.moveTo( point ) ; }
+	} ) ;
+	vg.addEntity( vgSimplifiedPath ) ;
 
 	console.warn( "VG:" , vg ) ;
 	renderAll( vg ) ;

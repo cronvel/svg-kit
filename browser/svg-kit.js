@@ -1216,16 +1216,27 @@ Arc.prototype.getTangentAtLength = function( length ) {
 	const dx = p2.x - p1.x ;
 	const dy = p2.y - p1.y ;
 	const dist = Math.sqrt( dx * dx + dy * dy ) ;
-	return { x: dx / dist , y: dy / dist } ;
+
+	return {
+		x: dx / dist ,
+		y: dy / dist ,
+		angle: Math.atan2( dy , dx )
+	} ;
 } ;
 
 
 
+// Position + Tangent + Angle (radians)
 Arc.prototype.getPropertiesAtLength = function( length ) {
 	const point = this.getPointAtLength( length ) ;
 	const tangent = this.getTangentAtLength( length ) ;
+
 	return {
-		x: point.x , y: point.y , dx: tangent.x , dy: tangent.y
+		x: point.x ,
+		y: point.y ,
+		dx: tangent.x ,
+		dy: tangent.y ,
+		angle: tangent.angle
 	} ;
 } ;
 
@@ -1470,11 +1481,14 @@ Bezier.prototype.getTangentAtLength = function( length ) {
 		tangent = { x: 0 , y: 0 } ;
 	}
 
+	tangent.angle = Math.atan2( tangent.y , tangent.x ) ;
+
 	return tangent ;
 } ;
 
 
 
+// Position + Tangent + Angle (radians)
 Bezier.prototype.getPropertiesAtLength = function( length ) {
 	const t = this.getT( this.xs , this.ys , length ) ;
 
@@ -1495,7 +1509,11 @@ Bezier.prototype.getPropertiesAtLength = function( length ) {
 	}
 	
 	return {
-		x: point.x , y: point.y , dx: tangent.x , dy: tangent.y
+		x: point.x ,
+		y: point.y ,
+		dx: tangent.x ,
+		dy: tangent.y ,
+		angle: Math.atan2( tangent.y , tangent.x )
 	} ;
 } ;
 
@@ -1712,21 +1730,25 @@ Line.prototype.getTangentAtLength = function() {
 
 	return {
 		x: dx / this.length || 0 ,
-		y: dy / this.length || 0
+		y: dy / this.length || 0 ,
+		angle: Math.atan2( dy , dx )
 	} ;
 } ;
 
 
 
+// Position + Tangent + Angle (radians)
 Line.prototype.getPropertiesAtLength = function( length ) {
 	var point = this.getPointAtLength( length ) ;
 	var tangent = this.getTangentAtLength() ;
+
 	return {
 		x: point.x ,
 		y: point.y ,
 		dx: tangent.x ,
-		dy: tangent.y
-	}
+		dy: tangent.y ,
+		angle: tangent.angle
+	} ;
 } ;
 
 
@@ -1744,9 +1766,31 @@ function Move( endPoint ) {
 module.exports = Move ;
 
 Move.prototype.getLength = function() { return 0 ; } ;
-Move.prototype.getPointAtLength = function() { return { x: this.endPoint.x , y: this.endPoint.y } ; } ;
-Move.prototype.getTangentAtLength = function() { return { x: 0 , y: 0 } ; } ;
-Move.prototype.getPropertiesAtLength = function() { return { x: this.endPoint.x , y: this.endPoint.y , dx: 0 , dy: 0 } ; } ;
+
+Move.prototype.getPointAtLength = function() {
+	return {
+		x: this.endPoint.x ,
+		y: this.endPoint.y
+	} ;
+} ;
+
+Move.prototype.getTangentAtLength = function() {
+	return {
+		x: 0 ,
+		y: 0 ,
+		angle: 0
+	} ;
+} ;
+
+Move.prototype.getPropertiesAtLength = function() {
+	return {
+		x: this.endPoint.x ,
+		y: this.endPoint.y ,
+		dx: 0 ,
+		dy: 0 ,
+		angle: 0
+	} ;
+} ;
 
 
 },{}],11:[function(require,module,exports){
@@ -1952,285 +1996,182 @@ Path.prototype.getPointAtLength = function( length , extraData = false ) {
 
 
 
-function absAngleDelta( a , b ) {
-	let delta = Math.abs( ( a - b ) % ( 2 * Math.PI ) ) ;
-	return delta <= Math.PI ? delta : 2 * Math.PI - delta ;
-}
-
-
-
-/*
-	Iterator generating a point every X length in the path.
-
-	Arguments:
-		everyLength: number, return the point every X length in the path
-		options:
-			forceKeyPoints: boolean, if true: always add points at the begining and at the end of a path's part (aka 'cusp')
-			minAngle: if set, only add the point if its tangent angle has moved more than this threshold (in radian)
-			minAngleDeg: the same than minAngle, but angle is in degree
-			extraData: boolean, if true: add tangent vector (dx,dy)
-*/
-Path.prototype.getPointEveryLength_old = function * ( everyLength , options = {} ) {
-	// Manage options
-	var forceKeyPoints = !! options.forceKeyPoints ,
-		minAngle = options.minAngleDeg !== undefined ? degToRad( + options.minAngleDeg || 0 ) : + options.minAngle || 0 ,
-		extraData = minAngle ? true : !! options.extraData ;
-
-	this.computeCurves() ;
-
-	var addStartPoint = true ,
-		endPointData = null ,
-		lastAngle ,
-		lastDataUnderMinAngle = null ,
-		lastAngleUnderMinAngle ,
-		lengthUpToLastCurve = 0 ,
-		lastCurveRemainder = 0 ;
+// Split on Move curve, grouping by shapes (closed or not)
+Path.prototype.groupCurvesByShape = function() {
+	var group = [] ,
+		groupList = [] ;
 
 	for ( let curve of this.curves ) {
 		if ( curve instanceof Move ) {
-			if ( endPointData ) {
-				yield endPointData ;
-				endPointData = null ;
+			if ( group.length ) {
+				groupList.push( group ) ;
+				group = [] ;
 			}
-			addStartPoint = true ;
-			lastDataUnderMinAngle = null ;
-			continue ;
-		}
-
-		if ( addStartPoint ) {
-			let data = extraData ? curve.getPropertiesAtLength( 0 ) : curve.getPointAtLength( 0 ) ;
-			data.length = lengthUpToLastCurve ;
-			yield data ;
-			addStartPoint = false ;
-			lastCurveRemainder = 0 ;
-			if ( minAngle ) { lastAngle = Math.atan2( data.dy , data.dx ) ; }
-		}
-
-		if ( forceKeyPoints ) {
-			let data ,
-				lengthInCurve = everyLength ,
-				subdivision = Math.round( curve.length / everyLength ) || 1 ,
-				everyCurveLength = curve.length / subdivision ;
-
-			if ( ! minAngle || ! ( curve instanceof Line ) ) {
-				if ( minAngle ) {
-					// Always use the new start-point as lastAngle instead of the end-point of the previous curve
-					let startData = curve.getTangentAtLength( 0 ) ;
-					lastAngle = Math.atan2( startData.y , startData.x ) ;
-				}
-				
-				for ( let i = 1 ; i < subdivision ; i ++ , lengthInCurve += everyCurveLength ) {
-					data = extraData ? curve.getPropertiesAtLength( lengthInCurve ) : curve.getPointAtLength( lengthInCurve ) ;
-					data.length = lengthUpToLastCurve + lengthInCurve ;
-
-					if ( minAngle ) {
-						let angle = Math.atan2( data.dy , data.dx ) ;
-						let angleDelta = absAngleDelta( angle , lastAngle ) ;
-						if ( angleDelta > minAngle ) {
-							//console.log( "Angles:" , radToRoundedDeg( angle ) , radToRoundedDeg( lastAngle ) , "=>" , radToRoundedDeg( angleDelta ) ) ;
-							// Since we want to AVOID exceeding the minAngle threshold whenever possible,
-							// we will try to introduce the previous point if it helps
-							if ( lastDataUnderMinAngle ) {
-								let inBetweenAngleDelta = absAngleDelta( angle , lastAngleUnderMinAngle ) ;
-								if ( inBetweenAngleDelta < angleDelta ) {
-									console.warn( "Add in-between point, angle:" , radToRoundedDeg( absAngleDelta( lastAngle , lastAngleUnderMinAngle ) ) ) ;
-									yield lastDataUnderMinAngle ;
-
-									if ( inBetweenAngleDelta > minAngle ) {
-										console.warn( "Add point after in-between, angle:" , radToRoundedDeg( inBetweenAngleDelta ) ) ;
-										yield data ;
-										lastDataUnderMinAngle = null ;
-										lastAngle = angle ;
-									}
-									else {
-										lastAngle = lastAngleUnderMinAngle ;
-										lastDataUnderMinAngle = data ;
-										lastAngleUnderMinAngle = angle ;
-									}
-								}
-								else {
-									console.warn( "Add point, in-between was worse, angle:" , radToRoundedDeg( angleDelta ) ) ;
-									yield data ;
-									lastAngle = angle ;
-								}
-							}
-							else {
-								console.warn( "Add point, no in-between, angle:" , radToRoundedDeg( angleDelta ) ) ;
-								yield data ;
-								lastAngle = angle ;
-							}
-						}
-						else {
-							lastDataUnderMinAngle = data ;
-							lastAngleUnderMinAngle = angle ;
-						}
-					}
-					else {
-						console.warn( "Add point, no min angle" ) ;
-						yield data ;
-					}
-				}
-			}
-
-			// Special case for the end of the curve, we want to avoid floating point errors
-			data = extraData ? curve.getPropertiesAtLength( curve.length ) : curve.getPointAtLength( curve.length ) ;
-			data.length = lengthUpToLastCurve + curve.length ;
-			yield data ;
-
-			lastDataUnderMinAngle = null ;
-			lengthUpToLastCurve += curve.length ;
-			lastCurveRemainder = 0 ;
 		}
 		else {
-			let lastLengthInCurve ,
-				lengthInCurve = everyLength - lastCurveRemainder ;
-
-			for ( ; lengthInCurve <= curve.length ; lengthInCurve += everyLength ) {
-				let data = extraData ? curve.getPropertiesAtLength( lengthInCurve ) : curve.getPointAtLength( lengthInCurve ) ;
-				data.length = lengthUpToLastCurve + lengthInCurve ;
-				lastLengthInCurve = lengthInCurve ;
-
-				if ( minAngle ) {
-					let angle = Math.atan2( data.dy , data.dx ) ;
-					if ( absAngleDelta( angle , lastAngle ) >= minAngle ) {
-						endPointData = null ;
-						lastAngle = angle ;
-						yield data ;
-					}
-					else {
-						endPointData = data ;
-					}
-				}
-				else {
-					yield data ;
-				}
-			}
-
-			lengthUpToLastCurve += curve.length ;
-			lastCurveRemainder = curve.length - lastLengthInCurve ;
+			group.push( curve ) ;
 		}
 	}
 
-	if ( endPointData ) {
-		yield endPointData ;
-	}
+	if ( group.length ) { groupList.push( group ) ; }
+
+	return groupList ;
 } ;
 
 
 
-Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
-	// Manage options
+/*
+	Options:
+		forceKeyPoints: boolean, if true: always add points at the begining and at the end of a path's part (aka 'cusp')
+		angleThreshold: if set, only add the point if its tangent angle has moved more than this threshold (in radian)
+		angleThresholdDeg: the same than angleThreshold, but angle is in degree
+*/
+Path.prototype.getPoints = function( everyLength , options = {} ) {
 	var forceKeyPoints = !! options.forceKeyPoints ,
-		minAngle = options.minAngleDeg !== undefined ? degToRad( + options.minAngleDeg || 0 ) : + options.minAngle || 0 ,
-		extraData = minAngle ? true : !! options.extraData ;
+		angleThreshold = options.angleThresholdDeg !== undefined ? degToRad( + options.angleThresholdDeg || 0 ) : + options.angleThreshold || 0 ,
+		simplifyLines = !! angleThreshold ,
+		pointsGroups = [] ;
 
 	this.computeCurves() ;
+	
+	var length = 0 ,
+		lengthRemainder = 0 ;
 
-	var addStartPoint = true ,
-		endPointData = null ,
-		lastAngle ,
-		lengthUpToLastCurve = 0 ,
-		lastCurveRemainder = 0 ;
-
-	for ( let index ; index < this.curves.length ; index ++ ) {
-		let curve = this.curves[ index ] ,
-			nextCurve = this.curves[ index + 1 ] || null ;
-
-		if ( nextCurve && ( nextCurve instanceof Move ) ) { nextCurve = null ; }
-
-		if ( curve instanceof Move ) {
-			if ( endPointData ) {
-				yield endPointData ;
-				endPointData = null ;
-			}
-			addStartPoint = true ;
-			continue ;
+	for ( let group of this.groupCurvesByShape() ) {
+		let data = this.getPointsOfShape( group , everyLength , forceKeyPoints , length , lengthRemainder , simplifyLines ) ;
+		pointsGroups.push( data.points ) ;
+		length = data.endingLength ;
+		lengthRemainder = data.lengthRemainder ;
+	}
+	
+	if ( angleThreshold ) {
+		for ( let points of pointsGroups ) {
+			this.simplifyShape( points , angleThreshold ) ;
 		}
+	}
+	
+	console.warn( "getPoints():" , pointsGroups.flat() ) ;
+	return options.groupShape ? pointsGroups : pointsGroups.flat() ;
+} ;
 
-		if ( addStartPoint ) {
-			let data = extraData ? curve.getPropertiesAtLength( 0 ) : curve.getPointAtLength( 0 ) ;
-			data.length = lengthUpToLastCurve ;
-			yield data ;
-			addStartPoint = false ;
-			lastCurveRemainder = 0 ;
-			if ( minAngle ) { lastAngle = Math.atan2( data.dy , data.dx ) ; }
+
+
+Path.prototype.getPointsOfShape = function( curveList , everyLength , forceKeyPoints , startingLength , lengthRemainder , simplifyLines ) {
+	var pointList = [] ,
+		lastPoint = null ,
+		lengthUpToLastCurve = startingLength ,
+		lastCurveRemainder = lengthRemainder ;
+
+	for ( let curve of curveList ) {
+		let startPoint = curve.getPropertiesAtLength( 0 ) ;
+
+		if ( ! lastPoint ) {
+			startPoint.atLength = lengthUpToLastCurve ;
+			startPoint.startShape = true ;
+			if ( forceKeyPoints ) { startPoint.keyPoint = true ; }
+			pointList.push( startPoint ) ;
+			lastPoint = startPoint ;
+		}
+		else {
+			lastPoint.nextAngle = startPoint.angle ;
 		}
 
 		if ( forceKeyPoints ) {
-			let data ,
+			let point ,
 				lengthInCurve = everyLength ,
 				subdivision = Math.round( curve.length / everyLength ) || 1 ,
 				everyCurveLength = curve.length / subdivision ;
 
-			if ( ! minAngle || ! ( curve instanceof Line ) ) {
-				if ( minAngle ) {
-					// Always use the new start-point as lastAngle instead of the end-point of the previous curve
-					let startData = curve.getTangentAtLength( 0 ) ;
-					lastAngle = Math.atan2( startData.y , startData.x ) ;
-				}
-				
+			if ( ! simplifyLines || ! ( curve instanceof Line ) ) {
 				for ( let i = 1 ; i < subdivision ; i ++ , lengthInCurve += everyCurveLength ) {
-					data = extraData ? curve.getPropertiesAtLength( lengthInCurve ) : curve.getPointAtLength( lengthInCurve ) ;
-					data.length = lengthUpToLastCurve + lengthInCurve ;
-
-					if ( minAngle ) {
-						let angle = Math.atan2( data.dy , data.dx ) ;
-						let angleDelta = absAngleDelta( angle , lastAngle ) ;
-						if ( angleDelta > minAngle ) {
-							//console.log( "Angles:" , radToRoundedDeg( angle ) , radToRoundedDeg( lastAngle ) , "=>" , radToRoundedDeg( angleDelta ) ) ;
-							// Since we want to AVOID exceeding the minAngle threshold whenever possible,
-							// we will try to introduce the previous point if it helps
-							yield data ;
-							lastAngle = angle ;
-						}
-					}
-					else {
-						console.warn( "Add point, no min angle" ) ;
-						yield data ;
-					}
+					point = curve.getPropertiesAtLength( lengthInCurve ) ;
+					point.atLength = lengthUpToLastCurve + lengthInCurve ;
+					pointList.push( point ) ;
+					lastPoint = point ;
 				}
 			}
 
 			// Special case for the end of the curve, we want to avoid floating point errors
-			data = extraData ? curve.getPropertiesAtLength( curve.length ) : curve.getPointAtLength( curve.length ) ;
-			data.length = lengthUpToLastCurve + curve.length ;
-			yield data ;
-
+			point = curve.getPropertiesAtLength( curve.length ) ;
+			point.atLength = lengthUpToLastCurve + curve.length ;
+			point.keyPoint = true ;
+			pointList.push( point ) ;
+			lastPoint = point ;
 			lengthUpToLastCurve += curve.length ;
-			lastCurveRemainder = 0 ;
 		}
 		else {
 			let lastLengthInCurve ,
 				lengthInCurve = everyLength - lastCurveRemainder ;
 
 			for ( ; lengthInCurve <= curve.length ; lengthInCurve += everyLength ) {
-				let data = extraData ? curve.getPropertiesAtLength( lengthInCurve ) : curve.getPointAtLength( lengthInCurve ) ;
-				data.length = lengthUpToLastCurve + lengthInCurve ;
+				let point = curve.getPropertiesAtLength( lengthInCurve ) ;
+				point.atLength = lengthUpToLastCurve + lengthInCurve ;
 				lastLengthInCurve = lengthInCurve ;
-
-				if ( minAngle ) {
-					let angle = Math.atan2( data.dy , data.dx ) ;
-					if ( absAngleDelta( angle , lastAngle ) >= minAngle ) {
-						endPointData = null ;
-						lastAngle = angle ;
-						yield data ;
-					}
-					else {
-						endPointData = data ;
-					}
-				}
-				else {
-					yield data ;
-				}
+				pointList.push( point ) ;
+				lastPoint = point ;
 			}
 
 			lengthUpToLastCurve += curve.length ;
 			lastCurveRemainder = curve.length - lastLengthInCurve ;
 		}
 	}
+	
+	lastPoint.endShape = true ;
+	
+	return {
+		points: pointList ,
+		endingLength: lengthUpToLastCurve ,
+		lengthRemainder: lastCurveRemainder
+	} ;
+} ;
 
-	if ( endPointData ) {
-		yield endPointData ;
+
+
+function threePointsAngle( pointList , previousIndex , index , nextIndex ) {
+	let angle ,
+		previousPoint = pointList[ previousIndex ] ,
+		point = pointList[ index ] ,
+		nextPoint = pointList[ nextIndex ] ,
+		previousDirection = Math.atan2( point.x - previousPoint.x , point.y - previousPoint.y ) ,
+		nextDirection = Math.atan2( nextPoint.x - point.x , nextPoint.y - point.y ) ;
+	
+	// Absolute value of the angle
+	angle = Math.abs( ( previousDirection - nextDirection ) % ( 2 * Math.PI ) ) ;
+	angle = angle <= Math.PI ? angle : 2 * Math.PI - angle ;
+	return angle ;
+}
+
+Path.prototype.simplifyShape = function( pointList , angleThreshold ) {
+	var simplified = true ;
+
+	// We need a multi-pass approch here, doing it in one-shot will produce multiple consecutive points stripped
+	// and 2 consecutive points non-stripped, and so on... The previous lines eat all the “angle capital”.
+	// The removal is badly distributed.
+	// That's why a single pass should not remove consecutive points.
+	while ( simplified ) {
+		simplified = false ;
+
+		for ( let index = 1 ; index <= pointList.length - 2 ; index ++ ) {
+			// Do not remove key-points
+			if ( ! pointList[ index ].keyPoint ) {
+				let angle = threePointsAngle( pointList , index - 1 , index , index + 1 ) ;
+				console.warn( "Angle:" , radToRoundedDeg( angle ) ) ;
+
+				if ( angle < angleThreshold ) {
+					// Now we will remove this point ONLY if the angle before and after are not
+					let angleBefore = index >= 2 ? threePointsAngle( pointList , index - 2 , index - 1 , index + 1 ) : 0 ;
+					let angleAfter = index <= pointList.length - 3 ? threePointsAngle( pointList , index - 1 , index + 1 , index + 2 ) : 0 ;
+					console.log( "Angle before/after:" , radToRoundedDeg( angleBefore ) , radToRoundedDeg( angleAfter ) ) ;
+
+					if ( angleBefore <= angleThreshold && angleAfter <= angleThreshold ) {
+						console.log( "==> remove it!" ) ;
+						pointList.splice( index , 1 ) ;
+						simplified = true ;
+						//index -- ;	// Can't do that, we need a mutli-pass approch
+					}
+				}
+			}
+		}
 	}
 } ;
 
