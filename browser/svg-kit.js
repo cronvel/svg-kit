@@ -1870,10 +1870,11 @@ Path.commandsToD = ( commands , invertY = false ) => {
 
 
 Path.prototype.computeCurves = function() {
-	if ( this.curves.length >= this.commands.length ) { return ; }
+	if ( this.computeCurvesBuild && this.computeCurvesBuild.next >= this.commands.length ) { return ; }
 
 	if ( ! this.computeCurvesBuild ) {
 		this.computeCurvesBuild = {
+			next: 0 ,
 			invertY: this.invertY ,
 			lastCurve: null ,
 			openPoint: { x: 0 , y: 0 } ,	// The point the .close() command close to
@@ -1882,29 +1883,24 @@ Path.prototype.computeCurves = function() {
 		} ;
 	}
 
-	for ( let i = this.curves.length ; i < this.commands.length ; i ++ ) {
-		let curve ,
-			command = this.commands[ i ] ;
+	for ( ; this.computeCurvesBuild.next < this.commands.length ; this.computeCurvesBuild.next ++ ) {
+		let command = this.commands[ this.computeCurvesBuild.next ] ;
 
 		if ( Path.commands[ command.type ].toCurve ) {
-			curve = Path.commands[ command.type ].toCurve( command , this.computeCurvesBuild ) ;
-		}
-		else {
-			curve = null ;
-		}
+			let curve = Path.commands[ command.type ].toCurve( command , this.computeCurvesBuild ) ;
 
-		if ( curve ) {
-			if ( curve instanceof Move ) {
-				this.computeCurvesBuild.openPoint = { x: curve.endPoint.x , y: curve.endPoint.y } ;
+			if ( curve ) {
+				if ( curve instanceof Move ) {
+					this.computeCurvesBuild.openPoint = { x: curve.endPoint.x , y: curve.endPoint.y } ;
+				}
+				else {
+					this.totalLength += curve.length ;
+				}
+
+				this.computeCurvesBuild.lastCurve = curve ;
+				this.curves.push( curve ) ;
 			}
-			else {
-				this.totalLength += curve.length ;
-			}
-
-			this.computeCurvesBuild.lastCurve = curve ;
 		}
-
-		this.curves[ i ] = curve ;
 	}
 } ;
 
@@ -1974,7 +1970,7 @@ function absAngleDelta( a , b ) {
 			minAngleDeg: the same than minAngle, but angle is in degree
 			extraData: boolean, if true: add tangent vector (dx,dy)
 */
-Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
+Path.prototype.getPointEveryLength_old = function * ( everyLength , options = {} ) {
 	// Manage options
 	var forceKeyPoints = !! options.forceKeyPoints ,
 		minAngle = options.minAngleDeg !== undefined ? degToRad( + options.minAngleDeg || 0 ) : + options.minAngle || 0 ,
@@ -1991,8 +1987,6 @@ Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
 		lastCurveRemainder = 0 ;
 
 	for ( let curve of this.curves ) {
-		if ( ! curve ) { continue ; }
-
 		if ( curve instanceof Move ) {
 			if ( endPointData ) {
 				yield endPointData ;
@@ -2033,15 +2027,17 @@ Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
 						let angle = Math.atan2( data.dy , data.dx ) ;
 						let angleDelta = absAngleDelta( angle , lastAngle ) ;
 						if ( angleDelta > minAngle ) {
-							console.log( "Angles:" , angle , lastAngle , angleDelta , minAngle ) ;
+							//console.log( "Angles:" , radToRoundedDeg( angle ) , radToRoundedDeg( lastAngle ) , "=>" , radToRoundedDeg( angleDelta ) ) ;
 							// Since we want to AVOID exceeding the minAngle threshold whenever possible,
 							// we will try to introduce the previous point if it helps
 							if ( lastDataUnderMinAngle ) {
 								let inBetweenAngleDelta = absAngleDelta( angle , lastAngleUnderMinAngle ) ;
 								if ( inBetweenAngleDelta < angleDelta ) {
+									console.warn( "Add in-between point, angle:" , radToRoundedDeg( absAngleDelta( lastAngle , lastAngleUnderMinAngle ) ) ) ;
 									yield lastDataUnderMinAngle ;
 
 									if ( inBetweenAngleDelta > minAngle ) {
+										console.warn( "Add point after in-between, angle:" , radToRoundedDeg( inBetweenAngleDelta ) ) ;
 										yield data ;
 										lastDataUnderMinAngle = null ;
 										lastAngle = angle ;
@@ -2053,11 +2049,13 @@ Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
 									}
 								}
 								else {
+									console.warn( "Add point, in-between was worse, angle:" , radToRoundedDeg( angleDelta ) ) ;
 									yield data ;
 									lastAngle = angle ;
 								}
 							}
 							else {
+								console.warn( "Add point, no in-between, angle:" , radToRoundedDeg( angleDelta ) ) ;
 								yield data ;
 								lastAngle = angle ;
 							}
@@ -2068,6 +2066,7 @@ Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
 						}
 					}
 					else {
+						console.warn( "Add point, no min angle" ) ;
 						yield data ;
 					}
 				}
@@ -2119,12 +2118,132 @@ Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
 
 
 
+Path.prototype.getPointEveryLength = function * ( everyLength , options = {} ) {
+	// Manage options
+	var forceKeyPoints = !! options.forceKeyPoints ,
+		minAngle = options.minAngleDeg !== undefined ? degToRad( + options.minAngleDeg || 0 ) : + options.minAngle || 0 ,
+		extraData = minAngle ? true : !! options.extraData ;
+
+	this.computeCurves() ;
+
+	var addStartPoint = true ,
+		endPointData = null ,
+		lastAngle ,
+		lengthUpToLastCurve = 0 ,
+		lastCurveRemainder = 0 ;
+
+	for ( let index ; index < this.curves.length ; index ++ ) {
+		let curve = this.curves[ index ] ,
+			nextCurve = this.curves[ index + 1 ] || null ;
+
+		if ( nextCurve && ( nextCurve instanceof Move ) ) { nextCurve = null ; }
+
+		if ( curve instanceof Move ) {
+			if ( endPointData ) {
+				yield endPointData ;
+				endPointData = null ;
+			}
+			addStartPoint = true ;
+			continue ;
+		}
+
+		if ( addStartPoint ) {
+			let data = extraData ? curve.getPropertiesAtLength( 0 ) : curve.getPointAtLength( 0 ) ;
+			data.length = lengthUpToLastCurve ;
+			yield data ;
+			addStartPoint = false ;
+			lastCurveRemainder = 0 ;
+			if ( minAngle ) { lastAngle = Math.atan2( data.dy , data.dx ) ; }
+		}
+
+		if ( forceKeyPoints ) {
+			let data ,
+				lengthInCurve = everyLength ,
+				subdivision = Math.round( curve.length / everyLength ) || 1 ,
+				everyCurveLength = curve.length / subdivision ;
+
+			if ( ! minAngle || ! ( curve instanceof Line ) ) {
+				if ( minAngle ) {
+					// Always use the new start-point as lastAngle instead of the end-point of the previous curve
+					let startData = curve.getTangentAtLength( 0 ) ;
+					lastAngle = Math.atan2( startData.y , startData.x ) ;
+				}
+				
+				for ( let i = 1 ; i < subdivision ; i ++ , lengthInCurve += everyCurveLength ) {
+					data = extraData ? curve.getPropertiesAtLength( lengthInCurve ) : curve.getPointAtLength( lengthInCurve ) ;
+					data.length = lengthUpToLastCurve + lengthInCurve ;
+
+					if ( minAngle ) {
+						let angle = Math.atan2( data.dy , data.dx ) ;
+						let angleDelta = absAngleDelta( angle , lastAngle ) ;
+						if ( angleDelta > minAngle ) {
+							//console.log( "Angles:" , radToRoundedDeg( angle ) , radToRoundedDeg( lastAngle ) , "=>" , radToRoundedDeg( angleDelta ) ) ;
+							// Since we want to AVOID exceeding the minAngle threshold whenever possible,
+							// we will try to introduce the previous point if it helps
+							yield data ;
+							lastAngle = angle ;
+						}
+					}
+					else {
+						console.warn( "Add point, no min angle" ) ;
+						yield data ;
+					}
+				}
+			}
+
+			// Special case for the end of the curve, we want to avoid floating point errors
+			data = extraData ? curve.getPropertiesAtLength( curve.length ) : curve.getPointAtLength( curve.length ) ;
+			data.length = lengthUpToLastCurve + curve.length ;
+			yield data ;
+
+			lengthUpToLastCurve += curve.length ;
+			lastCurveRemainder = 0 ;
+		}
+		else {
+			let lastLengthInCurve ,
+				lengthInCurve = everyLength - lastCurveRemainder ;
+
+			for ( ; lengthInCurve <= curve.length ; lengthInCurve += everyLength ) {
+				let data = extraData ? curve.getPropertiesAtLength( lengthInCurve ) : curve.getPointAtLength( lengthInCurve ) ;
+				data.length = lengthUpToLastCurve + lengthInCurve ;
+				lastLengthInCurve = lengthInCurve ;
+
+				if ( minAngle ) {
+					let angle = Math.atan2( data.dy , data.dx ) ;
+					if ( absAngleDelta( angle , lastAngle ) >= minAngle ) {
+						endPointData = null ;
+						lastAngle = angle ;
+						yield data ;
+					}
+					else {
+						endPointData = data ;
+					}
+				}
+				else {
+					yield data ;
+				}
+			}
+
+			lengthUpToLastCurve += curve.length ;
+			lastCurveRemainder = curve.length - lastLengthInCurve ;
+		}
+	}
+
+	if ( endPointData ) {
+		yield endPointData ;
+	}
+} ;
+
+
+
 /*
 	Now add path commands.
 	First, true SVG path commands.
 */
 
 const degToRad = deg => deg * Math.PI / 180 ;
+const radToDeg = rad => rad * 180 / Math.PI ;
+const radToRoundedDeg = rad => Math.round( rad * 180 / Math.PI ) ;
 const ORIGIN = { x: 0 , y: 0 } ;
 //const radToDeg = rad => rad * 180 / Math.PI ;
 
