@@ -417,6 +417,50 @@ async function polygonTest() {
 		//invertY: true
 	} ) ;
 
+	var vgPolygon = new svgKit.VGPolygon( {
+		style: {
+			fill: '%lighter green' ,
+			stroke: '%red' ,
+			strokeWidth: 2
+		} ,
+		points: [
+			{ x: 200 , y: 120 } ,
+			{ x: 300 , y: 120 } ,
+			{ x: 350 , y: 140 } ,
+			{ x: 450 , y: 250 } ,
+			{ x: 350 , y: 370 } ,
+			{ x: 350 , y: 180 } ,
+			{ x: 200 , y: 340 } ,
+			{ x: 110 , y: 200 }
+		]
+	} ) ;
+	vg.addEntity( vgPolygon ) ;
+
+	console.warn( "VG:" , vg ) ;
+
+	renderAll( vg ) ;
+	
+	var $canvas = document.getElementById( 'canvas' ) ;
+	$canvas.addEventListener( 'click' , event => {
+		var coords = svgKit.canvas.screenToCanvasCoords( $canvas , { x: event.clientX , y: event.clientY } ) ;
+		console.log( "coords:" , coords ) ;
+		if ( vgPolygon.isInside( coords ) ) {
+			console.warn( "Inside!" ) ;
+		}
+		else {
+			console.warn( "Outside..." ) ;
+		}
+	} ) ;
+}
+
+
+
+async function convexPolygonTest() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
+		//invertY: true
+	} ) ;
+
 	var vgPolygon = new svgKit.VGConvexPolygon( {
 		style: {
 			fill: '%lighter green' ,
@@ -603,6 +647,7 @@ async function renderCanvas( vg , options ) {
 //svgKit.domKit.ready( viewBoxTest ) ;
 //svgKit.domKit.ready( pathTest ) ;
 svgKit.domKit.ready( polygonTest ) ;
+//svgKit.domKit.ready( convexPolygonTest ) ;
 //svgKit.domKit.ready( hexaTilesTest ) ;
 //svgKit.domKit.ready( flowTest ) ;
 //svgKit.domKit.ready( bookSourceFlowTest ) ;
