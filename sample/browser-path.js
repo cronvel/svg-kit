@@ -23,9 +23,26 @@ async function pathTest() {
 	vg.addEntity( vgPath ) ;
 	console.warn( "VGPath:" , vgPath ) ;
 	
-	var step = 5 , forceKeyPoints = true ;
-	var points = vgPath.path.getPoints( step , { forceKeyPoints } ) ;
-	var simplifiedPoints = vgPath.path.getPoints( step , { forceKeyPoints , angleThresholdDeg: 25 } ) ;
+	var step = 10 , forceKeyPoints = true ;
+	
+	/*
+	var vgStepPolygonList = vgPath.toVGPolygon( {
+		step ,
+		forceKeyPoints ,
+		style: {
+			//fill: '%lighter blue' ,
+			fill: 'none' ,
+			stroke: '%green' ,
+			strokeWidth: 1
+		}
+	} ) ;
+	var vgStepPolygon = vgStepPolygonList[ 0 ] ;
+	vg.addEntity( vgStepPolygon ) ;
+	//*/
+	
+	//*
+	var points = vgPath.path.getPoints( { step , forceKeyPoints } ) ;
+	var simplifiedPoints = vgPath.path.getPoints( { step , forceKeyPoints , angleThresholdDeg: 15 } ) ;
 	console.log( "simplified points count" , simplifiedPoints.length ) ;
 
 	var vgPathEvery = new svgKit.VGPath( {
@@ -55,6 +72,7 @@ async function pathTest() {
 		else { vgSimplifiedPath.moveTo( point ) ; }
 	} ) ;
 	vg.addEntity( vgSimplifiedPath ) ;
+	//*/
 
 	console.warn( "VG:" , vg ) ;
 	renderAll( vg ) ;

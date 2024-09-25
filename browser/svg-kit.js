@@ -1816,6 +1816,9 @@ module.exports = Path ;
 Path.prototype.__prototypeUID__ = 'svg-kit/Path' ;
 Path.prototype.__prototypeVersion__ = require( '../../package.json' ).version ;
 
+// Circular...
+const Polygon = require( '../Polygon.js' ) ;
+
 
 
 Path.prototype.set = function( commands ) {
@@ -1964,15 +1967,21 @@ Path.prototype.getPointAtLength = function( length , extraData = false ) {
 
 
 
+const isPointEqual = ( point1 , point2 ) => point1.x === point2.x && point1.y === point2.y ;
+
 // Split on Move curve, grouping by shapes (closed or not)
-Path.prototype.groupCurvesByShape = function() {
+// noOpenShape: remove group that does not close to itself (not polygon)
+Path.prototype.groupCurvesByShape = function( noOpenShape = false ) {
 	var group = [] ,
 		groupList = [] ;
 
 	for ( let curve of this.curves ) {
 		if ( curve instanceof Move ) {
 			if ( group.length ) {
-				groupList.push( group ) ;
+				if ( ! noOpenShape || isPointEqual( group[ 0 ].startPoint , group[ group.length - 1 ].endPoint ) ) {
+					groupList.push( group ) ;
+				}
+
 				group = [] ;
 			}
 		}
@@ -1981,7 +1990,9 @@ Path.prototype.groupCurvesByShape = function() {
 		}
 	}
 
-	if ( group.length ) { groupList.push( group ) ; }
+	if ( group.length && ( ! noOpenShape || isPointEqual( group[ 0 ].startPoint , group[ group.length - 1 ].endPoint ) ) ) {
+		groupList.push( group ) ;
+	}
 
 	return groupList ;
 } ;
@@ -1990,12 +2001,16 @@ Path.prototype.groupCurvesByShape = function() {
 
 /*
 	Options:
-		forceKeyPoints: boolean, if true: always add points at the begining and at the end of a path's part (aka 'cusp')
+		step: get a point every step value length
+		forceKeyPoints: boolean (default: false), if true: always add points at the begining and at the end of a path's part (aka 'cusp')
 		angleThreshold: if set, only add the point if its tangent angle has moved more than this threshold (in radian)
 		angleThresholdDeg: the same than angleThreshold, but angle is in degree
+		groupShape: boolean (default: false), if true: points are grouped by shape, if false: the produced array is flatten
+		noOpenShape: internal, used by .toPolygon()
 */
-Path.prototype.getPoints = function( everyLength , options = {} ) {
-	var forceKeyPoints = !! options.forceKeyPoints ,
+Path.prototype.getPoints = function( options = {} ) {
+	var step = options.step || 1 ,
+		forceKeyPoints = !! options.forceKeyPoints ,
 		angleThreshold = options.angleThresholdDeg !== undefined ? degToRad( + options.angleThresholdDeg || 0 ) : + options.angleThreshold || 0 ,
 		simplifyLines = !! angleThreshold ,
 		pointsGroups = [] ;
@@ -2005,8 +2020,8 @@ Path.prototype.getPoints = function( everyLength , options = {} ) {
 	var length = 0 ,
 		lengthRemainder = 0 ;
 
-	for ( let group of this.groupCurvesByShape() ) {
-		let data = this.getPointsOfShape( group , everyLength , forceKeyPoints , length , lengthRemainder , simplifyLines ) ;
+	for ( let group of this.groupCurvesByShape( options.noOpenShape ) ) {
+		let data = this.getPointsOfShape( group , step , forceKeyPoints , length , lengthRemainder , simplifyLines ) ;
 		pointsGroups.push( data.points ) ;
 		length = data.endingLength ;
 		lengthRemainder = data.lengthRemainder ;
@@ -2024,7 +2039,7 @@ Path.prototype.getPoints = function( everyLength , options = {} ) {
 
 
 
-Path.prototype.getPointsOfShape = function( curveList , everyLength , forceKeyPoints , startingLength , lengthRemainder , simplifyLines ) {
+Path.prototype.getPointsOfShape = function( curveList , step , forceKeyPoints , startingLength , lengthRemainder , simplifyLines ) {
 	var pointList = [] ,
 		lastPoint = null ,
 		lengthUpToLastCurve = startingLength ,
@@ -2046,8 +2061,8 @@ Path.prototype.getPointsOfShape = function( curveList , everyLength , forceKeyPo
 
 		if ( forceKeyPoints ) {
 			let point ,
-				lengthInCurve = everyLength ,
-				subdivision = Math.round( curve.length / everyLength ) || 1 ,
+				lengthInCurve = step ,
+				subdivision = Math.round( curve.length / step ) || 1 ,
 				everyCurveLength = curve.length / subdivision ;
 
 			if ( ! simplifyLines || ! ( curve instanceof Line ) ) {
@@ -2069,9 +2084,9 @@ Path.prototype.getPointsOfShape = function( curveList , everyLength , forceKeyPo
 		}
 		else {
 			let lastLengthInCurve ,
-				lengthInCurve = everyLength - lastCurveRemainder ;
+				lengthInCurve = step - lastCurveRemainder ;
 
-			for ( ; lengthInCurve <= curve.length ; lengthInCurve += everyLength ) {
+			for ( ; lengthInCurve <= curve.length ; lengthInCurve += step ) {
 				let point = curve.getPropertiesAtLength( lengthInCurve ) ;
 				point.atLength = lengthUpToLastCurve + lengthInCurve ;
 				lastLengthInCurve = lengthInCurve ;
@@ -2141,6 +2156,23 @@ Path.prototype.simplifyShape = function( pointList , angleThreshold ) {
 			}
 		}
 	}
+} ;
+
+
+
+// Simplify the path, get a list of Polygon (only closed-shapes are returned)
+Path.prototype.toPolygon = function( options = {} ) {
+	var groups = this.getPoints( {
+		step: options.step || 10 ,
+		forceKeyPoints: 0 ,
+		angleThreshold: ( options.angleThresholdDeg ? degToRad( + options.angleThresholdDeg || 0 ) : + options.angleThreshold || 0 ) || 15 ,
+		noOpenShape: true ,
+		groupShape: true
+	} ) ;
+	
+	var list = groups.map( points => new Polygon( { points } ) ) ;
+	console.log( "Polygons:" , list ) ;
+	return list ;
 } ;
 
 
@@ -2869,7 +2901,7 @@ Path.linePointsToD = ( points , invertY = false ) => {
 Path.polygonPointsToD = ( points , invertY = false ) => Path.linePointsToD( points , invertY ) + ' z' ;
 
 
-},{"../../package.json":108,"./Arc.js":6,"./CubicBezier.js":8,"./Line.js":9,"./Move.js":10,"./QuadraticBezier.js":12}],12:[function(require,module,exports){
+},{"../../package.json":108,"../Polygon.js":14,"./Arc.js":6,"./CubicBezier.js":8,"./Line.js":9,"./Move.js":10,"./QuadraticBezier.js":12}],12:[function(require,module,exports){
 
 "use strict" ;
 
@@ -2984,7 +3016,6 @@ module.exports={"tValues":[[],[],[-0.5773502691896257,0.5773502691896257],[0,-0.
 
 
 const BoundingBox = require( './BoundingBox.js' ) ;
-const Path = require( './Path/Path.js' ) ;
 
 
 
@@ -3000,6 +3031,9 @@ module.exports = Polygon ;
 
 Polygon.prototype.__prototypeUID__ = 'svg-kit/Polygon' ;
 Polygon.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+// Circular...
+const Path = require( './Path/Path.js' ) ;
 
 
 
@@ -8533,6 +8567,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 
 
 const VGEntity = require( './VGEntity.js' ) ;
+const VGPolygon = require( './VGPolygon.js' ) ;
 const Path = require( './Path/Path.js' ) ;
 const canvasUtilities = require( './canvas-utilities.js' ) ;
 
@@ -8613,6 +8648,14 @@ for ( let type in Path.commands ) {
 
 
 
+// Return an array of VGPolygon
+VGPath.prototype.toVGPolygon = function( options = {} ) {
+	var polygonList = this.path.toPolygon() ;
+	return polygonList.map( polygon => new VGPolygon( { polygon , style: options.style } ) ) ;
+} ;
+
+
+
 VGPath.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRedraw = false , master = this ) {
 	canvasCtx.save() ;
 	canvasCtx.beginPath() ;
@@ -8627,7 +8670,7 @@ VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 } ;
 
 
-},{"../package.json":108,"./Path/Path.js":11,"./VGEntity.js":21,"./canvas-utilities.js":38}],33:[function(require,module,exports){
+},{"../package.json":108,"./Path/Path.js":11,"./VGEntity.js":21,"./VGPolygon.js":33,"./canvas-utilities.js":38}],33:[function(require,module,exports){
 /*
 	SVG Kit
 
@@ -8667,7 +8710,7 @@ const canvasUtilities = require( './canvas-utilities.js' ) ;
 function VGPolygon( params ) {
 	VGEntity.call( this , params ) ;
 
-	this.polygon = new Polygon() ;
+	this.polygon = params.polygon || new Polygon() ;
 	
 	if ( params ) { this.set( params ) ; }
 }
