@@ -3891,14 +3891,22 @@ VGConvexPolygon.prototype.svgTag = 'path' ;
 
 
 VGConvexPolygon.prototype.set = function( params ) {
-	VGEntity.prototype.set.call( this , params ) ;
+	var refreshBbox = !! ( params.style?.stroke || params.style?.strokeWidth ) ;
 
-	if ( params.build ) { this.build( params.build ) ; }
+	if ( params.build ) {
+		// .build() call .set() again, no need to compute BBox here
+		this.build( params.build ) ;
+	}
 
 	if ( params.points ) {
 		this.convexPolygon.setPoints( params.points ) ;
+		refreshBbox = true ;
 		//if ( this.convexPolygon.badConvexPolygon ) { throw new Error( "Bad polygon (not simple, not convex, or degenerate case)" ) ; }
 	}
+
+	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( refreshBbox ) { this.computeBoundingBox() ; }
 } ;
 
 
@@ -3912,10 +3920,18 @@ VGConvexPolygon.prototype.export = function( data = {} ) {
 
 
 // Methods that pass to ConvexPolygon methods
-VGConvexPolygon.prototype.setPoints = function( points ) { return this.convexPolygon.setPoints( points ) ; } ;
-VGConvexPolygon.prototype.addPoint = function( point ) { return this.convexPolygon.addPoint( point ) ; } ;
 VGConvexPolygon.prototype.toD = function() { return this.convexPolygon.toD( this.root.invertY ) ; } ;
 VGConvexPolygon.prototype.isInside = function( coords ) { return this.convexPolygon.isInside( coords ) ; } ;
+
+VGConvexPolygon.prototype.setPoints = function( points ) {
+	this.convexPolygon.setPoints( points ) ;
+	this.computeBoundingBox() ;
+} ;
+
+VGConvexPolygon.prototype.addPoint = function( point ) {
+	this.convexPolygon.addPoint( point ) ;
+	this.computeBoundingBox() ;
+} ;
 
 VGConvexPolygon.prototype.computeBoundingBox = function() {
 	this.boundingBox.set( this.convexPolygon.boundingBox ) ;
@@ -4036,26 +4052,21 @@ VGEllipse.prototype.svgTag = 'ellipse' ;
 
 
 VGEllipse.prototype.set = function( params ) {
-	let bboxChanged = false ;
+	var refreshBbox = !! ( params.style?.stroke || params.style?.strokeWidth ) ;
 
 	// Interop'
-	if ( params.cx !== undefined ) { this.x = params.cx ; bboxChanged = true ; }
-	if ( params.cy !== undefined ) { this.y = params.cy ; bboxChanged = true ; }
+	if ( params.cx !== undefined ) { this.x = params.cx ; refreshBbox = true ; }
+	if ( params.cy !== undefined ) { this.y = params.cy ; refreshBbox = true ; }
 
-	if ( params.x !== undefined ) { this.x = params.x ; bboxChanged = true ; }
-	if ( params.y !== undefined ) { this.y = params.y ; bboxChanged = true ; }
-	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; bboxChanged = true ; }
-	if ( params.rx !== undefined ) { this.rx = params.rx ; bboxChanged = true ; }
-	if ( params.ry !== undefined ) { this.ry = params.ry ; bboxChanged = true ; }
-
-	if ( bboxChanged ) {
-		this.boundingBox.xmin = this.x - this.rx ;
-		this.boundingBox.xmax = this.x + this.rx ;
-		this.boundingBox.ymin = this.y - this.ry ;
-		this.boundingBox.ymax = this.y + this.ry ;
-	}
+	if ( params.x !== undefined ) { this.x = params.x ; refreshBbox = true ; }
+	if ( params.y !== undefined ) { this.y = params.y ; refreshBbox = true ; }
+	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; refreshBbox = true ; }
+	if ( params.rx !== undefined ) { this.rx = params.rx ; refreshBbox = true ; }
+	if ( params.ry !== undefined ) { this.ry = params.ry ; refreshBbox = true ; }
 
 	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( refreshBbox ) { this.computeBoundingBox() ; }
 } ;
 
 
@@ -8675,13 +8686,16 @@ VGPolygon.prototype.svgTag = 'path' ;
 
 
 VGPolygon.prototype.set = function( params ) {
-	VGEntity.prototype.set.call( this , params ) ;
-
-	if ( params.build ) { this.build( params.build ) ; }
+	var refreshBbox = !! ( params.style?.stroke || params.style?.strokeWidth ) ;
 
 	if ( params.points ) {
 		this.polygon.setPoints( params.points ) ;
+		refreshBbox = true ;
 	}
+
+	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( refreshBbox ) { this.computeBoundingBox() ; }
 } ;
 
 
@@ -8695,10 +8709,18 @@ VGPolygon.prototype.export = function( data = {} ) {
 
 
 // Methods that pass to Polygon methods
-VGPolygon.prototype.setPoints = function( points ) { return this.polygon.setPoints( points ) ; } ;
-VGPolygon.prototype.addPoint = function( point ) { return this.polygon.addPoint( point ) ; } ;
 VGPolygon.prototype.toD = function() { return this.polygon.toD( this.root.invertY ) ; } ;
 VGPolygon.prototype.isInside = function( coords ) { return this.polygon.isInside( coords ) ; } ;
+
+VGPolygon.prototype.setPoints = function( points ) {
+	this.polygon.setPoints( points ) ;
+	this.computeBoundingBox() ;
+} ;
+
+VGPolygon.prototype.addPoint = function( point ) {
+	this.polygon.addPoint( point ) ;
+	this.computeBoundingBox() ;
+} ;
 
 VGPolygon.prototype.computeBoundingBox = function() {
 	this.boundingBox.set( this.polygon.boundingBox ) ;
@@ -8953,10 +8975,12 @@ VGRect.prototype.svgTag = 'rect' ;
 
 
 VGRect.prototype.set = function( params ) {
-	if ( params.x !== undefined ) { this.boundingBox.x = this.x = params.x ; }
-	if ( params.y !== undefined ) { this.boundingBox.y = this.y = params.y ; }
-	if ( params.width !== undefined ) { this.boundingBox.width = this.width = params.width ; }
-	if ( params.height !== undefined ) { this.boundingBox.height = this.height = params.height ; }
+	var refreshBbox = !! ( params.style?.stroke || params.style?.strokeWidth ) ;
+
+	if ( params.x !== undefined ) { this.x = params.x ; refreshBbox = true ; }
+	if ( params.y !== undefined ) { this.y = params.y ; refreshBbox = true ; }
+	if ( params.width !== undefined ) { this.width = params.width ; refreshBbox = true ; }
+	if ( params.height !== undefined ) { this.height = params.height ; refreshBbox = true ; }
 
 	// Round corner radius
 	if ( params.r !== undefined ) { this.rx = this.ry = params.r ; }
@@ -8964,6 +8988,8 @@ VGRect.prototype.set = function( params ) {
 	if ( params.ry !== undefined ) { this.ry = params.ry ; }
 
 	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( refreshBbox ) { this.computeBoundingBox() ; }
 } ;
 
 
