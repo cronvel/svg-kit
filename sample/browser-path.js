@@ -26,26 +26,8 @@ async function pathTest() {
 	var step = 10 , forceKeyPoints = true ;
 	
 	/*
-	var vgStepPolygonList = vgPath.toVGPolygon( {
-		step ,
-		forceKeyPoints ,
-		style: {
-			//fill: '%lighter blue' ,
-			fill: 'none' ,
-			stroke: '%green' ,
-			strokeWidth: 1
-		}
-	} ) ;
-	var vgStepPolygon = vgStepPolygonList[ 0 ] ;
-	vg.addEntity( vgStepPolygon ) ;
-	//*/
-	
-	//*
 	var points = vgPath.path.getPoints( { step , forceKeyPoints } ) ;
-	var simplifiedPoints = vgPath.path.getPoints( { step , forceKeyPoints , angleThresholdDeg: 15 } ) ;
-	console.log( "simplified points count" , simplifiedPoints.length ) ;
-
-	var vgPathEvery = new svgKit.VGPath( {
+	var vgStepPolygon = new svgKit.VGPath( {
 		style: {
 			//fill: '%lighter blue' ,
 			fill: 'none' ,
@@ -54,12 +36,16 @@ async function pathTest() {
 		}
 	} ) ;
 	points.forEach( ( point , index ) => {
-		if ( index ) { vgPathEvery.lineTo( point ) ; }
-		else { vgPathEvery.moveTo( point ) ; }
+		if ( index ) { vgStepPolygon.lineTo( point ) ; }
+		else { vgStepPolygon.moveTo( point ) ; }
 	} ) ;
-	vg.addEntity( vgPathEvery ) ;
+	vg.addEntity( vgStepPolygon ) ;
+	//*/
 
-	var vgSimplifiedPath = new svgKit.VGPath( {
+	/*
+	var vgSimplifiedPolygonList = vgPath.toVGPolygon( {
+		step ,
+		forceKeyPoints ,
 		style: {
 			//fill: '%lighter blue' ,
 			fill: 'none' ,
@@ -67,15 +53,39 @@ async function pathTest() {
 			strokeWidth: 1
 		}
 	} ) ;
-	simplifiedPoints.forEach( ( point , index ) => {
-		if ( index ) { vgSimplifiedPath.lineTo( point ) ; }
-		else { vgSimplifiedPath.moveTo( point ) ; }
-	} ) ;
-	vg.addEntity( vgSimplifiedPath ) ;
+	var vgSimplifiedPolygon = vgSimplifiedPolygonList[ 0 ] ;
+	console.log( "vgSimplifiedPolygon" , vgSimplifiedPolygon ) ;
+	vg.addEntity( vgSimplifiedPolygon ) ;
 	//*/
-
+	
+	/*
+	var vgPolygonHullList = vgPath.toVGPolygonHull( {
+		style: {
+			//fill: '%lighter blue' ,
+			fill: 'none' ,
+			stroke: '%red' ,
+			strokeWidth: 1
+		}
+	} ) ;
+	var vgPolygonHull = vgPolygonHullList[ 0 ] ;
+	console.log( "vgPolygonHull" , vgPolygonHull ) ;
+	vg.addEntity( vgPolygonHull ) ;
+	//*/
+	
 	console.warn( "VG:" , vg ) ;
 	renderAll( vg ) ;
+
+	var $canvas = document.getElementById( 'canvas' ) ;
+	$canvas.addEventListener( 'click' , event => {
+		var coords = svgKit.canvas.screenToCanvasCoords( $canvas , { x: event.clientX , y: event.clientY } ) ;
+		console.log( "coords:" , coords ) ;
+		if ( vgPath.isInside( coords ) ) {
+			console.warn( "Inside!" ) ;
+		}
+		else {
+			console.warn( "Outside..." ) ;
+		}
+	} ) ;
 }
 
 

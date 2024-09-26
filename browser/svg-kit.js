@@ -97,6 +97,12 @@ BoundingBox.prototype.nullify = function() {
 
 
 
+BoundingBox.prototype.isNull = function() {
+	return this.xmin === Infinity && this.xmax === - Infinity && this.ymin === Infinity && this.ymax === - Infinity ;
+} ;
+
+
+
 Object.defineProperties( BoundingBox.prototype , {
 	x: {
 		get: function() { return this.xmin ; } ,
@@ -155,12 +161,34 @@ BoundingBox.prototype.merge = function( bbox ) {
 
 
 
+BoundingBox.prototype.mergeArray = function( bboxList ) {
+	for ( let bbox of bboxList ) {
+		this.xmin = Math.min( this.xmin , bbox.xmin ) ;
+		this.ymin = Math.min( this.ymin , bbox.ymin ) ;
+		this.xmax = Math.max( this.xmax , bbox.xmax ) ;
+		this.ymax = Math.max( this.ymax , bbox.ymax ) ;
+	}
+} ;
+
+
+
 // Ensure that the bounding box includes a point, like .merge() but for singularity
 BoundingBox.prototype.ensurePoint = function( point ) {
-	if ( point.x < this.xmin ) { this.xmin = point.x ; }
-	if ( point.x > this.xmax ) { this.xmax = point.x ; }
-	if ( point.y < this.ymin ) { this.ymin = point.y ; }
-	if ( point.y > this.ymax ) { this.ymax = point.y ; }
+	this.xmin = Math.min( this.xmin , point.x ) ;
+	this.ymin = Math.min( this.ymin , point.y ) ;
+	this.xmax = Math.max( this.xmax , point.x ) ;
+	this.ymax = Math.max( this.ymax , point.y ) ;
+} ;
+
+
+
+BoundingBox.prototype.ensurePointArray = function( pointList ) {
+	for ( let point of pointList ) {
+		this.xmin = Math.min( this.xmin , point.x ) ;
+		this.ymin = Math.min( this.ymin , point.y ) ;
+		this.xmax = Math.max( this.xmax , point.x ) ;
+		this.ymax = Math.max( this.ymax , point.y ) ;
+	}
 } ;
 
 
@@ -1797,6 +1825,11 @@ const Line = require( './Line.js' ) ;
 const CubicBezier = require( './CubicBezier.js' ) ;
 const QuadraticBezier = require( './QuadraticBezier.js' ) ;
 const Arc = require( './Arc.js' ) ;
+const BoundingBox = require( '../BoundingBox.js' ) ;
+
+const degToRad = deg => deg * Math.PI / 180 ;
+const radToDeg = rad => rad * 180 / Math.PI ;
+const radToRoundedDeg = rad => Math.round( rad * 180 / Math.PI ) ;
 
 
 
@@ -1804,9 +1837,12 @@ function Path( commands , invertY = false ) {
 	this.commands = [] ;
 	this.invertY = invertY ;
 
+	// Computed
 	this.computeCurvesBuild = null ;
 	this.curves = [] ;
 	this.totalLength = 0 ;
+	this.polygonHull = null ;
+	this.boundingBox = new BoundingBox( null ) ;
 
 	if ( commands ) { this.set( commands ) ; }
 }
@@ -1827,6 +1863,8 @@ Path.prototype.set = function( commands ) {
 	for ( let command of commands ) {
 		if ( Path.commands[ command.type ].add ) {
 			Path.commands[ command.type ].add( this.commands , command ) ;
+			this.polygonHull = null ;
+			this.boundingBox.nullify() ;
 		}
 	}
 } ;
@@ -1851,6 +1889,8 @@ Path.prototype.clearComputed = function() {
 	this.computeCurvesBuild = null ;
 	this.curves.length = 0 ;
 	this.totalLength = 0 ;
+	this.polygonHull = null ;
+	this.boundingBox.nullify() ;
 } ;
 
 
@@ -2138,16 +2178,16 @@ Path.prototype.simplifyShape = function( pointList , angleThreshold ) {
 			// Do not remove key-points
 			if ( ! pointList[ index ].keyPoint ) {
 				let angle = threePointsAngle( pointList , index - 1 , index , index + 1 ) ;
-				console.warn( "Angle:" , radToRoundedDeg( angle ) ) ;
+				//console.warn( "Angle:" , radToRoundedDeg( angle ) ) ;
 
 				if ( angle < angleThreshold ) {
 					// Now we will remove this point ONLY if the angle before and after are not
 					let angleBefore = index >= 2 ? threePointsAngle( pointList , index - 2 , index - 1 , index + 1 ) : 0 ;
 					let angleAfter = index <= pointList.length - 3 ? threePointsAngle( pointList , index - 1 , index + 1 , index + 2 ) : 0 ;
-					console.log( "Angle before/after:" , radToRoundedDeg( angleBefore ) , radToRoundedDeg( angleAfter ) ) ;
+					//console.log( "Angle before/after:" , radToRoundedDeg( angleBefore ) , radToRoundedDeg( angleAfter ) ) ;
 
 					if ( angleBefore <= angleThreshold && angleAfter <= angleThreshold ) {
-						console.log( "==> remove it!" ) ;
+						//console.log( "==> remove it!" ) ;
 						pointList.splice( index , 1 ) ;
 						simplified = true ;
 						//index -- ;	// Can't do that, we need a mutli-pass approch
@@ -2160,19 +2200,38 @@ Path.prototype.simplifyShape = function( pointList , angleThreshold ) {
 
 
 
+const DEFAULT_ANGLE_THRESHOLD = degToRad( 15 ) ;
+
 // Simplify the path, get a list of Polygon (only closed-shapes are returned)
 Path.prototype.toPolygon = function( options = {} ) {
 	var groups = this.getPoints( {
 		step: options.step || 10 ,
-		forceKeyPoints: 0 ,
-		angleThreshold: ( options.angleThresholdDeg ? degToRad( + options.angleThresholdDeg || 0 ) : + options.angleThreshold || 0 ) || 15 ,
+		forceKeyPoints: true ,
+		angleThreshold: ( options.angleThresholdDeg ? degToRad( + options.angleThresholdDeg || 0 ) : + options.angleThreshold || 0 ) || DEFAULT_ANGLE_THRESHOLD ,
 		noOpenShape: true ,
 		groupShape: true
 	} ) ;
 	
-	var list = groups.map( points => new Polygon( { points } ) ) ;
-	console.log( "Polygons:" , list ) ;
-	return list ;
+	return groups.map( points => new Polygon( { points } ) ) ;
+} ;
+
+
+
+Path.prototype.computePolygonHull = function() {
+	if ( ! this.polygonHull ) { this.polygonHull = this.toPolygon() ; }
+	this.boundingBox.nullify() ;
+	this.polygonHull.forEach( polygon => this.boundingBox.merge( polygon.boundingBox ) ) ;
+} ;
+
+
+
+Path.prototype.isInside = function( coords ) {
+	if ( ! this.polygonHull ) { this.computePolygonHull() ; }
+
+	// First, check the BBox, maybe we don't have perform the more expensive polygon hull test (lot of line-segments)...
+	if ( ! this.boundingBox.isInside( coords ) ) { return false ; }
+
+	return this.polygonHull.some( polygon => polygon.isInside( coords ) ) ;
 } ;
 
 
@@ -2182,9 +2241,6 @@ Path.prototype.toPolygon = function( options = {} ) {
 	First, true SVG path commands.
 */
 
-const degToRad = deg => deg * Math.PI / 180 ;
-const radToDeg = rad => rad * 180 / Math.PI ;
-const radToRoundedDeg = rad => Math.round( rad * 180 / Math.PI ) ;
 const ORIGIN = { x: 0 , y: 0 } ;
 //const radToDeg = rad => rad * 180 / Math.PI ;
 
@@ -2901,7 +2957,7 @@ Path.linePointsToD = ( points , invertY = false ) => {
 Path.polygonPointsToD = ( points , invertY = false ) => Path.linePointsToD( points , invertY ) + ' z' ;
 
 
-},{"../../package.json":108,"../Polygon.js":14,"./Arc.js":6,"./CubicBezier.js":8,"./Line.js":9,"./Move.js":10,"./QuadraticBezier.js":12}],12:[function(require,module,exports){
+},{"../../package.json":108,"../BoundingBox.js":1,"../Polygon.js":14,"./Arc.js":6,"./CubicBezier.js":8,"./Line.js":9,"./Move.js":10,"./QuadraticBezier.js":12}],12:[function(require,module,exports){
 
 "use strict" ;
 
@@ -8629,9 +8685,24 @@ VGPath.prototype.svgAttributes = function( master = this ) {
 
 
 
-// Build the SVG 'd' attribute
-VGPath.prototype.toD = function() {
-	return this.path.toD( this.root.invertY ) ;
+// Methods that pass to Path methods
+VGPath.prototype.toD = function() { return this.path.toD( this.root.invertY ) ; } ;
+VGPath.prototype.isInside = function( coords ) { return this.path.isInside( coords ) ; } ;
+
+
+
+// Return an array of VGPolygon, the hull of the current path
+VGPath.prototype.toVGPolygonHull = function( options = {} ) {
+	this.path.computePolygonHull() ;
+	return this.path.polygonHull.map( polygon => new VGPolygon( { polygon , style: options.style } ) ) ;
+} ;
+
+
+
+// Return an array of VGPolygon
+VGPath.prototype.toVGPolygon = function( options = {} ) {
+	var polygonList = this.path.toPolygon() ;
+	return polygonList.map( polygon => new VGPolygon( { polygon , style: options.style } ) ) ;
 } ;
 
 
@@ -8645,14 +8716,6 @@ for ( let type in Path.commands ) {
 		} ;
 	}
 }
-
-
-
-// Return an array of VGPolygon
-VGPath.prototype.toVGPolygon = function( options = {} ) {
-	var polygonList = this.path.toPolygon() ;
-	return polygonList.map( polygon => new VGPolygon( { polygon , style: options.style } ) ) ;
-} ;
 
 
 
