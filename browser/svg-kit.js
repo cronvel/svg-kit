@@ -1152,6 +1152,12 @@ Metric.isEqual = function( a , b ) {
 	(https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts)
 */
 
+
+
+const BoundingBox = require( '../BoundingBox.js' ) ;
+
+
+
 function Arc( startPoint , radius , xAxisRotate , largeArcFlag , sweepFlag , endPoint ) {
 	this.startPoint = startPoint ;
 	this.radius = radius ;
@@ -1160,16 +1166,20 @@ function Arc( startPoint , radius , xAxisRotate , largeArcFlag , sweepFlag , end
 	this.sweepFlag = sweepFlag ;
 	this.endPoint = endPoint ;
 
-	this.length = this.getLength() ;
+	this.boundingBox = new BoundingBox( null ) ;
+	this.length = this.getLength( true ) ;	// <-- this will update the BBox
 }
 
 module.exports = Arc ;
 
 
 
-Arc.prototype.getLength = function() {
-	const lengthProperties = this.approximateArcLengthOfCurve( 300 , t => {
-		return this.pointOnEllipticalArc(
+Arc.prototype.getLength = function( updateBBox ) {
+	if ( updateBBox ) { this.boundingBox.nullify() ; }
+
+	const lengthProperties = this.approximateArcLengthOfCurve(
+		300 ,
+		t => this.pointOnEllipticalArc(
 			this.startPoint ,
 			this.radius ,
 			this.xAxisRotate ,
@@ -1177,8 +1187,9 @@ Arc.prototype.getLength = function() {
 			this.sweepFlag ,
 			this.endPoint ,
 			t
-		) ;
-	} ) ;
+		) ,
+		updateBBox ? this.boundingBox : null
+	) ;
 
 	return lengthProperties.arcLength ;
 } ;
@@ -1362,7 +1373,7 @@ Arc.prototype.pointOnEllipticalArc = function( p0 , radius , xAxisRotation , lar
 
 
 Arc.approximateArcLengthOfCurve =
-Arc.prototype.approximateArcLengthOfCurve = function( resolution , pointOnCurveFunc )  {
+Arc.prototype.approximateArcLengthOfCurve = function( resolution , pointOnCurveFunc , boundingBox = null )  {
 	// Resolution is the number of segments we use
 	resolution = resolution ? resolution : 500 ;
 
@@ -1370,11 +1381,15 @@ Arc.prototype.approximateArcLengthOfCurve = function( resolution , pointOnCurveF
 	const arcLengthMap = [] ;
 	const approximationLines = [] ;
 
-	let prevPoint = pointOnCurveFunc( 0 ) ;
-	let nextPoint ;
+	let nextPoint ,
+		prevPoint = pointOnCurveFunc( 0 ) ;
+
+	if ( boundingBox ) { boundingBox.ensurePoint( prevPoint ) ; }
+
 	for ( let i = 0 ; i < resolution ; i ++ ) {
 		const t = clamp( i * ( 1 / resolution ) , 0 , 1 ) ;
 		nextPoint = pointOnCurveFunc( t ) ;
+		if ( boundingBox ) { boundingBox.ensurePoint( nextPoint ) ; }
 		resultantArcLength += distance( prevPoint , nextPoint ) ;
 		approximationLines.push( [ prevPoint , nextPoint ] ) ;
 
@@ -1385,8 +1400,10 @@ Arc.prototype.approximateArcLengthOfCurve = function( resolution , pointOnCurveF
 
 		prevPoint = nextPoint ;
 	}
+
 	// Last stretch to the endpoint
 	nextPoint = pointOnCurveFunc( 1 ) ;
+	if ( boundingBox ) { boundingBox.ensurePoint( nextPoint ) ; }
 	approximationLines.push( [ prevPoint , nextPoint ] ) ;
 	resultantArcLength += distance( prevPoint , nextPoint ) ;
 	arcLengthMap.push( {
@@ -1431,7 +1448,7 @@ const angleBetween = ( v0 , v1 ) => {
 } ;
 
 
-},{}],7:[function(require,module,exports){
+},{"../BoundingBox.js":1}],7:[function(require,module,exports){
 
 "use strict" ;
 
@@ -1954,9 +1971,13 @@ Path.prototype.export = function( data = {} ) {
 
 
 
+// Changing invertY parameter can change commands based on chirality (turtle-based commands)
 Path.prototype.setInvertY = function( invertY ) {
-	this.invertY = !! invertY ;
+	invertY = !! invertY ;
+	if ( this.invertY === invertY ) { return ; }
+	this.invertY = invertY ;
 	this.clearComputed() ;
+	this.computeCurves() ;
 } ;
 
 
@@ -2026,7 +2047,7 @@ Path.prototype.computeCurves = function() {
 				}
 				else {
 					this.totalLength += curve.length ;
-					if ( curve.boundingBox ) { this.boundingBox.merge( curve.boundingBox ) ; }
+					this.boundingBox.merge( curve.boundingBox ) ;
 				}
 
 				this.computeCurvesBuild.lastCurve = curve ;
@@ -2334,7 +2355,6 @@ Path.prototype.isInside = function( coords ) {
 	if ( ! this.boundingBox.isInside( coords ) ) { return false ; }
 
 	if ( ! this.polygonHull ) { this.computeHull() ; }
-
 	return this.polygonHull.some( polygon => polygon.isInside( coords ) ) ;
 } ;
 
@@ -8855,11 +8875,18 @@ VGPath.prototype.svgTag = 'path' ;
 
 
 VGPath.prototype.set = function( params ) {
-	if ( Array.isArray( params.commands ) ) { this.path.set( params.commands ) ; }
+	var refreshBbox = !! ( params.style?.stroke || params.style?.strokeWidth ) ;
+
+	if ( Array.isArray( params.commands ) ) {
+		this.path.set( params.commands ) ;
+		refreshBbox = true ;
+	}
 
 	// /!\ Bounding box should be calculated from path
 
 	VGEntity.prototype.set.call( this , params ) ;
+
+	if ( refreshBbox ) { this.computeBoundingBox() ; }
 } ;
 
 
@@ -8874,6 +8901,15 @@ VGPath.prototype.export = function( data = {} ) {
 
 VGPath.prototype.onAttach = function() {
 	this.path.setInvertY( this.root.invertY ) ;
+	this.computeBoundingBox() ;
+} ;
+
+
+
+VGPath.prototype.computeBoundingBox = function() {
+	this.boundingBox.set( this.path.boundingBox ) ;
+	var width = this.style.stroke ? this.style.strokeWidth : 0 ;
+	if ( width ) { this.boundingBox.enlarge( width ) ; }
 } ;
 
 
@@ -8924,6 +8960,7 @@ for ( let type in Path.commands ) {
 	if ( Path.commands[ type ].add ) {
 		VGPath.prototype[ type ] = function( data ) {
 			this.path[ type ]( data ) ;
+			this.computeBoundingBox() ;
 			return this ;
 		} ;
 	}

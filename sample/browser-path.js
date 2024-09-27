@@ -11,7 +11,7 @@ async function pathTest() {
 		style: {
 			fill: '%lighter blue' ,
 			//stroke: '%red-violet' ,
-			//strokeWidth: 2
+			//strokeWidth: 5
 		}
 	} ) ;
 	vgPath.moveTo( { x: 200 , y: 120 } ) ;
@@ -24,6 +24,7 @@ async function pathTest() {
 	vgPath.close() ;
 	vg.addEntity( vgPath ) ;
 	console.warn( "VGPath:" , vgPath ) ;
+	console.warn( "Path:" , vgPath.path ) ;
 	
 	var step = 10 , forceKeyPoints = true ;
 	
