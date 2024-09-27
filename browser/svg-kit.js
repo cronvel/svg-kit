@@ -2,7 +2,7 @@
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -262,7 +262,7 @@ BoundingBox.prototype.shrink = function( value , min = 0 ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -388,7 +388,7 @@ ConvexPolygon.prototype.fixConvexPolygon = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -639,7 +639,7 @@ DynamicArea.prototype.restore = function( canvasCtx ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -1030,7 +1030,7 @@ DynamicManager.prototype.getAllBabylonControlEmittableEvents = function( eventNa
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -1144,12 +1144,39 @@ Metric.isEqual = function( a , b ) {
 
 
 },{}],6:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2024 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 "use strict" ;
 
+
+
 /*
-	Derived from svg-path-properties by RogerVecianaAbzu
-	(https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts)
+	Mostly derived from svg-path-properties by RogerVecianaAbzu:
+	https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts
 */
 
 
@@ -1449,13 +1476,42 @@ const angleBetween = ( v0 , v1 ) => {
 
 
 },{"../BoundingBox.js":1}],7:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2024 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 "use strict" ;
 
+
+
 /*
-	Derived from svg-path-properties by RogerVecianaAbzu
-	(https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts)
+	Mostly derived from svg-path-properties by RogerVecianaAbzu:
+	https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts
 */
+
+
 
 function Bezier( ... args ) {
 	// Cache those values for faster execution
@@ -1570,12 +1626,39 @@ Bezier.prototype.getT = function( xs , ys , length ) {
 
 
 },{}],8:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2024 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 "use strict" ;
 
+
+
 /*
-	Derived from svg-path-properties by RogerVecianaAbzu
-	(https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts)
+	Mostly derived from svg-path-properties by RogerVecianaAbzu:
+	https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts
 */
 
 
@@ -1756,6 +1839,31 @@ function getTExtrema( ps , tExtrema ) {
 
 
 },{"../BoundingBox.js":1,"./Bezier.js":7,"./QuadraticBezier.js":12,"./bezier-values.json":13}],9:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2024 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 "use strict" ;
 
@@ -1834,10 +1942,35 @@ Line.prototype.getPropertiesAtLength = function( length ) {
 
 
 },{"../BoundingBox.js":1}],10:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2024 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 "use strict" ;
 
-// Dummy class
+// Dummy class, only for interface
 
 // common null bounding box?
 //const BoundingBox = require( '../BoundingBox.js' ) ;
@@ -1883,7 +2016,7 @@ Move.prototype.getPropertiesAtLength = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -3083,12 +3216,39 @@ Path.polygonPointsToD = ( points , invertY = false ) => Path.linePointsToD( poin
 
 
 },{"../../package.json":110,"../BoundingBox.js":1,"../Polygon.js":14,"../Polyline.js":15,"./Arc.js":6,"./CubicBezier.js":8,"./Line.js":9,"./Move.js":10,"./QuadraticBezier.js":12}],12:[function(require,module,exports){
+/*
+	SVG Kit
+
+	Copyright (c) 2017 - 2024 Cédric Ronvel
+
+	The MIT License (MIT)
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 "use strict" ;
 
+
+
 /*
-	Derived from svg-path-properties by RogerVecianaAbzu
-	(https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts)
+	Mostly derived from svg-path-properties by RogerVecianaAbzu:
+	https://github.com/rveciana/svg-path-properties/blob/master/src/bezier.ts
 */
 
 
@@ -3212,7 +3372,7 @@ module.exports={"tValues":[[],[],[-0.5773502691896257,0.5773502691896257],[0,-0.
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -3405,7 +3565,7 @@ Polygon.castRayOnSide = function( side , ray ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -3460,7 +3620,7 @@ Polyline.prototype.isInside = function( coords ) { return false ; } ;	// There i
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -3673,7 +3833,7 @@ Style.prototype.setDomSvgStyle = function( $element , palette ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -3831,7 +3991,7 @@ VG.prototype.addCssRule = function( rule ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -3941,7 +4101,7 @@ VGClip.prototype.svgContentGroupAttributes = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -4148,7 +4308,7 @@ VGContainer.prototype.morphSvgDom = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -4307,7 +4467,7 @@ VGConvexPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , o
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -4445,7 +4605,7 @@ VGEllipse.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -5400,7 +5560,7 @@ VGEntity.prototype.computeBoundingBox = function() {} ;
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -5485,7 +5645,7 @@ StructuredTextLine.prototype.fuseEqualAttr = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -5725,7 +5885,7 @@ StructuredTextPart.prototype.checkLineSplit = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -6000,7 +6160,7 @@ StructuredTextRenderer.prototype.populateStyle = function( part , style ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -6625,7 +6785,7 @@ TextAttribute.prototype.getFrameSvgStyle = function( inherit = null , relTo = nu
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -6765,7 +6925,7 @@ TextMetrics.measureStructuredTextPart = async function( part , inheritedAttr ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -7585,7 +7745,7 @@ VGFlowingText.prototype.computeXYOffset = function() {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -7735,7 +7895,7 @@ VGFlowingTextImagePart.prototype.renderHookForCanvas = async function( canvasCtx
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -8174,7 +8334,7 @@ VGFlowingTextPart.prototype.renderHookForPath2D = async function( path2D , canva
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -8231,7 +8391,7 @@ VGGroup.prototype.set = function( params ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -8819,7 +8979,7 @@ VGImage.prototype.getNinePatchCoordsList = function( imageSize ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -8986,7 +9146,7 @@ VGPath.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9114,7 +9274,7 @@ VGPolygon.prototype.renderHookForPath2D = function( path2D , canvasCtx , options
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9243,7 +9403,7 @@ VGPolyline.prototype.renderHookForPath2D = function( path2D , canvasCtx , option
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9339,7 +9499,7 @@ VGPseudoContainer.prototype.computePseudoEntities = async function() {} ;
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9397,7 +9557,7 @@ VGPseudoEntity.prototype.__prototypeVersion__ = require( '../package.json' ).ver
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9556,7 +9716,7 @@ VGRect.prototype.renderHookForPath2D = function( path2D , canvasCtx , options = 
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9739,7 +9899,7 @@ VGText.prototype.renderHookForCanvas = function( canvasCtx , options = {} , isRe
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -9904,7 +10064,7 @@ canvas.contextToCanvasCoords = ( canvasCtx , contextCoords ) => {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -10047,7 +10207,7 @@ colorUtilities.getContrastColorCode = ( colorStr , rate = 0.5 ) => {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -10499,7 +10659,7 @@ core.standalone = function( content , viewBox ) {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -10877,7 +11037,7 @@ else {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -11317,7 +11477,7 @@ exports.fade = ( params ) => {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -11429,7 +11589,7 @@ easing.sine = t => 0.5 + Math.sin( - PI_OVER_2 + t * PI ) / 2 ;
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -11486,7 +11646,7 @@ else {
 /*
 	SVG Kit
 
-	Copyright (c) 2017 - 2023 Cédric Ronvel
+	Copyright (c) 2017 - 2024 Cédric Ronvel
 
 	The MIT License (MIT)
 
@@ -43945,7 +44105,7 @@ module.exports={
     "title": "SVG Kit",
     "years": [
       2017,
-      2023
+      2024
     ],
     "owner": "Cédric Ronvel"
   },
