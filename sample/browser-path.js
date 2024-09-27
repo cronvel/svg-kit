@@ -17,8 +17,10 @@ async function pathTest() {
 	vgPath.moveTo( { x: 200 , y: 120 } ) ;
 	vgPath.lineTo( { x: 350 , y: 140 } ) ;
 	vgPath.curveTo( { x: 350 , y: 340 , cx1: 450 , cy1: 240 , cx2: 250 , cy2: 240 } ) ;
-	//vgPath.lineTo( { x: 150 , y: 340 } ) ;
-	vgPath.arcTo( { x: 150 , y: 340 , rx: 125 , ry: 130 } ) ;
+	vgPath.arcTo( { x: 200 , y: 340 , rx: 125 , ry: 130 } ) ;
+	vgPath.qCurveTo( { x: 50 , y: 360 , cx: 150 , cy: 240 } ) ;
+	vgPath.vLineTo( 200 ) ;
+	vgPath.hLineTo( 180 ) ;
 	vgPath.close() ;
 	vg.addEntity( vgPath ) ;
 	console.warn( "VGPath:" , vgPath ) ;
@@ -42,7 +44,7 @@ async function pathTest() {
 	vg.addEntity( vgStepPolygon ) ;
 	//*/
 
-	/*
+	//*
 	var vgSimplifiedPolygonList = vgPath.toVGPolygon( {
 		step ,
 		forceKeyPoints ,
