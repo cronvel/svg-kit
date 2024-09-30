@@ -298,8 +298,6 @@ function ConvexPolygon( params ) {
 	this.points = [] ;
 	this.sides = [] ;
 	this.boundingBox = new BoundingBox( null ) ;
-	this.clockwise = true ;
-	this.autofix = false ;
 	this.badConvexPolygon = false ;
 
 	if ( params ) { this.set( params ) ; }
@@ -316,14 +314,12 @@ ConvexPolygon.prototype.__prototypeVersion__ = require( '../package.json' ).vers
 
 ConvexPolygon.prototype.set = function( params ) {
 	Polygon.prototype.set.call( this , params ) ;
-	if ( typeof params.clockwise === 'boolean' ) { this.clockwise = params.clockwise ; }
 } ;
 
 
 
 ConvexPolygon.prototype.setPoints = function( points ) {
 	Polygon.prototype.setPoints.call( this , points ) ;
-	if ( this.autofix ) { this.fixConvexPolygon() ; }
 } ;
 
 
@@ -331,56 +327,40 @@ ConvexPolygon.prototype.setPoints = function( points ) {
 ConvexPolygon.prototype.isInside = function( coords ) {
 	if ( ! this.sides.length ) { return false ; }
 
-	return this.clockwise ?
-		this.sides.every( side => Polygon.testSideLineEquation( side , coords ) <= 0 ) :
-		this.sides.every( side => Polygon.testSideLineEquation( side , coords ) >= 0 ) ;
+	return this.totalAngle > 0 ?
+		this.sides.every( side => Polygon.testSideLineEquation( side , coords ) >= 0 ) :
+		this.sides.every( side => Polygon.testSideLineEquation( side , coords ) <= 0 ) ;
 } ;
 
 
 
-// Find out if the points are really clowkwise or anti-clockwise
-ConvexPolygon.prototype.fixConvexPolygon = function() {
-	if ( ! this.sides.length ) { return ; }
-
-	var clockwiseOk = true ,
-		antiClockwiseOk = true ;
-
+ConvexPolygon.prototype.checkConvex = function() {
+	// Checking convexity is easy : just check that each point lie on the correct side of its line equation
 	this.badConvexPolygon = false ;
+	if ( ! this.sides.length ) { return true ; }
 
 	for ( let i = 0 ; i < this.sides.length ; i ++ ) {
 		let side = this.sides[ i ] ;
 
 		for ( let j = i + 2 ; j < this.points.length ; j ++ ) {
-			if ( j === i || j === ( i + 1 ) % this.sides.length ) {
-				// We don't check points of the current side
-				continue ;
-			}
+			// We don't check points of the current side
+			if ( j === i || j === ( i + 1 ) % this.sides.length ) { continue ; }
 
 			let point = this.points[ j ] ;
 
-			if ( clockwiseOk && Polygon.testSideLineEquation( side , point ) > 0 ) { clockwiseOk = false ; }
-			if ( antiClockwiseOk && Polygon.testSideLineEquation( side , point ) < 0 ) { antiClockwiseOk = false ; }
+			let ok = this.totalAngle > 0 ?
+				Polygon.testSideLineEquation( side , point ) > 0 :
+				Polygon.testSideLineEquation( side , point ) < 0 ;
 
-			if ( ! clockwiseOk && ! antiClockwiseOk ) {
+			if ( ! ok ) {
 				console.warn( "Bad convex polygon, probably not simple/convex" ) ;
 				this.badConvexPolygon = true ;
-				return ;
+				return false ;
 			}
 		}
 	}
 
-	if ( clockwiseOk && ! antiClockwiseOk ) {
-		console.warn( "Clockwise detected!" ) ;
-		this.clockwise = true ;
-	}
-	else if ( ! clockwiseOk && antiClockwiseOk ) {
-		console.warn( "Anti-clockwise detected!" ) ;
-		this.clockwise = false ;
-	}
-	else {
-		console.warn( "Bad polygon" ) ;
-		this.badConvexPolygon = true ;
-	}
+	return true ;
 } ;
 
 
@@ -3415,6 +3395,7 @@ function Polygon( params ) {
 	this.points = [] ;
 	this.sides = [] ;
 	this.boundingBox = new BoundingBox( null ) ;
+	this.totalAngle = 0 ;
 
 	if ( params ) { this.set( params ) ; }
 }
@@ -3443,11 +3424,12 @@ Polygon.prototype.setPoints = function( points ) {
 	if ( ! Array.isArray( points ) ) { return ; }
 	for ( let point of points ) { this.addPoint( point , true ) ; }
 	if ( this.addClosingSide ) { this.addClosingSide() ; }
+	this.computeTotalAngle() ;
 } ;
 
 
 
-Polygon.prototype.addPoint = function( point , noClosingSide = false ) {
+Polygon.prototype.addPoint = function( point , noExtraCompute = false ) {
 	if ( ! point || typeof point !== 'object' ) { return ; }
 
 	var pointClone = { x: + point.x || 0 , y: + point.y || 0 } ;
@@ -3455,7 +3437,9 @@ Polygon.prototype.addPoint = function( point , noClosingSide = false ) {
 	this.boundingBox.ensurePoint( pointClone ) ;
 
 	this.addLastSide() ;
-	if ( this.addClosingSide && ! noClosingSide ) { this.addClosingSide() ; }
+	if ( noExtraCompute ) { return ; }
+	if ( this.addClosingSide ) { this.addClosingSide() ; }
+	this.computeTotalAngle() ;
 } ;
 
 
@@ -3507,6 +3491,61 @@ Polygon.prototype.isInside = function( coords ) {
 
 
 
+Polygon.prototype.computeTotalAngle = function() {
+	this.totalAngle = 0 ;
+
+	for ( let i = 0 ; i < this.sides.length ; i ++ ) {
+		let angleDelta = this.sides[ ( i + 1 ) % this.sides.length ].angle - this.sides[ i ].angle ;
+		if ( angleDelta > Math.PI ) { angleDelta -= 2 * Math.PI ; }
+		if ( angleDelta < - Math.PI ) { angleDelta += 2 * Math.PI ; }
+		this.totalAngle += angleDelta ;
+	}
+} ;
+
+
+
+Polygon.computeTotalAngle = function( points ) {
+	let totalAngle = 0 ;
+
+	for ( let i = 0 ; i < points.length ; i ++ ) {
+		let p1 = points[ i ] ,
+			p2 = points[ ( i + 1 ) % points.length ] ,
+			p3 = points[ ( i + 2 ) % points.length ] ,
+			angle1 = Math.atan2( p2.y - p1.y , p2.x - p1.x ) ,
+			angle2 = Math.atan2( p3.y - p2.y , p3.x - p2.x ) ,
+			angleDelta = angle2 - angle1 ;
+		
+		if ( angleDelta > Math.PI ) { angleDelta -= 2 * Math.PI ; }
+		if ( angleDelta < - Math.PI ) { angleDelta += 2 * Math.PI ; }
+		totalAngle += angleDelta ;
+	}
+
+	return totalAngle ;
+} ;
+
+
+
+// Ensure the side turns in the correct orientation, can be useful for third-party like 3D, to create faces
+// with the correct face-normal (e.g. for polygon extrusion)
+Polygon.prototype.ensureOrientation = function( sign ) {
+	sign = Math.sign( + sign || 1 ) ;
+	if ( Math.sign( this.totalAngle ) === sign ) { return ; }
+	console.warn( "Reversing the orientation (Polygon.prototype.ensureOrientation)" ) ;
+	this.setPoints( this.points.slice().reverse() ) ;
+} ;
+
+
+
+Polygon.ensureOrientation = function( points , sign ) {
+	sign = Math.sign( + sign || 1 ) ;
+	var totalAngle = Polygon.computeTotalAngle( points ) ;
+	if ( Math.sign( totalAngle ) === sign ) { return ; }
+	console.warn( "Reversing the orientation (Polygon.ensureOrientation)" ) ;
+	points.reverse() ;
+} ;
+
+
+
 /*
 	Get the line equation's parameters.
 	The equation is:   ax + by + c
@@ -3531,7 +3570,10 @@ Polygon.getParametricLineParameters = function( point1 , point2 ) {
 		x0: point1.x ,
 		y0: point1.y ,
 		dx ,
-		dy
+		dy ,
+
+		// Misc
+		angle: Math.atan2( dy , dx )
 	} ;
 } ;
 
@@ -4353,7 +4395,6 @@ function VGConvexPolygon( params ) {
 	VGEntity.call( this , params ) ;
 
 	this.convexPolygon = new ConvexPolygon() ;
-	this.convexPolygon.autofix = true ;
 	
 	if ( params ) { this.set( params ) ; }
 }
@@ -4382,7 +4423,8 @@ VGConvexPolygon.prototype.set = function( params ) {
 	if ( params.points ) {
 		this.convexPolygon.setPoints( params.points ) ;
 		refreshBbox = true ;
-		//if ( this.convexPolygon.badConvexPolygon ) { throw new Error( "Bad polygon (not simple, not convex, or degenerate case)" ) ; }
+		//console.warn( this.convexPolygon.totalAngle ) ;
+		if ( ! this.convexPolygon.checkConvex() ) { throw new Error( "Not a convex polygon" ) ; }
 	}
 
 	VGEntity.prototype.set.call( this , params ) ;

@@ -324,7 +324,7 @@ async function bookSourceFlowTest() {
 
 	renderAll( vg ) ;
 
-	console.warn( "BoundingBox:" , vgFlowingText.getBoundingBox() ) ;
+	console.warn( "BoundingBox:" , vgFlowingText.boundingBox ) ;
 	console.warn( "Content BoundingBox:" , await vgFlowingText.getContentBoundingBox() ) ;
 }
 
@@ -424,7 +424,7 @@ async function viewBoxTest() {
 		}
 	} ) ;
 	vg.addEntity( vgPolygon ) ;
-	vg.viewBox.set( vgPolygon.getBoundingBox() ) ;
+	vg.viewBox.set( vgPolygon.boundingBox ) ;
 
 	console.warn( "VG:" , vg ) ;
 
@@ -671,9 +671,9 @@ async function renderCanvas( vg , options ) {
 
 //svgKit.domKit.ready( test ) ;
 //svgKit.domKit.ready( clippingTest ) ;
-//svgKit.domKit.ready( viewBoxTest ) ;
+svgKit.domKit.ready( viewBoxTest ) ;
 //svgKit.domKit.ready( pathTest ) ;
-svgKit.domKit.ready( polygonTest ) ;
+//svgKit.domKit.ready( polygonTest ) ;
 //svgKit.domKit.ready( convexPolygonTest ) ;
 //svgKit.domKit.ready( hexaTilesTest ) ;
 //svgKit.domKit.ready( flowTest ) ;
