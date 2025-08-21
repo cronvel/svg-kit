@@ -234,8 +234,10 @@ async function dynamicTest() {
 
 
 async function dynamicBookSourceTest() {
-	var rawFxDoc = await ( await fetch( 'docFx.bks' ) ).text() ;
-	console.log( rawFxDoc ) ;
+	//var rawFxDoc = await ( await fetch( 'docFx.bks' ) ).text() ; console.log( rawFxDoc ) ;
+	var rawFxDoc = "[Hello]<green> *my* **friend**, ***stay*** [awhile]<bg:blue> and _listen_... "
+        + "Once upon a time, there was a [fearsome]<fx:quiver> ?[dragon][A dragon is a big lizard with wings and breathing fire!] that was devastating the country..." ;
+	//rawFxDoc += " more text".repeat( 5 ) ;
 
 	var vg = new svgKit.VG( {
 		viewBox: { x: 0 , y: 0 , width: 700 , height: 500 } ,
@@ -274,7 +276,7 @@ async function dynamicBookSourceTest() {
 		} ,
 		*/
 		fx: {
-			//slowTyping: { speed: 2 }
+			slowTyping: { speed: 2 }
 		} ,
 		markupText: rawFxDoc ,
 	} ) ;
@@ -286,6 +288,7 @@ async function dynamicBookSourceTest() {
 	svgKit.fontLib.setFontUrl( 'serif' , 'italic' , '../fonts/serif-italic.ttf' ) ;
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , '../fonts/serif-bold.ttf' ) ;
 	svgKit.fontLib.setFontUrl( 'serif' , 'bold' , 'italic' , '../fonts/serif-bold+italic.ttf' ) ;
+	console.warn( "Content height:" , await vgFlowingText.getContentHeight() ) ;
 
 	var $canvas = document.getElementById( 'canvas' ) ;
 	var ctx = $canvas.getContext( '2d' ) ;
