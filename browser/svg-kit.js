@@ -7908,7 +7908,7 @@ VGFlowingTextImagePart.prototype.svgAttributes = function( master = this ) {
 
 // Render the Vector Graphic as a text SVG
 VGFlowingTextImagePart.prototype.renderingContainerHookForSvgText = async function( master = this ) {
-	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
+	var yOffset = this.root.invertY ? - 2 * this.parent.y - this.parent.height : 0 ,
 		str = '' ;
 
 	str += '<image' ;
@@ -7926,7 +7926,7 @@ VGFlowingTextImagePart.prototype.renderingContainerHookForSvgText = async functi
 
 
 VGFlowingTextImagePart.prototype.renderingContainerHookForSvgDom = async function( master = this ) {
-	var yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
+	var yOffset = this.root.invertY ? - 2 * this.parent.y - this.parent.height : 0 ,
 		elementList = [] ;
 
 	//console.error( "???" , fontFamily , fontSize , textStyleStr ) ;
@@ -7949,7 +7949,7 @@ VGFlowingTextImagePart.prototype.renderingContainerHookForSvgDom = async functio
 
 
 VGFlowingTextImagePart.prototype.renderHookForCanvas = async function( canvasCtx , options = {} , isRedraw = false , master = this ) {
-	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ;
+	var yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.parent.y - ( this.parent.height - 1 ) : 0 ;
 
 	//console.error( "???" , fontFamily , fontSize , textStyle ) ;
 
@@ -8111,7 +8111,7 @@ VGFlowingTextPart.prototype.svgAttributes = function( master = this ) {
 // Render the Vector Graphic as a text SVG
 VGFlowingTextPart.prototype.renderingContainerHookForSvgText = async function( master = this ) {
 	var parentAttr = this.parent.attr ,
-		yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
+		yOffset = this.root.invertY ? - 2 * this.parent.y - this.parent.height : 0 ,
 		str = '' ,
 		fontFamily = this.attr.getFontFamily( parentAttr ) ,
 		fontStyle = this.attr.getFontStyle( parentAttr ) ,
@@ -8187,7 +8187,7 @@ VGFlowingTextPart.prototype.renderingContainerHookForSvgText = async function( m
 
 VGFlowingTextPart.prototype.renderingContainerHookForSvgDom = async function( master = this ) {
 	var parentAttr = this.parent.attr ,
-		yOffset = 0 , //this.root.invertY ? - 2 * this.y - this.height : 0 ,
+		yOffset = this.root.invertY ? - 2 * this.parent.y - this.parent.height : 0 ,
 		elementList = [] ,
 		fontFamily = this.attr.getFontFamily( parentAttr ) ,
 		fontStyle = this.attr.getFontStyle( parentAttr ) ,
@@ -8268,7 +8268,7 @@ VGFlowingTextPart.prototype.renderHookForCanvas = async function( canvasCtx , op
 
 	var text ,
 		parentAttr = this.parent.attr ,
-		yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
+		yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.parent.y - ( this.parent.height - 1 ) : 0 ,
 		fontFamily = this.attr.getFontFamily( parentAttr ) ,
 		fontStyle = this.attr.getFontStyle( parentAttr ) ,
 		fontWeight = this.attr.getFontWeight( parentAttr ) ,
@@ -8379,7 +8379,7 @@ VGFlowingTextPart.prototype.renderHookForCanvas = async function( canvasCtx , op
 */
 VGFlowingTextPart.prototype.renderHookForPath2D = async function( path2D , canvasCtx , options = {} , master = this ) {
 	var parentAttr = this.parent.attr ,
-		yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.y - ( this.height - 1 ) : 0 ,
+		yOffset = this.root.invertY ? canvasCtx.canvas.height - 1 - 2 * this.parent.y - ( this.parent.height - 1 ) : 0 ,
 		fontFamily = this.attr.getFontFamily( parentAttr ) ,
 		fontStyle = this.attr.getFontStyle( parentAttr ) ,
 		fontWeight = this.attr.getFontWeight( parentAttr ) ,

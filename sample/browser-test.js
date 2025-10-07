@@ -614,11 +614,11 @@ async function flowingTextInvertYBug() {
 		height: 200 ,
 		textWrapping: 'wordwrap' ,
 		attr: {
-			fontSize: 24 ,
+			fontSize: 22 ,
 			color: '#000' ,
 			outline: true
 		} ,
-		markupText: "This is a placeholder text."
+		markupText: "This is a placeholder text. More words, more words, more words..."
 	} ) ;
 	vg.addEntity( vgFlowingText ) ;
 	
