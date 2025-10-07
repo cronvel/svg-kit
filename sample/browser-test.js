@@ -600,6 +600,33 @@ async function hexaTilesTest() {
 
 
 
+async function flowingTextInvertYBug() {
+	var vg = new svgKit.VG( {
+		viewBox: { x: 0 , y: 0 , width: 300 , height: 300 } ,
+		invertY: true
+	} ) ;
+
+	var vgFlowingText = new svgKit.VGFlowingText( {
+		debugContainer: true ,
+		x: 25 ,
+		y: 75 ,
+		width: 200 ,
+		height: 200 ,
+		textWrapping: 'wordwrap' ,
+		attr: {
+			fontSize: 24 ,
+			color: '#000' ,
+			outline: true
+		} ,
+		markupText: "This is a placeholder text."
+	} ) ;
+	vg.addEntity( vgFlowingText ) ;
+	
+	renderAll( vg ) ;
+}
+
+
+
 async function renderAll( vg , options = null ) {
 	var $canvas = document.getElementById( 'canvas' ) ,
 		$svgDom = document.getElementById( 'svgDom' ) ,
@@ -669,7 +696,8 @@ async function renderCanvas( vg , options ) {
 
 
 
-svgKit.domKit.ready( test ) ;
+//svgKit.domKit.ready( test ) ;
+svgKit.domKit.ready( flowingTextInvertYBug ) ;
 //svgKit.domKit.ready( clippingTest ) ;
 //svgKit.domKit.ready( viewBoxTest ) ;
 //svgKit.domKit.ready( pathTest ) ;

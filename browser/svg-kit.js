@@ -8187,7 +8187,7 @@ VGFlowingTextPart.prototype.renderingContainerHookForSvgText = async function( m
 
 VGFlowingTextPart.prototype.renderingContainerHookForSvgDom = async function( master = this ) {
 	var parentAttr = this.parent.attr ,
-		yOffset = this.root.invertY ? - 2 * this.y - this.height : 0 ,
+		yOffset = 0 , //this.root.invertY ? - 2 * this.y - this.height : 0 ,
 		elementList = [] ,
 		fontFamily = this.attr.getFontFamily( parentAttr ) ,
 		fontStyle = this.attr.getFontStyle( parentAttr ) ,
@@ -44169,7 +44169,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":107}],110:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
