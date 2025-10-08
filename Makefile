@@ -52,7 +52,7 @@ UGLIFY=uglifyjs
 # Files rules
 
 # Build the browser lib
-browser/svg-kit.js: lib/*.js lib/*/*.js
+browser/svg-kit.js: lib/*.js lib/*/*.js package.json
 	${BROWSERIFY} lib/svg-kit.js -i fs -i image-size -s svgKit -o browser/svg-kit.js
 
 # Build the browser minified lib
