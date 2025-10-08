@@ -44195,7 +44195,7 @@ unicode.isEmojiModifierCodePoint = code =>
 },{"./json-data/unicode-emoji-width-ranges.json":108}],110:[function(require,module,exports){
 module.exports={
   "name": "svg-kit",
-  "version": "0.8.8",
+  "version": "0.8.10",
   "description": "A SVG toolkit, with its own Vector Graphics structure, multiple renderers (svg text, DOM svg, canvas), and featuring Flowing Text.",
   "main": "lib/svg-kit.js",
   "directories": {
